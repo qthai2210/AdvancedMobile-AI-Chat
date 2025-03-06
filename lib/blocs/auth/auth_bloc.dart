@@ -44,7 +44,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(
         state.copyWith(
           status: AuthStatus.success,
-          user: User(id: '1', email: _email, name: _email.split('@').first),
+          user: User(
+            id: '1',
+            email: _email,
+            name: _email.split('@').first,
+            // Navigate directly to home screen
+            directNavigationPath: '/home',
+          ),
         ),
       );
     } else {
@@ -88,7 +94,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(
       state.copyWith(
         status: AuthStatus.success,
-        user: User(id: '2', email: 'social@example.com', name: 'Social User'),
+        user: User(
+          id: '2',
+          email: 'social@example.com',
+          name: 'Social User',
+          directNavigationPath: '/home',
+        ),
       ),
     );
   }
@@ -109,7 +120,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(
       state.copyWith(
         status: AuthStatus.success,
-        user: User(id: '3', email: event.email, name: event.name),
+        user: User(
+          id: '3',
+          email: event.email,
+          name: event.name,
+          directNavigationPath: '/home',
+        ),
       ),
     );
   }

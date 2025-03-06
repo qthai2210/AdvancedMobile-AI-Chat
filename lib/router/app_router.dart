@@ -4,9 +4,11 @@ import 'package:aichatbot/screens/login_screen.dart';
 import 'package:aichatbot/screens/register_screen.dart';
 import 'package:aichatbot/screens/home_screen.dart';
 import 'package:aichatbot/screens/chat_ai_screen.dart';
+import 'package:aichatbot/screens/chat_detail_screen.dart';
 
 class AppRouter {
   static final rootNavigatorKey = GlobalKey<NavigatorState>();
+  static final shellNavigatorKey = GlobalKey<NavigatorState>();
 
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -32,19 +34,46 @@ class AppRouter {
         name: 'chat',
         builder: (context, state) => const ChatAIScreen(),
       ),
+      // Updated route for chat detail to handle deep linking
+      GoRoute(
+        path: '/chat/detail/:threadId',
+        name: 'chatDetail',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final threadId = state.pathParameters['threadId'];
+          final isNew = threadId == 'new';
+          return ChatDetailScreen(
+            isNewChat: isNew,
+            threadId: isNew ? null : threadId,
+          );
+        },
+      ),
     ],
-    // Redirect to login if not authenticated
-    redirect: (context, state) {
-      // You can add authentication logic here later
-      // For example:
-      // final isLoggedIn = AuthService.isLoggedIn;
-      // if (!isLoggedIn && state.location != '/login')
-      //   return '/login';
+    // Add error handler for navigation errors
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Error: ${state.error}'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go('/chat'),
+              child: const Text('Go to Chat Screen'),
+            ),
+          ],
+        ),
+      ),
+    ),
+    // Define redirect to handle empty routes
+    redirect: (BuildContext context, GoRouterState state) {
+      // If the app tries to navigate to an empty stack, redirect to chat
+      if (state.matchedLocation.isEmpty) {
+        return '/chat';
+      }
       return null;
     },
-    // Error handling
-    errorBuilder:
-        (context, state) =>
-            Scaffold(body: Center(child: Text('Error: ${state.error}'))),
   );
 }

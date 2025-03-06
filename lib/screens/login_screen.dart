@@ -15,8 +15,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'tushari23@gmail.com');
-  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController(text: 'user@example.com');
+  final _passwordController = TextEditingController(text: 'password123');
   bool _obscurePassword = true;
 
   @override
@@ -44,8 +44,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         } else if (state.status == AuthStatus.success) {
-          // Navigate to chat screen on successful login
-          context.go('/chat'); // Changed from '/home' to '/chat'
+          // Navigate directly to chat detail or chat screen
+          if (state.user?.directNavigationPath != null) {
+            context.go(state.user!.directNavigationPath!);
+          } else {
+            context.go('/chat');
+          }
         }
       },
       child: Scaffold(

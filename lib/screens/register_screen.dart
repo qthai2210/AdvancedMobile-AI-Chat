@@ -42,8 +42,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
         } else if (state.status == AuthStatus.success) {
-          // Navigate to chat screen on successful registration
-          context.go('/chat'); // Changed from '/home' to '/chat'
+          // Navigate directly to chat detail or chat screen
+          if (state.user?.directNavigationPath != null) {
+            context.go(state.user!.directNavigationPath!);
+          } else {
+            context.go('/chat');
+          }
         }
       },
       child: Scaffold(
@@ -249,12 +253,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (_passwordController.text ==
                       _confirmPasswordController.text) {
                     context.read<AuthBloc>().add(
-                      RegisterSubmitted(
-                        name: _nameController.text,
-                        email: _emailController.text,
-                        password: _passwordController.text,
-                      ),
-                    );
+                          RegisterSubmitted(
+                            name: _nameController.text,
+                            email: _emailController.text,
+                            password: _passwordController.text,
+                          ),
+                        );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Passwords don't match")),
