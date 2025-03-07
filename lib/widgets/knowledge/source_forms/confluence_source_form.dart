@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/base_source_form.dart';
 
-class ConfluenceSourceForm extends StatelessWidget {
+class ConfluenceSourceForm extends BaseSourceForm {
   final bool isConnected;
   final String? spaceName;
   final String? domainUrl;
@@ -8,7 +9,6 @@ class ConfluenceSourceForm extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback? onDisconnect;
   final Function(List<String>) onPagesSelected;
-  final Color primaryColor;
 
   const ConfluenceSourceForm({
     super.key,
@@ -19,39 +19,16 @@ class ConfluenceSourceForm extends StatelessWidget {
     required this.onConnect,
     this.onDisconnect,
     required this.onPagesSelected,
-    required this.primaryColor,
-  });
+    required super.primaryColor,
+  }) : super(
+          title: 'Kết nối với Confluence',
+          description: 'Thu thập dữ liệu từ trang Confluence của tổ chức bạn',
+        );
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Kết nối với Confluence'),
-        const SizedBox(height: 8),
-        const Text(
-          'Thu thập dữ liệu từ trang Confluence của tổ chức bạn',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-
-        // Confluence connection
-        Center(
-          child:
-              isConnected ? _buildConnectedState() : _buildNotConnectedState(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: primaryColor,
-      ),
+  Widget buildContent(BuildContext context) {
+    return Center(
+      child: isConnected ? _buildConnectedState() : _buildNotConnectedState(),
     );
   }
 

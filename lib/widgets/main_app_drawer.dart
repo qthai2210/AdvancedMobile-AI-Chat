@@ -1,6 +1,8 @@
+import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
+import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 
 class MainAppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -117,6 +119,12 @@ class MainAppDrawer extends StatelessWidget {
         'color': const Color(0xFF0F9D58),
       },
       {
+        'title': 'Prompts',
+        'icon': Icons.psychology_outlined,
+        'selectedIcon': Icons.psychology,
+        'color': const Color(0xFFFF9800),
+      },
+      {
         'title': 'History',
         'icon': Icons.history_outlined,
         'selectedIcon': Icons.history,
@@ -167,11 +175,27 @@ class MainAppDrawer extends StatelessWidget {
                   builder: (context) => const KnowledgeManagementScreen(),
                 ),
               );
-            } else {
-              onTabSelected(index >= 2
-                  ? index + 1
-                  : index); // Adjust index for the new tab
+            } else if (tab['title'] == 'Prompts') {
               Navigator.pop(context);
+              // Navigate to Prompts Screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PromptsScreen(),
+                ),
+              );
+            } else if (tab['title'] == 'AI Bots') {
+              Navigator.pop(context);
+              // Navigate to AI Bots Screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BotListScreen(),
+                ),
+              );
+            } else {
+              Navigator.pop(context);
+              onTabSelected(index);
             }
           },
         );

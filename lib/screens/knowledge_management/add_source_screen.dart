@@ -103,8 +103,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   void _handleTabChange() {
     if (_tabController.indexIsChanging) {
       setState(() {
+        // When changing tabs, set the appropriate source type for each tab
         switch (_tabController.index) {
           case 0: // File tab
+            // Always reset to PDF when switching to file tab to avoid dropdown errors
             _selectedType = KnowledgeSourceType.pdf;
             break;
           case 1: // URL tab
@@ -528,9 +530,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             IndexedStack(
               index: _tabController.index,
               children: [
-                // File tab
+                // File tab - use a fixed valid type (PDF) to ensure dropdown has a valid selection
                 FileSourceForm(
-                  selectedType: _selectedType,
+                  selectedType: _selectedType == KnowledgeSourceType.pdf ||
+                          _selectedType == KnowledgeSourceType.docx ||
+                          _selectedType == KnowledgeSourceType.text ||
+                          _selectedType == KnowledgeSourceType.csv ||
+                          _selectedType == KnowledgeSourceType.json
+                      ? _selectedType
+                      : KnowledgeSourceType
+                          .pdf, // Default to PDF if current type isn't in dropdown
                   contentController: _contentController,
                   selectedFileName: _selectedFileName,
                   onTypeChanged: _onFileTypeChanged,

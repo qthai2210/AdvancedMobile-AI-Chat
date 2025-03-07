@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/base_source_form.dart';
 
-class UrlSourceForm extends StatelessWidget {
+class UrlSourceForm extends BaseSourceForm {
   final TextEditingController urlController;
   final bool shouldCrawlLinks;
   final int maxPagesToCrawl;
@@ -8,7 +9,6 @@ class UrlSourceForm extends StatelessWidget {
   final ValueChanged<bool> onCrawlLinksChanged;
   final ValueChanged<double> onMaxPagesChanged;
   final ValueChanged<double> onCrawlDepthChanged;
-  final Color primaryColor;
 
   const UrlSourceForm({
     super.key,
@@ -19,36 +19,21 @@ class UrlSourceForm extends StatelessWidget {
     required this.onCrawlLinksChanged,
     required this.onMaxPagesChanged,
     required this.onCrawlDepthChanged,
-    required this.primaryColor,
-  });
+    required super.primaryColor,
+  }) : super(
+          title: 'Thêm từ URL Website',
+          description: 'Hệ thống sẽ thu thập nội dung từ URL cung cấp',
+        );
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Thêm từ URL Website'),
-        const SizedBox(height: 8),
-        const Text(
-          'Hệ thống sẽ thu thập nội dung từ URL cung cấp',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
         _buildUrlInput(),
         const SizedBox(height: 24),
         _buildCrawlerOptions(),
       ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: primaryColor,
-      ),
     );
   }
 
@@ -78,7 +63,7 @@ class UrlSourceForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Tùy chọn thu thập dữ liệu'),
+        buildSectionTitle('Tùy chọn thu thập dữ liệu'),
         const SizedBox(height: 8),
         _buildCrawlerToggle(),
         if (shouldCrawlLinks) _buildAdvancedCrawlerOptions(),

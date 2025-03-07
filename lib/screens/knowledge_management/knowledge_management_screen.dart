@@ -1,6 +1,8 @@
 import 'package:aichatbot/screens/knowledge_management/knowledge_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/widgets/main_app_drawer.dart';
+import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
 class KnowledgeManagementScreen extends StatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -156,6 +158,11 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
+      drawer: MainAppDrawer(
+        currentIndex: 2, // Index 2 corresponds to the Knowledge Base tab
+        onTabSelected: (index) => navigation_utils
+            .handleDrawerNavigation(context, index, currentIndex: 2),
+      ),
       body: Stack(
         children: [
           Column(

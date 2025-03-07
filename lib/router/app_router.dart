@@ -1,3 +1,4 @@
+import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/login_screen.dart';
@@ -33,6 +34,11 @@ class AppRouter {
         path: '/chat',
         name: 'chat',
         builder: (context, state) => const ChatAIScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
       // Updated route for chat detail to handle deep linking
       GoRoute(

@@ -17,11 +17,7 @@ class ChatDetailScreen extends StatefulWidget {
   final String? threadId;
   final bool isNewChat;
 
-  const ChatDetailScreen({
-    super.key,
-    this.threadId,
-    required this.isNewChat,
-  });
+  const ChatDetailScreen({super.key, this.threadId, required this.isNewChat});
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -82,12 +78,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (widget.isNewChat) {
       _currentThreadTitle = 'New Conversation';
       _messages = [];
-      _messages.add(Message(
-        text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-        isUser: false,
-        timestamp: DateTime.now(),
-        agent: _selectedAgent,
-      ));
+      _messages.add(
+        Message(
+          text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
+          isUser: false,
+          timestamp: DateTime.now(),
+          agent: _selectedAgent,
+        ),
+      );
     } else {
       _mockLoadExistingThread();
     }
@@ -122,11 +120,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (text.trim().isEmpty) return;
 
     setState(() {
-      _messages.add(Message(
-        text: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        Message(text: text, isUser: true, timestamp: DateTime.now()),
+      );
       _isTyping = true;
     });
 
@@ -136,12 +132,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         _isTyping = false;
         String response = _generateAIResponse(text);
-        _messages.add(Message(
-          text: response,
-          isUser: false,
-          timestamp: DateTime.now(),
-          agent: _selectedAgent,
-        ));
+        _messages.add(
+          Message(
+            text: response,
+            isUser: false,
+            timestamp: DateTime.now(),
+            agent: _selectedAgent,
+          ),
+        );
       });
       _scrollToBottom();
     });
@@ -177,15 +175,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) => AIAgentSelector(
-        selectedAgent: _selectedAgent,
-        onAgentSelected: (agent) {
-          setState(() {
-            _selectedAgent = agent;
-          });
-          Navigator.pop(context);
-        },
-      ),
+      builder:
+          (BuildContext context) => AIAgentSelector(
+            selectedAgent: _selectedAgent,
+            onAgentSelected: (agent) {
+              setState(() {
+                _selectedAgent = agent;
+              });
+              Navigator.pop(context);
+            },
+          ),
     );
   }
 
@@ -208,12 +207,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() {
       _currentThreadTitle = 'New Conversation';
       _messages = [];
-      _messages.add(Message(
-        text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-        isUser: false,
-        timestamp: DateTime.now(),
-        agent: _selectedAgent,
-      ));
+      _messages.add(
+        Message(
+          text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
+          isUser: false,
+          timestamp: DateTime.now(),
+          agent: _selectedAgent,
+        ),
+      );
     });
 
     // Close drawer if it's open
@@ -311,10 +312,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             style: const TextStyle(fontSize: 16),
             overflow: TextOverflow.ellipsis,
           ),
-          AgentSelectorButton(
-            agent: _selectedAgent,
-            onTap: _changeAIAgent,
-          ),
+          AgentSelectorButton(agent: _selectedAgent, onTap: _changeAIAgent),
         ],
       ),
       centerTitle: true,
@@ -323,6 +321,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           icon: Icon(_showHistory ? Icons.history : Icons.history_outlined),
           color: _showHistory ? Theme.of(context).primaryColor : null,
           onPressed: _toggleHistoryView,
+        ),
+        // Add a new action button to create a new chat thread
+        IconButton(
+          icon: const Icon(Icons.add_comment),
+          tooltip: 'New Chat',
+          onPressed: () {
+            // Navigate to a new chat thread
+            context.go('/chat/detail/new');
+          },
         ),
         ChatOptionsMenu(
           onRename: _showRenameDialog,
@@ -333,34 +340,37 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _showRenameDialog() {
-    final TextEditingController controller =
-        TextEditingController(text: _currentThreadTitle);
+    final TextEditingController controller = TextEditingController(
+      text: _currentThreadTitle,
+    );
     showDialog(
       context: context,
-      builder: (context) => RenameDialogWidget(
-        controller: controller,
-        onSave: (newName) {
-          setState(() {
-            _currentThreadTitle = newName;
-          });
-        },
-      ),
+      builder:
+          (context) => RenameDialogWidget(
+            controller: controller,
+            onSave: (newName) {
+              setState(() {
+                _currentThreadTitle = newName;
+              });
+            },
+          ),
     );
   }
 
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
-      builder: (context) => DeleteConfirmationDialog(
-        onConfirm: () {
-          Navigator.pop(context);
-          if (Navigator.of(context).canPop()) {
-            Navigator.pop(context);
-          } else {
-            context.go('/chat');
-          }
-        },
-      ),
+      builder:
+          (context) => DeleteConfirmationDialog(
+            onConfirm: () {
+              Navigator.pop(context);
+              if (Navigator.of(context).canPop()) {
+                Navigator.pop(context);
+              } else {
+                context.go('/chat');
+              }
+            },
+          ),
     );
   }
 

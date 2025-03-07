@@ -7,17 +7,28 @@ import 'package:aichatbot/screens/tabs/history_tab.dart';
 import 'package:aichatbot/screens/tabs/settings_tab.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
+import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
 class ChatAIScreen extends StatefulWidget {
-  const ChatAIScreen({super.key});
+  final int initialTabIndex;
+
+  const ChatAIScreen({Key? key, this.initialTabIndex = 0}) : super(key: key);
 
   @override
   State<ChatAIScreen> createState() => _ChatAIScreenState();
 }
 
-class _ChatAIScreenState extends State<ChatAIScreen> {
+class _ChatAIScreenState extends State<ChatAIScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+  }
 
   // Define screens for the tabs
   late final List<Widget> _screens = [
@@ -36,30 +47,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     const Color(0xFF295BFF), // History
     const Color(0xFF315BFF), // Profile
     const Color(0xFF6A3DE8), // Settings
-  ];
-
-  // Define tab items
-  final List<BottomNavigationBarItem> _bottomNavItems = [
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.chat_bubble_outline),
-      activeIcon: Icon(Icons.chat_bubble),
-      label: 'Chat',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.smart_toy_outlined),
-      activeIcon: Icon(Icons.smart_toy),
-      label: 'Bots',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.history_outlined),
-      activeIcon: Icon(Icons.history),
-      label: 'History',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline),
-      activeIcon: Icon(Icons.person),
-      label: 'Profile',
-    ),
   ];
 
   void _onTabTapped(int index) {
@@ -92,8 +79,9 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF0F0FF),
       drawer: MainAppDrawer(
-        currentIndex: _currentIndex,
-        onTabSelected: _onTabTapped,
+        currentIndex: 0, // Index 0 corresponds to the Chat tab in the drawer
+        onTabSelected: (index) => navigation_utils
+            .handleDrawerNavigation(context, index, currentIndex: 0),
       ),
       appBar: AppBar(
         title: Text(
@@ -122,17 +110,10 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
             ),
         ],
       ),
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex:
-            _currentIndex < _bottomNavItems.length ? _currentIndex : 0,
-        onTap: _onTabTapped,
-        items: _bottomNavItems,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: _colors[_currentIndex],
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        elevation: 8,
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _screens,
       ),
     );
   }

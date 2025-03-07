@@ -13,16 +13,16 @@ class ChatTab extends StatelessWidget {
 
     return Column(
       children: [
-        AppBar(
-          title: const Text('AI Chat Bot'),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () => context.go('/login'),
-            ),
-          ],
-        ),
+        // AppBar(
+        //   title: const Text('AI Chat Bot'),
+        //   centerTitle: true,
+        //   actions: [
+        //     IconButton(
+        //       icon: const Icon(Icons.logout),
+        //       onPressed: () => context.go('/login'),
+        //     ),
+        //   ],
+        // ),
         Expanded(
           child: Stack(
             children: [

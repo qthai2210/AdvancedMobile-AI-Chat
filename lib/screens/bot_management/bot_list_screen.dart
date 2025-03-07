@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/screens/create_bot_screen.dart';
 import 'package:aichatbot/widgets/bots/bot_list_item.dart';
+import 'package:aichatbot/widgets/main_app_drawer.dart';
+import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
 class BotListScreen extends StatefulWidget {
   const BotListScreen({super.key});
@@ -131,14 +133,88 @@ class _BotListScreenState extends State<BotListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildSearchBar(),
-        Expanded(
-          child: _filteredBots.isEmpty ? _buildEmptyState() : _buildBotList(),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('AI Bots'),
+        actions: [
+          // Add share dropdown menu
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share AI Chat',
+            onSelected: _handleShare,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'slack',
+                child: Row(
+                  children: [
+                    Icon(Icons.workspaces_outlined, color: Color(0xFF4A154B)),
+                    SizedBox(width: 12),
+                    Text('Publish to Slack'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'telegram',
+                child: Row(
+                  children: [
+                    Icon(Icons.send, color: Color(0xFF0088CC)),
+                    SizedBox(width: 12),
+                    Text('Share to Telegram'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'messenger',
+                child: Row(
+                  children: [
+                    Icon(Icons.message, color: Color(0xFF0084FF)),
+                    SizedBox(width: 12),
+                    Text('Send to Messenger'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      drawer: MainAppDrawer(
+        currentIndex: 1, // Index 1 corresponds to the AI Bots tab in the drawer
+        onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
+          context,
+          index,
+          currentIndex: 1,
         ),
-        _buildCreateButton(),
-      ],
+      ),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: _filteredBots.isEmpty ? _buildEmptyState() : _buildBotList(),
+          ),
+          _buildCreateButton(),
+        ],
+      ),
+    );
+  }
+
+  // Handle share action
+  void _handleShare(String platform) {
+    String message = '';
+
+    switch (platform) {
+      case 'slack':
+        message = 'Publishing to Slack...';
+        break;
+      case 'telegram':
+        message = 'Sharing to Telegram...';
+        break;
+      case 'messenger':
+        message = 'Sending to Messenger...';
+        break;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

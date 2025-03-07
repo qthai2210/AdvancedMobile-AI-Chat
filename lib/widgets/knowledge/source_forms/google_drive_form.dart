@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/base_source_form.dart';
 
-class GoogleDriveForm extends StatelessWidget {
+class GoogleDriveForm extends BaseSourceForm {
   final String? selectedDriveFileName;
   final VoidCallback onConnectDrive;
   final VoidCallback? onClearSelection;
   final VoidCallback? onSelectDifferent;
-  final Color primaryColor;
 
   const GoogleDriveForm({
     super.key,
@@ -13,42 +13,18 @@ class GoogleDriveForm extends StatelessWidget {
     required this.onConnectDrive,
     this.onClearSelection,
     this.onSelectDifferent,
-    required this.primaryColor,
-  });
+    required super.primaryColor,
+  }) : super(
+          title: 'Kết nối với Google Drive',
+          description: 'Nhập dữ liệu từ tài khoản Google Drive của bạn',
+        );
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Kết nối với Google Drive',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: primaryColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Nhập dữ liệu từ tài khoản Google Drive của bạn',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-
-        // Google Drive connection
-        Center(
-          child: Column(
-            children: [
-              if (selectedDriveFileName == null) ...[
-                _buildNotConnectedState(context),
-              ] else ...[
-                _buildConnectedState(context),
-              ],
-            ],
-          ),
-        ),
-      ],
+  Widget buildContent(BuildContext context) {
+    return Center(
+      child: selectedDriveFileName == null
+          ? _buildNotConnectedState(context)
+          : _buildConnectedState(context),
     );
   }
 

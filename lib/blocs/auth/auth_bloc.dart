@@ -49,7 +49,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             email: _email,
             name: _email.split('@').first,
             // Navigate directly to home screen
-            directNavigationPath: '/home',
+            directNavigationPath: '/chat/detail/new',
           ),
         ),
       );

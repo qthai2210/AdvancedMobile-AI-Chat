@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/base_source_form.dart';
 
-class FileSourceForm extends StatelessWidget {
+class FileSourceForm extends BaseSourceForm {
   final KnowledgeSourceType selectedType;
   final TextEditingController contentController;
   final String? selectedFileName;
   final ValueChanged<KnowledgeSourceType> onTypeChanged;
   final VoidCallback onSelectFile;
   final VoidCallback? onClearFile;
-  final Color primaryColor;
 
   const FileSourceForm({
     super.key,
@@ -18,29 +18,17 @@ class FileSourceForm extends StatelessWidget {
     required this.onTypeChanged,
     required this.onSelectFile,
     this.onClearFile,
-    required this.primaryColor,
-  });
+    required super.primaryColor,
+  }) : super(
+          title: 'Tải lên tệp',
+          description: 'Hỗ trợ các định dạng: PDF, DOCX, TXT, CSV, JSON',
+        );
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Tải lên tệp',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: primaryColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Hỗ trợ các định dạng: PDF, DOCX, TXT, CSV, JSON',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
-
         // File type selection dropdown
         DropdownButtonFormField<KnowledgeSourceType>(
           value: selectedType,
