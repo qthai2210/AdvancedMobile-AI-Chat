@@ -1,8 +1,10 @@
+import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/prompt_model.dart';
 import 'package:aichatbot/widgets/prompts/prompt_card.dart';
 import 'package:aichatbot/services/prompt_service.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class PrivatePromptsScreen extends StatefulWidget {
   const PrivatePromptsScreen({Key? key}) : super(key: key);
@@ -140,6 +142,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
   }
 
   void _usePrompt(Prompt prompt) {
+    // Update usage count
     setState(() {
       final index = _prompts.indexWhere((p) => p.id == prompt.id);
       if (index != -1) {
@@ -147,9 +150,35 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added "${prompt.title}" to chat')),
-    );
+    // Update usage count in service
+    PromptService.incrementPromptUseCount(prompt.id);
+
+    // Navigate to chat with this prompt content - use safer navigation
+    try {
+      // Try to use GoRouter navigation
+      context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
+    } catch (e) {
+      // Fallback to regular navigation if GoRouter fails
+      try {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => ChatDetailScreen(
+              initialPrompt: prompt.content,
+              isNewChat: true,
+            ),
+          ),
+          (route) => false,
+        );
+      } catch (e2) {
+        // Last resort fallback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: $e2. Please try again.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _editPrompt(Prompt prompt) {
@@ -345,7 +374,6 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
                   label: const Text('Use in Chat'),
                   onPressed: () {
                     _usePrompt(prompt);
-                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),

@@ -12,12 +12,21 @@ import 'package:aichatbot/widgets/chat/message_bubble.dart';
 import 'package:aichatbot/widgets/chat/chat_input_field.dart';
 import 'package:aichatbot/widgets/chat/chat_history_overlay.dart';
 import 'package:aichatbot/widgets/chat/ai_typing_indicator.dart';
+import 'package:aichatbot/widgets/chat/image_capture_options.dart';
+import 'package:aichatbot/widgets/chat/image_preview.dart';
+import 'package:aichatbot/services/prompt_service.dart';
+import 'package:aichatbot/models/prompt_model.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
 class ChatDetailScreen extends StatefulWidget {
   final String? threadId;
   final bool isNewChat;
+  final String? initialPrompt;
 
-  const ChatDetailScreen({super.key, this.threadId, required this.isNewChat});
+  const ChatDetailScreen(
+      {super.key, this.threadId, required this.isNewChat, this.initialPrompt});
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -27,6 +36,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _selectedImage;
+  bool _showImageOptions = false;
+  bool _isLoadingPrompts = false;
+  List<Prompt> _recentPrompts = [];
 
   final int _selectedTabIndex =
       0; // Track the currently selected tab for the drawer
@@ -35,9 +49,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   List<Message> _messages = [];
   bool _isTyping = false;
   bool _showHistory = false;
+  final bool _isLoadingHistory = false;
 
   // Sample history for demo purposes
-  final List<ChatThread> _chatHistory = [
+  final List<ChatThread> _chatThreads = [
     ChatThread(
       id: '1',
       title: 'Tìm hiểu về Machine Learning',
@@ -72,6 +87,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void initState() {
     super.initState();
     _loadChatThread();
+    _loadRecentPrompts();
+
+    // Set the initial prompt if provided
+    if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
+      _messageController.text = widget.initialPrompt!;
+    }
   }
 
   void _loadChatThread() {
@@ -116,32 +137,93 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     ];
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-
-    setState(() {
-      _messages.add(
-        Message(text: text, isUser: true, timestamp: DateTime.now()),
-      );
-      _isTyping = true;
-    });
-
-    _scrollToBottom();
-
-    Future.delayed(const Duration(seconds: 1), () {
+  Future<void> _pickImageFromGallery() async {
+    final XFile? image =
+        await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
       setState(() {
-        _isTyping = false;
-        String response = _generateAIResponse(text);
-        _messages.add(
-          Message(
-            text: response,
-            isUser: false,
-            timestamp: DateTime.now(),
-            agent: _selectedAgent,
-          ),
-        );
+        _selectedImage = File(image.path);
+        _showImageOptions = false;
       });
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final XFile? photo =
+        await _imagePicker.pickImage(source: ImageSource.camera);
+    if (photo != null) {
+      setState(() {
+        _selectedImage = File(photo.path);
+        _showImageOptions = false;
+      });
+    }
+  }
+
+  void _captureScreenshot() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Screenshot feature will be implemented soon')),
+    );
+    setState(() {
+      _showImageOptions = false;
+    });
+  }
+
+  void _removeSelectedImage() {
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
+  void _sendMessage() {
+    final message = _messageController.text.trim();
+
+    if (message.isEmpty && _selectedImage == null) return;
+
+    if (_selectedImage != null) {
+      print('Sending message: $message with image: ${_selectedImage!.path}');
+
+      _messageController.clear();
+      setState(() {
+        _selectedImage = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sending message with image...')),
+      );
+    } else {
+      if (message.trim().isEmpty) return;
+
+      setState(() {
+        _messages.add(
+          Message(text: message, isUser: true, timestamp: DateTime.now()),
+        );
+        _isTyping = true;
+      });
+
       _scrollToBottom();
+
+      Future.delayed(const Duration(seconds: 1), () {
+        setState(() {
+          _isTyping = false;
+          String response = _generateAIResponse(message);
+          _messages.add(
+            Message(
+              text: response,
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        });
+        _scrollToBottom();
+      });
+    }
+  }
+
+  void _toggleImageOptions() {
+    setState(() {
+      _showImageOptions = !_showImageOptions;
     });
   }
 
@@ -175,16 +257,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder:
-          (BuildContext context) => AIAgentSelector(
-            selectedAgent: _selectedAgent,
-            onAgentSelected: (agent) {
-              setState(() {
-                _selectedAgent = agent;
-              });
-              Navigator.pop(context);
-            },
-          ),
+      builder: (BuildContext context) => AIAgentSelector(
+        selectedAgent: _selectedAgent,
+        onAgentSelected: (agent) {
+          setState(() {
+            _selectedAgent = agent;
+          });
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
@@ -253,6 +334,102 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  Future<void> _loadRecentPrompts() async {
+    setState(() => _isLoadingPrompts = true);
+    try {
+      // Load recent prompts in background
+      _recentPrompts = await PromptService.getPrompts();
+      // Sort by most recently used
+      _recentPrompts.sort((a, b) => b.useCount.compareTo(a.useCount));
+      // Take only top 5
+      if (_recentPrompts.length > 5) {
+        _recentPrompts = _recentPrompts.sublist(0, 5);
+      }
+    } catch (e) {
+      debugPrint('Error loading prompts: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPrompts = false);
+      }
+    }
+  }
+
+  // Show prompt selector dialog
+  void _showPromptSelector() async {
+    final selectedPrompt = await showDialog<Prompt>(
+      context: context,
+      builder: (context) => _buildPromptSelectorDialog(),
+    );
+
+    if (selectedPrompt != null) {
+      // Insert selected prompt into message input
+      _insertPromptToInput(selectedPrompt);
+    }
+  }
+
+  // Build the prompt selector dialog
+  Widget _buildPromptSelectorDialog() {
+    return AlertDialog(
+      title: const Text('Select Prompt'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: _isLoadingPrompts
+            ? const Center(child: CircularProgressIndicator())
+            : _recentPrompts.isEmpty
+                ? const Center(child: Text('No prompts available'))
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _recentPrompts.length,
+                    itemBuilder: (context, index) {
+                      final prompt = _recentPrompts[index];
+                      return ListTile(
+                        title: Text(prompt.title),
+                        subtitle: Text(
+                          prompt.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => Navigator.pop(context, prompt),
+                      );
+                    },
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            // Navigate to the prompts screen to browse all prompts
+            Navigator.pop(context);
+            context.push('/prompts');
+          },
+          child: const Text('Browse All Prompts'),
+        ),
+      ],
+    );
+  }
+
+  // Insert the selected prompt into the message input
+  void _insertPromptToInput(Prompt prompt) {
+    // Update the prompt's usage count
+    PromptService.incrementPromptUseCount(prompt.id);
+
+    // Insert the prompt content into the message input
+    _messageController.text = prompt.content;
+
+    // Position cursor at the end
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _messageController.text.length),
+    );
+
+    // Show confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Added "${prompt.title}" to chat')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -260,11 +437,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // Replace ChatHistoryDrawer with MainAppDrawer
       drawer: MainAppDrawer(
         currentIndex: _selectedTabIndex,
-        onTabSelected: _navigateToTab,
+        onTabSelected: (index) => navigation_utils
+            .handleDrawerNavigation(context, index, currentIndex: 0),
       ),
       appBar: _buildAppBar(),
       body: Stack(
         children: [
+          // Main chat content
           Column(
             children: [
               // Messages list
@@ -275,26 +454,82 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               ),
 
-              // AI typing indicator
-              if (_isTyping) const AITypingIndicator(),
+              // Image preview if an image is selected
+              if (_selectedImage != null)
+                ImagePreview(
+                  imageFile: _selectedImage!,
+                  onRemove: _removeSelectedImage,
+                  messageController: _messageController,
+                ),
 
-              // Input field
-              ChatInputField(
-                controller: _messageController,
-                onSendMessage: _sendMessage,
+              // Input area
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).canvasColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, -1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Prompt button
+                    IconButton(
+                      icon: const Icon(Icons.psychology_outlined),
+                      onPressed: _showPromptSelector,
+                      tooltip: 'Use a prompt',
+                    ),
+
+                    // Image button
+                    IconButton(
+                      icon: const Icon(Icons.image),
+                      onPressed: _toggleImageOptions,
+                      tooltip: 'Add image',
+                    ),
+
+                    // Text field
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration(
+                          hintText: 'Type a message...',
+                          border: InputBorder.none,
+                        ),
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+
+                    // Send button
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _sendMessage,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
 
-          // History overlay when visible
-          if (_showHistory)
-            ChatHistoryOverlay(
-              chatHistory: _chatHistory,
-              onClose: _toggleHistoryView,
-              onThreadSelected: _selectThreadFromHistory,
-            ),
+          // History panel - shown conditionally
+          if (_showHistory) _buildHistoryPanel(),
         ],
       ),
+
+      // Image options bottom sheet
+      bottomSheet: _showImageOptions
+          ? ImageCaptureOptions(
+              onPickFromGallery: _pickImageFromGallery,
+              onTakePhoto: _takePhoto,
+              onCaptureScreenshot: _captureScreenshot,
+              onClose: () => setState(() => _showImageOptions = false),
+            )
+          : null,
     );
   }
 
@@ -328,7 +563,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           tooltip: 'New Chat',
           onPressed: () {
             // Navigate to a new chat thread
-            context.go('/chat/detail/new');
+            // context.go('/chat/detail/new');
+            _startNewChat();
           },
         ),
         ChatOptionsMenu(
@@ -339,38 +575,150 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  Widget _buildHistoryPanel() {
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Material(
+        elevation: 16,
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              // History header
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.history),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Chat History',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: _toggleHistoryView,
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1),
+
+              // History list
+              Expanded(
+                child: _isLoadingHistory
+                    ? const Center(child: CircularProgressIndicator())
+                    : _chatThreads.isEmpty
+                        ? const Center(child: Text('No chat history yet'))
+                        : ListView.builder(
+                            itemCount: _chatThreads.length,
+                            itemBuilder: (context, index) {
+                              final thread = _chatThreads[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.shade100,
+                                  child: const Icon(Icons.chat,
+                                      color: Colors.blue),
+                                ),
+                                title: Text(
+                                  thread.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  thread.lastMessage,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Text(
+                                  _formatDate(thread.timestamp),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                onTap: () => _selectThreadFromHistory(thread),
+                              );
+                            },
+                          ),
+              ),
+
+              // "New Chat" button at bottom of history
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Start New Chat'),
+                    onPressed: () {
+                      _startNewChat();
+                      setState(() => _showHistory = false);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    if (now.difference(date).inDays < 1) {
+      // Today - show time
+      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (now.difference(date).inDays < 7) {
+      // This week - show day name
+      final weekday =
+          ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
+      return weekday;
+    } else {
+      // Older - show date
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
   void _showRenameDialog() {
     final TextEditingController controller = TextEditingController(
       text: _currentThreadTitle,
     );
     showDialog(
       context: context,
-      builder:
-          (context) => RenameDialogWidget(
-            controller: controller,
-            onSave: (newName) {
-              setState(() {
-                _currentThreadTitle = newName;
-              });
-            },
-          ),
+      builder: (context) => RenameDialogWidget(
+        controller: controller,
+        onSave: (newName) {
+          setState(() {
+            _currentThreadTitle = newName;
+          });
+        },
+      ),
     );
   }
 
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
-      builder:
-          (context) => DeleteConfirmationDialog(
-            onConfirm: () {
-              Navigator.pop(context);
-              if (Navigator.of(context).canPop()) {
-                Navigator.pop(context);
-              } else {
-                context.go('/chat');
-              }
-            },
-          ),
+      builder: (context) => DeleteConfirmationDialog(
+        onConfirm: () {
+          Navigator.pop(context);
+          if (Navigator.of(context).canPop()) {
+            Navigator.pop(context);
+          } else {
+            context.go('/chat');
+          }
+        },
+      ),
     );
   }
 

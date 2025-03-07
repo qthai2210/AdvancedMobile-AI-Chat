@@ -1,3 +1,4 @@
+import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,8 +11,9 @@ import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 void handleDrawerNavigation(BuildContext context, int index,
     {int currentIndex = -1}) {
   // Close the drawer first
-  Navigator.pop(context);
-
+  //Navigator.pop(context);
+  debugPrint('Navigating to drawer index: $index');
+  debugPrint('Current index: $currentIndex');
   // Don't navigate if we're already on the selected screen
   if (index == currentIndex) return;
 
@@ -34,15 +36,11 @@ void handleDrawerNavigation(BuildContext context, int index,
       _safeNavigate(context, '/prompts', () => const PromptsScreen());
       break;
 
-    case 4: // History
-      // Navigate to history screen
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('History screen not implemented yet')),
-      );
+    case 4: // Email Composer (replacing History)
+      _safeNavigate(context, '/email', () => const EmailComposerScreen());
       break;
 
     case 5: // Profile
-      // Navigate to profile screen
       _safeNavigate(context, '/profile', () => const ProfileScreen());
       break;
 
@@ -57,7 +55,7 @@ void _safeNavigate(
     BuildContext context, String route, Widget Function() builder) {
   try {
     // First try to use GoRouter's push method which is safer than go
-    context.push(route);
+    context.go(route);
   } catch (e) {
     // If GoRouter fails (e.g., no routes in stack), fall back to MaterialPageRoute
     try {

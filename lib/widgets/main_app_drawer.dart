@@ -125,9 +125,9 @@ class MainAppDrawer extends StatelessWidget {
         'color': const Color(0xFFFF9800),
       },
       {
-        'title': 'History',
-        'icon': Icons.history_outlined,
-        'selectedIcon': Icons.history,
+        'title': 'Email Composer',
+        'icon': Icons.email_outlined,
+        'selectedIcon': Icons.email,
         'color': const Color(0xFF295BFF),
       },
       {

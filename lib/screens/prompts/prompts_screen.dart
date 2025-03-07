@@ -1,3 +1,4 @@
+import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/prompt_model.dart';
 import 'package:aichatbot/widgets/prompts/prompt_card.dart';
@@ -166,6 +167,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   void _usePrompt(Prompt prompt) {
+    // Update usage count
     setState(() {
       final index = _prompts.indexWhere((p) => p.id == prompt.id);
       if (index != -1) {
@@ -173,9 +175,35 @@ class _PromptsScreenState extends State<PromptsScreen> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added "${prompt.title}" to chat')),
-    );
+    // Update usage count in service
+    PromptService.incrementPromptUseCount(prompt.id);
+
+    // Navigate to chat with this prompt content - use safer navigation
+    try {
+      // Try to use GoRouter navigation
+      context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
+    } catch (e) {
+      // Fallback to regular navigation if GoRouter fails
+      try {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => ChatDetailScreen(
+              initialPrompt: prompt.content,
+              isNewChat: true,
+            ),
+          ),
+          (route) => false,
+        );
+      } catch (e2) {
+        // Last resort fallback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: $e2. Please try again.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _viewPromptDetails(Prompt prompt) {
@@ -286,7 +314,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                     label: 'Use in Chat',
                     onPressed: () {
                       _usePrompt(prompt);
-                      Navigator.pop(context);
+                      // Remove Navigator.pop(context) as we're using replacement navigation
                     },
                   ),
                 ],

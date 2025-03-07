@@ -165,6 +165,27 @@ class PromptService {
     return false;
   }
 
+  // Increment a prompt's use count
+  static Future<void> incrementPromptUseCount(String promptId) async {
+    // Find in public prompts
+    final publicIndex = _prompts.indexWhere((p) => p.id == promptId);
+    if (publicIndex >= 0) {
+      _prompts[publicIndex] = _prompts[publicIndex].copyWith(
+        useCount: _prompts[publicIndex].useCount + 1,
+      );
+    }
+
+    // Find in private prompts
+    final privateIndex = _privatePrompts.indexWhere((p) => p.id == promptId);
+    if (privateIndex >= 0) {
+      _privatePrompts[privateIndex] = _privatePrompts[privateIndex].copyWith(
+        useCount: _privatePrompts[privateIndex].useCount + 1,
+      );
+    }
+
+    // In a real app, you would update the database
+  }
+
   // Load initial mock public prompts data
   static Future<void> _loadInitialPrompts() async {
     // This would be a network request or database read in a real app

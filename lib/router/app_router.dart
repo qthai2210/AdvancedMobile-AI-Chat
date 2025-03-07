@@ -1,4 +1,6 @@
+import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
+import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/login_screen.dart';
@@ -36,9 +38,19 @@ class AppRouter {
         builder: (context, state) => const ChatAIScreen(),
       ),
       GoRoute(
+        path: '/email',
+        name: 'email',
+        builder: (context, state) => const EmailComposerScreen(),
+      ),
+      GoRoute(
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/prompts',
+        name: 'prompts',
+        builder: (context, state) => const PromptsScreen(),
       ),
       // Updated route for chat detail to handle deep linking
       GoRoute(
@@ -66,7 +78,7 @@ class AppRouter {
             Text('Error: ${state.error}'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => context.go('/chat'),
+              onPressed: () => context.go('/chat/detail/new'),
               child: const Text('Go to Chat Screen'),
             ),
           ],
@@ -77,7 +89,7 @@ class AppRouter {
     redirect: (BuildContext context, GoRouterState state) {
       // If the app tries to navigate to an empty stack, redirect to chat
       if (state.matchedLocation.isEmpty) {
-        return '/chat';
+        return '/chat/detail/new';
       }
       return null;
     },
