@@ -1,7 +1,8 @@
+import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/widgets/chat/ai_agent_selector.dart';
 import 'package:aichatbot/widgets/chat/chat_dialogs.dart';
 import 'package:aichatbot/widgets/chat/chat_message_list.dart';
-import 'package:aichatbot/widgets/chat/chat_history_drawer.dart';
+import 'package:aichatbot/widgets/main_app_drawer.dart'; // Changed import
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/models/message_model.dart';
@@ -31,6 +32,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  final int _selectedTabIndex =
+      0; // Track the currently selected tab for the drawer
   String _currentThreadTitle = '';
   AIAgent _selectedAgent = AIAgents.agents.first;
   List<Message> _messages = [];
@@ -219,14 +222,44 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  void _navigateToTab(int index) {
+    // Navigate to the selected tab
+    if (index == 0) {
+      // Chat tab
+      context.go('/chat');
+    } else if (index == 1) {
+      // Bots tab
+      context.go('/chat');
+      // Need to set the current index in the ChatAIScreen
+      // This will require state management like Provider/Bloc
+    } else if (index == 2) {
+      // Knowledge Base tab
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const KnowledgeManagementScreen(),
+        ),
+      );
+    } else if (index == 3) {
+      // History tab
+      context.go('/chat');
+    } else if (index == 4) {
+      // Profile tab
+      context.go('/chat');
+    } else if (index == 5) {
+      // Settings tab
+      context.go('/chat');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawer: ChatHistoryDrawer(
-        chatHistory: _chatHistory,
-        onThreadSelected: _selectThreadFromHistory,
-        onNewChatRequested: _startNewChat,
+      // Replace ChatHistoryDrawer with MainAppDrawer
+      drawer: MainAppDrawer(
+        currentIndex: _selectedTabIndex,
+        onTabSelected: _navigateToTab,
       ),
       appBar: _buildAppBar(),
       body: Stack(

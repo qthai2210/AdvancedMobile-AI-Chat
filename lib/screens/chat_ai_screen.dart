@@ -1,3 +1,4 @@
+import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:aichatbot/screens/tabs/chat_tab.dart';
@@ -27,13 +28,14 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     const SettingsTab(),
   ];
 
-  // Define colors for tabs
+  // Define colors for tabs - adding Knowledge Base color
   final List<Color> _colors = [
-    const Color(0xFF6A3DE8),
-    const Color(0xFF9B40D1),
-    const Color(0xFF295BFF),
-    const Color(0xFF315BFF),
-    const Color(0xFF6A3DE8), // Settings color
+    const Color(0xFF6A3DE8), // Chat
+    const Color(0xFF9B40D1), // Bots
+    const Color(0xFF0F9D58), // Knowledge Base (not used in bottom nav)
+    const Color(0xFF295BFF), // History
+    const Color(0xFF315BFF), // Profile
+    const Color(0xFF6A3DE8), // Settings
   ];
 
   // Define tab items
@@ -64,6 +66,24 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  void _navigateToTab(int index) {
+    // Handle the special case for Knowledge Base tab
+    if (index == 2) {
+      // Knowledge Base index
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const KnowledgeManagementScreen(),
+        ),
+      );
+    } else {
+      // Adjust index if it's greater than Knowledge Base index (which isn't in bottom nav)
+      setState(() {
+        _currentIndex = index > 2 ? index - 1 : index;
+      });
+    }
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 
 class MainAppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -110,6 +111,12 @@ class MainAppDrawer extends StatelessWidget {
         'color': const Color(0xFF9B40D1),
       },
       {
+        'title': 'Knowledge Base',
+        'icon': Icons.menu_book_outlined,
+        'selectedIcon': Icons.menu_book,
+        'color': const Color(0xFF0F9D58),
+      },
+      {
         'title': 'History',
         'icon': Icons.history_outlined,
         'selectedIcon': Icons.history,
@@ -151,8 +158,21 @@ class MainAppDrawer extends StatelessWidget {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
           onTap: () {
-            onTabSelected(index);
-            Navigator.pop(context);
+            if (tab['title'] == 'Knowledge Base') {
+              Navigator.pop(context);
+              // Navigate directly to Knowledge Management Screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const KnowledgeManagementScreen(),
+                ),
+              );
+            } else {
+              onTabSelected(index >= 2
+                  ? index + 1
+                  : index); // Adjust index for the new tab
+              Navigator.pop(context);
+            }
           },
         );
       },
