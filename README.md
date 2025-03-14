@@ -19,7 +19,8 @@ Link mock-ui trên draw.io:
 https://drive.google.com/file/d/1wGKHFXWODfNp7uoYphDoWq8koR_D32Va/view?usp=sharing
 
 1. Navigation/Routing:
-![image](https://github.com/user-attachments/assets/41d46d8c-16f9-494a-9402-68041e41ca79)
+![image](https://github.com/user-attachments/assets/42fa5de1-92da-481e-bf9d-95f60db54c22)
+
 
 2. Drawer:
 ![image](https://github.com/user-attachments/assets/fb0145a9-1eb8-4bdb-af03-12e49194d369)
