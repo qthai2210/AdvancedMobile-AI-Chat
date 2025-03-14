@@ -7,8 +7,19 @@ import 'package:aichatbot/widgets/knowledge/source_forms/google_drive_form.dart'
 import 'package:aichatbot/widgets/knowledge/source_forms/slack_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
 
+/// A screen for adding or editing knowledge sources to a knowledge base.
+///
+/// Supports multiple source types including:
+/// * File uploads (PDF, DOCX, CSV, JSON, Text)
+/// * Website URLs with crawling options
+/// * Google Drive integration
+/// * Slack integration
+/// * Confluence integration
 class AddSourceScreen extends StatefulWidget {
+  /// The knowledge base to add the source to
   final KnowledgeBase knowledgeBase;
+
+  /// Optional existing source for editing mode
   final KnowledgeSource? editSource;
 
   const AddSourceScreen({
@@ -21,11 +32,20 @@ class AddSourceScreen extends StatefulWidget {
   State<AddSourceScreen> createState() => _AddSourceScreenState();
 }
 
+/// State management for the [AddSourceScreen].
+/// Handles form input, validation, and source creation/editing.
 class _AddSourceScreenState extends State<AddSourceScreen>
     with SingleTickerProviderStateMixin {
+  /// Form key for validation
   final _formKey = GlobalKey<FormState>();
+
+  /// Controller for source type tabs
   late TabController _tabController;
+
+  /// Loading state for async operations
   bool _isLoading = false;
+
+  /// Whether we're editing an existing source
   bool _isEditing = false;
 
   // Form controllers
@@ -76,6 +96,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
+  /// Gets the initial tab index based on source type when editing
   int _getInitialTabIndex() {
     if (!_isEditing) return 0; // Default to file tab
 
@@ -100,6 +121,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
+  /// Handles source type changes when switching tabs
   void _handleTabChange() {
     if (_tabController.indexIsChanging) {
       setState(() {
@@ -126,6 +148,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
+  /// Loads existing source data when in edit mode
   void _loadSourceData() {
     final source = widget.editSource!;
     _titleController.text = source.title;
@@ -171,7 +194,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             _slackWorkspaceName =
                 "Your Workspace"; // This would come from metadata
             _selectedSlackChannels = [
-              "#general"
+              "#general",
             ]; // This would come from metadata
           } catch (e) {
             // Handle parsing error
@@ -187,7 +210,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             _confluenceDomainUrl =
                 "your-company.atlassian.net"; // This would come from metadata
             _selectedConfluencePages = [
-              "Home"
+              "Home",
             ]; // This would come from metadata
           } catch (e) {
             // Handle parsing error
@@ -209,6 +232,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     super.dispose();
   }
 
+  /// Saves the source data and updates the knowledge base
+  ///
+  /// Validates form input and creates/updates the source based on
+  /// the selected source type and input data.
   Future<void> _saveSource() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -227,12 +254,13 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           break;
         case KnowledgeSourceType.url:
           content = _urlController.text.trim();
-          metadata = WebsiteMetadata(
-            url: content,
-            shouldCrawlLinks: _shouldCrawlLinks,
-            maxPagesToCrawl: _maxPagesToCrawl,
-            crawlDepth: _crawlDepth,
-          ).toJson();
+          metadata =
+              WebsiteMetadata(
+                url: content,
+                shouldCrawlLinks: _shouldCrawlLinks,
+                maxPagesToCrawl: _maxPagesToCrawl,
+                crawlDepth: _crawlDepth,
+              ).toJson();
           break;
         case KnowledgeSourceType.pdf:
         case KnowledgeSourceType.docx:
@@ -243,9 +271,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           break;
         case KnowledgeSourceType.googleDrive:
           content = "Google Drive content would be linked here";
-          metadata = {
-            'filename': _selectedDriveFileName,
-          };
+          metadata = {'filename': _selectedDriveFileName};
           break;
         case KnowledgeSourceType.slack:
           content = "Slack integration content";
@@ -269,9 +295,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       }
 
       final source = KnowledgeSource(
-        id: _isEditing
-            ? widget.editSource!.id
-            : '${now.millisecondsSinceEpoch}_${_selectedType.toString()}',
+        id:
+            _isEditing
+                ? widget.editSource!.id
+                : '${now.millisecondsSinceEpoch}_${_selectedType.toString()}',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
@@ -284,27 +311,32 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
       // In a real app, you would save to database or API
       await Future.delayed(
-          const Duration(milliseconds: 800)); // Simulate network delay
+        const Duration(milliseconds: 800),
+      ); // Simulate network delay
 
       // Update knowledge base with new source
-      final updatedKnowledgeBase = _isEditing
-          ? widget.knowledgeBase.updateSource(source)
-          : widget.knowledgeBase.addSource(source);
+      final updatedKnowledgeBase =
+          _isEditing
+              ? widget.knowledgeBase.updateSource(source)
+              : widget.knowledgeBase.addSource(source);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(_isEditing
+            content: Text(
+              _isEditing
                   ? 'Đã cập nhật nguồn dữ liệu'
-                  : 'Đã thêm nguồn dữ liệu mới')),
+                  : 'Đã thêm nguồn dữ liệu mới',
+            ),
+          ),
         );
         Navigator.pop(context, updatedKnowledgeBase);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -313,63 +345,66 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
+  /// Mock methods for simulating external service connections
   void _mockSelectFile() {
     setState(() {
       _selectedFileName = "sample_document.pdf";
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã chọn tệp')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Đã chọn tệp')));
   }
 
   void _mockConnectGoogleDrive() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kết nối Google Drive'),
-        content: const Text('Đang mô phỏng đăng nhập vào Google Drive...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedDriveFileName = "my_document.docx";
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Google Drive')),
-              );
-            },
-            child: const Text('Mô phỏng kết nối thành công'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Kết nối Google Drive'),
+            content: const Text('Đang mô phỏng đăng nhập vào Google Drive...'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectedDriveFileName = "my_document.docx";
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã kết nối Google Drive')),
+                  );
+                },
+                child: const Text('Mô phỏng kết nối thành công'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _mockConnectSlack() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kết nối Slack'),
-        content: const Text('Đang mô phỏng đăng nhập vào Slack...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isSlackConnected = true;
-                _slackWorkspaceName = "Your Workspace";
-                _selectedSlackChannels = ["#general"];
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Slack')),
-              );
-            },
-            child: const Text('Mô phỏng kết nối thành công'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Kết nối Slack'),
+            content: const Text('Đang mô phỏng đăng nhập vào Slack...'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isSlackConnected = true;
+                    _slackWorkspaceName = "Your Workspace";
+                    _selectedSlackChannels = ["#general"];
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã kết nối Slack')),
+                  );
+                },
+                child: const Text('Mô phỏng kết nối thành công'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -379,35 +414,36 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       _slackWorkspaceName = null;
       _selectedSlackChannels = [];
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã ngắt kết nối Slack')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Đã ngắt kết nối Slack')));
   }
 
   void _mockConnectConfluence() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kết nối Confluence'),
-        content: const Text('Đang mô phỏng đăng nhập vào Confluence...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isConfluenceConnected = true;
-                _confluenceSpaceName = "Documentation";
-                _confluenceDomainUrl = "your-company.atlassian.net";
-                _selectedConfluencePages = ["Home"];
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Confluence')),
-              );
-            },
-            child: const Text('Mô phỏng kết nối thành công'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Kết nối Confluence'),
+            content: const Text('Đang mô phỏng đăng nhập vào Confluence...'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isConfluenceConnected = true;
+                    _confluenceSpaceName = "Documentation";
+                    _confluenceDomainUrl = "your-company.atlassian.net";
+                    _selectedConfluencePages = ["Home"];
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã kết nối Confluence')),
+                  );
+                },
+                child: const Text('Mô phỏng kết nối thành công'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -418,9 +454,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       _confluenceDomainUrl = null;
       _selectedConfluencePages = [];
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã ngắt kết nối Confluence')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Đã ngắt kết nối Confluence')));
   }
 
   void _clearSelectedFile() {
@@ -477,19 +513,17 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     return const Center(child: CircularProgressIndicator());
   }
 
+  /// Builds the main form layout including tabs and content
   Widget _buildForm() {
     return Form(
       key: _formKey,
       child: Column(
-        children: [
-          _buildTabBar(),
-          _buildFormContent(),
-          _buildSaveButton(),
-        ],
+        children: [_buildTabBar(), _buildFormContent(), _buildSaveButton()],
       ),
     );
   }
 
+  /// Builds the tab bar for different source types
   Widget _buildTabBar() {
     return Material(
       color: Theme.of(context).primaryColor,
@@ -510,6 +544,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
+  /// Builds the form content based on selected source type
   Widget _buildFormContent() {
     final primaryColor = Theme.of(context).primaryColor;
 
@@ -532,14 +567,15 @@ class _AddSourceScreenState extends State<AddSourceScreen>
               children: [
                 // File tab - use a fixed valid type (PDF) to ensure dropdown has a valid selection
                 FileSourceForm(
-                  selectedType: _selectedType == KnowledgeSourceType.pdf ||
-                          _selectedType == KnowledgeSourceType.docx ||
-                          _selectedType == KnowledgeSourceType.text ||
-                          _selectedType == KnowledgeSourceType.csv ||
-                          _selectedType == KnowledgeSourceType.json
-                      ? _selectedType
-                      : KnowledgeSourceType
-                          .pdf, // Default to PDF if current type isn't in dropdown
+                  selectedType:
+                      _selectedType == KnowledgeSourceType.pdf ||
+                              _selectedType == KnowledgeSourceType.docx ||
+                              _selectedType == KnowledgeSourceType.text ||
+                              _selectedType == KnowledgeSourceType.csv ||
+                              _selectedType == KnowledgeSourceType.json
+                          ? _selectedType
+                          : KnowledgeSourceType
+                              .pdf, // Default to PDF if current type isn't in dropdown
                   contentController: _contentController,
                   selectedFileName: _selectedFileName,
                   onTypeChanged: _onFileTypeChanged,
@@ -607,6 +643,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
+  /// Builds the bottom save button with loading state
   Widget _buildSaveButton() {
     return Container(
       width: double.infinity,
@@ -628,14 +665,17 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2),
-              )
-            : Text(_isEditing ? 'Cập nhật' : 'Thêm nguồn dữ liệu'),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                : Text(_isEditing ? 'Cập nhật' : 'Thêm nguồn dữ liệu'),
       ),
     );
   }
