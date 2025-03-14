@@ -6,6 +6,16 @@ import 'package:aichatbot/services/prompt_service.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
 import 'package:go_router/go_router.dart';
 
+/// PrivatePromptsScreen displays and manages user's personal collection of prompts.
+///
+/// Features:
+/// * CRUD operations for private prompts
+/// * Search and filter functionality
+/// * Grid/List view toggle
+/// * Sorting options
+/// * Favorites management
+///
+/// This screen provides full management capabilities for user-created prompts.
 class PrivatePromptsScreen extends StatefulWidget {
   const PrivatePromptsScreen({Key? key}) : super(key: key);
 
@@ -13,6 +23,12 @@ class PrivatePromptsScreen extends StatefulWidget {
   State<PrivatePromptsScreen> createState() => _PrivatePromptsScreenState();
 }
 
+/// State management for the PrivatePromptsScreen widget.
+///
+/// Handles:
+/// * Private prompts data management
+/// * User interactions and filtering
+/// * CRUD operations
 class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -48,6 +64,8 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     super.dispose();
   }
 
+  /// Loads private prompts from the PromptService and applies initial sorting.
+  /// Sets loading state during the operation.
   Future<void> _loadPrompts() async {
     setState(() => _isLoading = true);
 
@@ -63,6 +81,8 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     }
   }
 
+  /// Applies current sorting criteria to the prompts list.
+  /// Options: popular, recent, alphabetical
   void _sortPrompts() {
     switch (_sortBy) {
       case 'popular':
@@ -85,14 +105,17 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
       }
 
       // Apply search filter
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           prompt.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           prompt.description.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Apply category filter
-      final matchesCategory = _selectedCategories.contains('All') ||
-          prompt.categories
-              .any((category) => _selectedCategories.contains(category));
+      final matchesCategory =
+          _selectedCategories.contains('All') ||
+          prompt.categories.any(
+            (category) => _selectedCategories.contains(category),
+          );
 
       return matchesSearch && matchesCategory;
     }).toList();
@@ -131,13 +154,14 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     });
 
     if (mounted) {
-      final message = isFavorite
-          ? 'Đã thêm vào danh sách yêu thích'
-          : 'Đã xóa khỏi danh sách yêu thích';
+      final message =
+          isFavorite
+              ? 'Đã thêm vào danh sách yêu thích'
+              : 'Đã xóa khỏi danh sách yêu thích';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -162,10 +186,11 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
       try {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => ChatDetailScreen(
-              initialPrompt: prompt.content,
-              isNewChat: true,
-            ),
+            builder:
+                (_) => ChatDetailScreen(
+                  initialPrompt: prompt.content,
+                  isNewChat: true,
+                ),
           ),
           (route) => false,
         );
@@ -203,25 +228,30 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     });
   }
 
+  /// Shows a confirmation dialog and handles prompt deletion.
+  /// Updates UI and shows feedback on success/failure.
   void _deletePrompt(Prompt prompt) async {
     // Show confirmation dialog
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xóa Prompt'),
-        content: Text('Bạn có chắc chắn muốn xóa prompt "${prompt.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Xóa Prompt'),
+            content: Text(
+              'Bạn có chắc chắn muốn xóa prompt "${prompt.title}"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Xóa'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
     );
 
     if (shouldDelete != true) return;
@@ -242,9 +272,9 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -261,6 +291,8 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     );
   }
 
+  /// Creates a bottom sheet dialog showing detailed prompt information
+  /// and management options.
   Widget _buildPromptDetailSheet(Prompt prompt) {
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -279,7 +311,9 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
                   Text(
                     prompt.title,
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -305,14 +339,15 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
               // Categories
               Wrap(
                 spacing: 8,
-                children: prompt.categories.map((category) {
-                  final color = Prompt.getCategoryColor(category);
-                  return Chip(
-                    label: Text(category),
-                    backgroundColor: color.withOpacity(0.2),
-                    labelStyle: TextStyle(color: color),
-                  );
-                }).toList(),
+                children:
+                    prompt.categories.map((category) {
+                      final color = Prompt.getCategoryColor(category);
+                      return Chip(
+                        label: Text(category),
+                        backgroundColor: color.withOpacity(0.2),
+                        labelStyle: TextStyle(color: color),
+                      );
+                    }).toList(),
               ),
 
               const Divider(height: 32),
@@ -339,9 +374,10 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
                 children: [
                   _buildActionButton(
                     icon: Icons.favorite,
-                    label: prompt.isFavorite
-                        ? 'Remove from Favorites'
-                        : 'Add to Favorites',
+                    label:
+                        prompt.isFavorite
+                            ? 'Remove from Favorites'
+                            : 'Add to Favorites',
                     onPressed: () {
                       _toggleFavorite(prompt);
                       Navigator.pop(context);
@@ -428,12 +464,14 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
         actions: [
           IconButton(
             icon: Icon(
-                _showOnlyFavorites ? Icons.favorite : Icons.favorite_border),
+              _showOnlyFavorites ? Icons.favorite : Icons.favorite_border,
+            ),
             color: _showOnlyFavorites ? Colors.red : null,
             onPressed: _toggleFavoritesView,
-            tooltip: _showOnlyFavorites
-                ? 'Hiển thị tất cả'
-                : 'Chỉ hiển thị yêu thích',
+            tooltip:
+                _showOnlyFavorites
+                    ? 'Hiển thị tất cả'
+                    : 'Chỉ hiển thị yêu thích',
           ),
           IconButton(
             icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
@@ -443,20 +481,21 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
             onSelected: _changeSortMethod,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'popular',
-                child: Text('Sắp xếp theo Phổ biến'),
-              ),
-              const PopupMenuItem(
-                value: 'recent',
-                child: Text('Sắp xếp theo Gần đây nhất'),
-              ),
-              const PopupMenuItem(
-                value: 'alphabetical',
-                child: Text('Sắp xếp theo Bảng chữ cái'),
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(
+                    value: 'popular',
+                    child: Text('Sắp xếp theo Phổ biến'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'recent',
+                    child: Text('Sắp xếp theo Gần đây nhất'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'alphabetical',
+                    child: Text('Sắp xếp theo Bảng chữ cái'),
+                  ),
+                ],
           ),
         ],
       ),
@@ -465,13 +504,14 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
           _buildSearchBar(),
           _buildCategoryFilter(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : filteredPrompts.isEmpty
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredPrompts.isEmpty
                     ? _buildEmptyState()
                     : _isGridView
-                        ? _buildPromptGrid(filteredPrompts)
-                        : _buildPromptList(filteredPrompts),
+                    ? _buildPromptGrid(filteredPrompts)
+                    : _buildPromptList(filteredPrompts),
           ),
         ],
       ),
@@ -483,12 +523,12 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
     );
   }
 
+  /// Creates a new private prompt via the CreatePromptScreen.
+  /// Updates the list and shows feedback on successful creation.
   void _createNewPrompt() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CreatePromptScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
     ).then((result) {
       if (result != null && result is Prompt) {
         setState(() {
@@ -511,18 +551,17 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm kiếm prompt cá nhân...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                  : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (value) => setState(() => _searchQuery = value),
       ),
@@ -547,21 +586,23 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
             height: 48,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: _categories.map((category) {
-                final isSelected = _selectedCategories.contains(category);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    label: Text(category),
-                    selected: isSelected,
-                    onSelected: (_) => _toggleCategory(category),
-                    backgroundColor: Colors.grey[200],
-                    selectedColor:
-                        Theme.of(context).primaryColor.withOpacity(0.2),
-                    checkmarkColor: Theme.of(context).primaryColor,
-                  ),
-                );
-              }).toList(),
+              children:
+                  _categories.map((category) {
+                    final isSelected = _selectedCategories.contains(category);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (_) => _toggleCategory(category),
+                        backgroundColor: Colors.grey[200],
+                        selectedColor: Theme.of(
+                          context,
+                        ).primaryColor.withOpacity(0.2),
+                        checkmarkColor: Theme.of(context).primaryColor,
+                      ),
+                    );
+                  }).toList(),
             ),
           ),
         ],
@@ -588,10 +629,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
                 : (_searchQuery.isNotEmpty
                     ? 'Không tìm thấy prompt cá nhân nào'
                     : 'Bạn chưa có prompt cá nhân nào'),
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
