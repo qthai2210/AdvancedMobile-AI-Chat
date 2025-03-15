@@ -5,6 +5,15 @@ import 'package:aichatbot/widgets/bots/bot_list_item.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
+/// A screen that displays and manages a list of AI bots.
+///
+/// This screen allows users to:
+/// * View a list of existing AI bots
+/// * Search for specific bots
+/// * Create new bots
+/// * Edit existing bots
+/// * Delete bots
+/// * Share bots across different platforms
 class BotListScreen extends StatefulWidget {
   const BotListScreen({super.key});
 
@@ -12,11 +21,15 @@ class BotListScreen extends StatefulWidget {
   State<BotListScreen> createState() => _BotListScreenState();
 }
 
+/// State class for [BotListScreen] that manages the UI and bot data.
 class _BotListScreenState extends State<BotListScreen> {
+  /// Controller for the search input field
   final TextEditingController _searchController = TextEditingController();
+
+  /// Current search query entered by the user
   String _searchQuery = '';
 
-  // Mock data for AI bots
+  /// Mock data representing the list of AI bots
   final List<AIBot> _bots = [
     AIBot(
       id: '1',
@@ -46,12 +59,20 @@ class _BotListScreenState extends State<BotListScreen> {
     ),
   ];
 
+  /// Returns a filtered list of bots based on the current search query.
+  ///
+  /// If [_searchQuery] is empty, returns all bots.
+  /// Otherwise, returns bots whose name or description contain the search query.
   List<AIBot> get _filteredBots {
     if (_searchQuery.isEmpty) return _bots;
     return _bots
-        .where((bot) =>
-            bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            bot.description.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where(
+          (bot) =>
+              bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              bot.description.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ),
+        )
         .toList();
   }
 
@@ -61,6 +82,9 @@ class _BotListScreenState extends State<BotListScreen> {
     super.dispose();
   }
 
+  /// Navigates to the bot creation screen and handles the result.
+  ///
+  /// If a new bot is created, adds it to the [_bots] list.
   Future<void> _navigateToCreateBot() async {
     final result = await Navigator.push(
       context,
@@ -74,12 +98,14 @@ class _BotListScreenState extends State<BotListScreen> {
     }
   }
 
+  /// Opens the edit screen for an existing bot.
+  ///
+  /// Handles both editing and deletion results from the edit screen.
+  /// [bot] The AI bot to be edited.
   Future<void> _editBot(AIBot bot) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => CreateBotScreen(editBot: bot),
-      ),
+      MaterialPageRoute(builder: (context) => CreateBotScreen(editBot: bot)),
     );
 
     if (result != null) {
@@ -98,36 +124,43 @@ class _BotListScreenState extends State<BotListScreen> {
     }
   }
 
+  /// Initiates a chat session with the selected bot.
+  ///
+  /// [bot] The AI bot to chat with.
   void _chatWithBot(AIBot bot) {
     // Navigate to chat with this bot
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Chatting with ${bot.name}')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Chatting with ${bot.name}')));
   }
 
+  /// Shows a confirmation dialog and handles bot deletion.
+  ///
+  /// [bot] The AI bot to be deleted.
   void _deleteBot(AIBot bot) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xóa Bot'),
-        content: Text('Bạn có chắc muốn xóa bot "${bot.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Xóa Bot'),
+            content: Text('Bạn có chắc muốn xóa bot "${bot.name}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _bots.removeWhere((b) => b.id == bot.id);
+                  });
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Xóa'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _bots.removeWhere((b) => b.id == bot.id);
-              });
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -142,48 +175,53 @@ class _BotListScreenState extends State<BotListScreen> {
             icon: const Icon(Icons.share),
             tooltip: 'Share AI Chat',
             onSelected: _handleShare,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'slack',
-                child: Row(
-                  children: [
-                    Icon(Icons.workspaces_outlined, color: Color(0xFF4A154B)),
-                    SizedBox(width: 12),
-                    Text('Publish to Slack'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'telegram',
-                child: Row(
-                  children: [
-                    Icon(Icons.send, color: Color(0xFF0088CC)),
-                    SizedBox(width: 12),
-                    Text('Share to Telegram'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'messenger',
-                child: Row(
-                  children: [
-                    Icon(Icons.message, color: Color(0xFF0084FF)),
-                    SizedBox(width: 12),
-                    Text('Send to Messenger'),
-                  ],
-                ),
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(
+                    value: 'slack',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.workspaces_outlined,
+                          color: Color(0xFF4A154B),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Publish to Slack'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'telegram',
+                    child: Row(
+                      children: [
+                        Icon(Icons.send, color: Color(0xFF0088CC)),
+                        SizedBox(width: 12),
+                        Text('Share to Telegram'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'messenger',
+                    child: Row(
+                      children: [
+                        Icon(Icons.message, color: Color(0xFF0084FF)),
+                        SizedBox(width: 12),
+                        Text('Send to Messenger'),
+                      ],
+                    ),
+                  ),
+                ],
           ),
         ],
       ),
       drawer: MainAppDrawer(
         currentIndex: 1, // Index 1 corresponds to the AI Bots tab in the drawer
-        onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
-          context,
-          index,
-          currentIndex: 1,
-        ),
+        onTabSelected:
+            (index) => navigation_utils.handleDrawerNavigation(
+              context,
+              index,
+              currentIndex: 1,
+            ),
       ),
       body: Column(
         children: [
@@ -197,7 +235,9 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
-  // Handle share action
+  /// Handles sharing the AI chat to different platforms.
+  ///
+  /// [platform] The platform to share to ('slack', 'telegram', or 'messenger').
   void _handleShare(String platform) {
     String message = '';
 
@@ -213,11 +253,14 @@ class _BotListScreenState extends State<BotListScreen> {
         break;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Builds the search bar widget with clear functionality.
+  ///
+  /// Returns a [TextField] wrapped in padding for searching bots.
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -226,20 +269,19 @@ class _BotListScreenState extends State<BotListScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm kiếm AI BOT...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  )
+                  : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (value) {
           setState(() {
@@ -250,6 +292,9 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
+  /// Builds the empty state widget shown when no bots exist or no search results found.
+  ///
+  /// Returns a centered [Column] with appropriate messaging and actions.
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -265,10 +310,7 @@ class _BotListScreenState extends State<BotListScreen> {
             _searchQuery.isEmpty
                 ? 'Chưa có AI BOT nào'
                 : 'Không tìm thấy AI BOT nào phù hợp với "$_searchQuery"',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           if (_searchQuery.isEmpty) const SizedBox(height: 24),
@@ -278,8 +320,10 @@ class _BotListScreenState extends State<BotListScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Tạo AI BOT đầu tiên'),
               style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
         ],
@@ -287,6 +331,9 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
+  /// Builds the scrollable list of AI bots.
+  ///
+  /// Returns a [ListView.builder] containing [BotListItem] widgets.
   Widget _buildBotList() {
     return ListView.builder(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 80),
@@ -306,6 +353,9 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
+  /// Builds the "Create AI BOT" button fixed at the bottom of the screen.
+  ///
+  /// Returns a padded [FloatingActionButton.extended] widget.
   Widget _buildCreateButton() {
     return Padding(
       padding: const EdgeInsets.all(16.0),

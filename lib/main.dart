@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/blocs/auth/auth_bloc.dart';
 import 'package:aichatbot/router/app_router.dart';
+import 'package:go_router/go_router.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());

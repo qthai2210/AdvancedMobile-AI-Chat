@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:aichatbot/models/prompt_model.dart';
 import 'package:aichatbot/services/prompt_service.dart';
 
+/// A screen for creating or editing AI chat prompts.
+///
+/// This screen allows users to:
+/// * Create new custom prompts
+/// * Edit existing prompts
+/// * Add categories to prompts
+/// * Use template tags for dynamic content
 class CreatePromptScreen extends StatefulWidget {
+  /// Optional prompt to edit. If null, creates a new prompt.
   final Prompt? editPrompt;
 
   const CreatePromptScreen({Key? key, this.editPrompt}) : super(key: key);
@@ -11,6 +19,8 @@ class CreatePromptScreen extends StatefulWidget {
   State<CreatePromptScreen> createState() => _CreatePromptScreenState();
 }
 
+/// State management for [CreatePromptScreen].
+/// Handles form input, validation, and prompt creation/editing.
 class _CreatePromptScreenState extends State<CreatePromptScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -40,6 +50,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     }
   }
 
+  /// Loads existing prompt data when in edit mode
   void _loadPromptData() {
     final prompt = widget.editPrompt!;
     _titleController.text = prompt.title;
@@ -56,6 +67,10 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     super.dispose();
   }
 
+  /// Saves the prompt data to storage
+  ///
+  /// Validates form input and creates/updates the prompt.
+  /// Shows error messages if validation fails.
   Future<void> _savePrompt() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategories.isEmpty) {
@@ -91,17 +106,20 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text(_isEditing ? 'Đã cập nhật prompt' : 'Đã tạo prompt mới'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditing ? 'Đã cập nhật prompt' : 'Đã tạo prompt mới',
+            ),
+          ),
+        );
         Navigator.pop(context, prompt);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -110,6 +128,9 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     }
   }
 
+  /// Toggles selection of a category
+  ///
+  /// [category] The category to toggle selection state
   void _toggleCategory(String category) {
     setState(() {
       if (_selectedCategories.contains(category)) {
@@ -126,34 +147,38 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Chỉnh Sửa Prompt' : 'Tạo Prompt Mới'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTitleField(),
-                      const SizedBox(height: 16),
-                      _buildDescriptionField(),
-                      const SizedBox(height: 24),
-                      _buildCategorySelector(),
-                      const SizedBox(height: 24),
-                      _buildContentField(),
-                      const SizedBox(height: 32),
-                      _buildSaveButton(),
-                      const SizedBox(height: 24),
-                    ],
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTitleField(),
+                        const SizedBox(height: 16),
+                        _buildDescriptionField(),
+                        const SizedBox(height: 24),
+                        _buildCategorySelector(),
+                        const SizedBox(height: 24),
+                        _buildContentField(),
+                        const SizedBox(height: 32),
+                        _buildSaveButton(),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
     );
   }
 
+  // UI Building Methods
+
+  /// Builds the title input field with validation
   Widget _buildTitleField() {
     return TextFormField(
       controller: _titleController,
@@ -171,6 +196,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     );
   }
 
+  /// Builds the description input field with validation
   Widget _buildDescriptionField() {
     return TextFormField(
       controller: _descriptionController,
@@ -189,6 +215,9 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     );
   }
 
+  /// Builds the category selection chips
+  ///
+  /// Shows available categories and handles selection state
   Widget _buildCategorySelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,23 +235,27 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _allCategories.map((category) {
-            final isSelected = _selectedCategories.contains(category);
-            final color = Prompt.getCategoryColor(category);
-            return FilterChip(
-              label: Text(category),
-              selected: isSelected,
-              onSelected: (_) => _toggleCategory(category),
-              backgroundColor: Colors.grey[200],
-              selectedColor: color.withOpacity(0.2),
-              checkmarkColor: color,
-            );
-          }).toList(),
+          children:
+              _allCategories.map((category) {
+                final isSelected = _selectedCategories.contains(category);
+                final color = Prompt.getCategoryColor(category);
+                return FilterChip(
+                  label: Text(category),
+                  selected: isSelected,
+                  onSelected: (_) => _toggleCategory(category),
+                  backgroundColor: Colors.grey[200],
+                  selectedColor: color.withOpacity(0.2),
+                  checkmarkColor: color,
+                );
+              }).toList(),
         ),
       ],
     );
   }
 
+  /// Builds the main prompt content input area
+  ///
+  /// Includes template tag buttons and a multi-line text input
   Widget _buildContentField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,6 +313,9 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     );
   }
 
+  /// Builds an insertable template tag button
+  ///
+  /// [tag] The template tag text to insert
   Widget _buildInsertTagButton(String tag) {
     return InkWell(
       onTap: () {
@@ -319,6 +355,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     );
   }
 
+  /// Builds the save/update button with loading state
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,
@@ -327,16 +364,17 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(_isEditing ? 'Cập nhật' : 'Lưu prompt'),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                : Text(_isEditing ? 'Cập nhật' : 'Lưu prompt'),
       ),
     );
   }

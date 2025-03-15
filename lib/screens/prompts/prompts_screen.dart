@@ -9,6 +9,19 @@ import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:go_router/go_router.dart';
 
+/// PromptsScreen displays a collection of AI prompts that users can browse,
+/// search, filter, and use in their conversations.
+///
+/// Features:
+/// * Grid/List view toggle
+/// * Search functionality
+/// * Category filtering
+/// * Favorites filtering
+/// * Sort by popularity/recent/alphabetical
+/// * Create new prompts
+/// * View prompt details
+///
+/// This screen serves as the main hub for prompt discovery and management.
 class PromptsScreen extends StatefulWidget {
   const PromptsScreen({Key? key}) : super(key: key);
 
@@ -16,6 +29,12 @@ class PromptsScreen extends StatefulWidget {
   State<PromptsScreen> createState() => _PromptsScreenState();
 }
 
+/// State management for the PromptsScreen widget.
+///
+/// Handles:
+/// * Data loading and state management
+/// * User interactions and filtering
+/// * Navigation and prompt actions
 class _PromptsScreenState extends State<PromptsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -51,6 +70,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
     super.dispose();
   }
 
+  /// Loads prompts from the PromptService and applies initial sorting.
+  /// Sets loading state during the operation.
   Future<void> _loadPrompts() async {
     setState(() => _isLoading = true);
 
@@ -66,6 +87,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
     }
   }
 
+  /// Sorts the prompts list based on the current sort criteria.
+  /// Options: popular, recent, alphabetical
   void _sortPrompts() {
     switch (_sortBy) {
       case 'popular':
@@ -80,6 +103,10 @@ class _PromptsScreenState extends State<PromptsScreen> {
     }
   }
 
+  /// Returns a filtered list of prompts based on:
+  /// * Search query
+  /// * Selected categories
+  /// * Favorites filter
   List<Prompt> _filteredPrompts() {
     return _prompts.where((prompt) {
       // Apply favorites filter
@@ -88,14 +115,17 @@ class _PromptsScreenState extends State<PromptsScreen> {
       }
 
       // Apply search filter
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           prompt.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           prompt.description.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Apply category filter
-      final matchesCategory = _selectedCategories.contains('All') ||
-          prompt.categories
-              .any((category) => _selectedCategories.contains(category));
+      final matchesCategory =
+          _selectedCategories.contains('All') ||
+          prompt.categories.any(
+            (category) => _selectedCategories.contains(category),
+          );
 
       return matchesSearch && matchesCategory;
     }).toList();
@@ -105,6 +135,10 @@ class _PromptsScreenState extends State<PromptsScreen> {
   List<Prompt> get _favoritedPrompts =>
       _prompts.where((p) => p.isFavorite).toList();
 
+  /// Toggles category selection with the following rules:
+  /// * If 'All' is selected, clear other selections
+  /// * If a specific category is selected, remove 'All'
+  /// * If no categories remain selected, select 'All'
   void _toggleCategory(String category) {
     setState(() {
       if (category == 'All') {
@@ -127,6 +161,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
     });
   }
 
+  /// Toggles favorite status for a prompt and shows feedback to the user.
+  /// Updates both local state and remote storage.
   void _toggleFavorite(Prompt prompt) async {
     final isFavorite = await PromptService.toggleFavorite(prompt.id);
 
@@ -138,34 +174,40 @@ class _PromptsScreenState extends State<PromptsScreen> {
     });
 
     if (mounted) {
-      final message = isFavorite
-          ? 'Đã thêm vào danh sách yêu thích'
-          : 'Đã xóa khỏi danh sách yêu thích';
+      final message =
+          isFavorite
+              ? 'Đã thêm vào danh sách yêu thích'
+              : 'Đã xóa khỏi danh sách yêu thích';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
+  /// Saves a public prompt as a private prompt for the user.
+  /// Shows success/error feedback via SnackBar.
   void _saveAsPrivate(Prompt prompt) async {
     try {
       await PromptService.saveAsPrivate(prompt);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Đã lưu "${prompt.title}" vào prompt riêng tư')),
+            content: Text('Đã lưu "${prompt.title}" vào prompt riêng tư'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }
 
+  /// Uses the selected prompt in a new chat conversation.
+  /// Handles navigation using GoRouter with fallback options.
   void _usePrompt(Prompt prompt) {
     // Update usage count
     setState(() {
@@ -187,10 +229,11 @@ class _PromptsScreenState extends State<PromptsScreen> {
       try {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => ChatDetailScreen(
-              initialPrompt: prompt.content,
-              isNewChat: true,
-            ),
+            builder:
+                (_) => ChatDetailScreen(
+                  initialPrompt: prompt.content,
+                  isNewChat: true,
+                ),
           ),
           (route) => false,
         );
@@ -206,6 +249,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     }
   }
 
+  /// Shows a bottom sheet with detailed prompt information and actions.
   void _viewPromptDetails(Prompt prompt) {
     showModalBottomSheet(
       context: context,
@@ -232,7 +276,9 @@ class _PromptsScreenState extends State<PromptsScreen> {
                   Text(
                     prompt.title,
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -259,14 +305,15 @@ class _PromptsScreenState extends State<PromptsScreen> {
               // Categories
               Wrap(
                 spacing: 8,
-                children: prompt.categories.map((category) {
-                  final color = Prompt.getCategoryColor(category);
-                  return Chip(
-                    label: Text(category),
-                    backgroundColor: color.withOpacity(0.2),
-                    labelStyle: TextStyle(color: color),
-                  );
-                }).toList(),
+                children:
+                    prompt.categories.map((category) {
+                      final color = Prompt.getCategoryColor(category);
+                      return Chip(
+                        label: Text(category),
+                        backgroundColor: color.withOpacity(0.2),
+                        labelStyle: TextStyle(color: color),
+                      );
+                    }).toList(),
               ),
 
               const Divider(height: 32),
@@ -293,9 +340,10 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 children: [
                   _buildActionButton(
                     icon: Icons.favorite,
-                    label: prompt.isFavorite
-                        ? 'Remove from Favorites'
-                        : 'Add to Favorites',
+                    label:
+                        prompt.isFavorite
+                            ? 'Remove from Favorites'
+                            : 'Add to Favorites',
                     onPressed: () {
                       _toggleFavorite(prompt);
                       Navigator.pop(context);
@@ -345,9 +393,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     // Navigate to the private prompts screen
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const PrivatePromptsScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const PrivatePromptsScreen()),
     );
   }
 
@@ -380,7 +426,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
           ),
           IconButton(
             icon: Icon(
-                _showOnlyFavorites ? Icons.favorite : Icons.favorite_border),
+              _showOnlyFavorites ? Icons.favorite : Icons.favorite_border,
+            ),
             color: _showOnlyFavorites ? Colors.red : null,
             onPressed: _toggleFavoritesView,
             tooltip: _showOnlyFavorites ? 'Show all prompts' : 'Show favorites',
@@ -389,20 +436,21 @@ class _PromptsScreenState extends State<PromptsScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
             onSelected: _changeSortMethod,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'popular',
-                child: Text('Sort by Popularity'),
-              ),
-              const PopupMenuItem(
-                value: 'recent',
-                child: Text('Sort by Recent'),
-              ),
-              const PopupMenuItem(
-                value: 'alphabetical',
-                child: Text('Sort Alphabetically'),
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(
+                    value: 'popular',
+                    child: Text('Sort by Popularity'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'recent',
+                    child: Text('Sort by Recent'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'alphabetical',
+                    child: Text('Sort Alphabetically'),
+                  ),
+                ],
           ),
           IconButton(
             icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
@@ -413,17 +461,22 @@ class _PromptsScreenState extends State<PromptsScreen> {
       ),
       drawer: MainAppDrawer(
         currentIndex: 3, // Index 3 corresponds to the Prompts tab in the drawer
-        onTabSelected: (index) => navigation_utils
-            .handleDrawerNavigation(context, index, currentIndex: 3),
+        onTabSelected:
+            (index) => navigation_utils.handleDrawerNavigation(
+              context,
+              index,
+              currentIndex: 3,
+            ),
       ),
       body: Column(
         children: [
           _buildSearchBar(),
           _buildCategoryFilter(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildPromptContentView(filteredPrompts),
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildPromptContentView(filteredPrompts),
           ),
         ],
       ),
@@ -431,15 +484,14 @@ class _PromptsScreenState extends State<PromptsScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const CreatePromptScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
           ).then((result) {
             if (result != null && result is Prompt) {
               // If a prompt was created, show a success message
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text('Đã tạo prompt riêng tư: ${result.title}')),
+                  content: Text('Đã tạo prompt riêng tư: ${result.title}'),
+                ),
               );
 
               // Optionally refresh the list if needed
@@ -469,18 +521,17 @@ class _PromptsScreenState extends State<PromptsScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm kiếm prompt...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                  : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (value) => setState(() => _searchQuery = value),
       ),
@@ -507,21 +558,23 @@ class _PromptsScreenState extends State<PromptsScreen> {
             height: 48,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: _categories.map((category) {
-                final isSelected = _selectedCategories.contains(category);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    label: Text(category),
-                    selected: isSelected,
-                    onSelected: (_) => _toggleCategory(category),
-                    backgroundColor: Colors.grey[200],
-                    selectedColor:
-                        Theme.of(context).primaryColor.withOpacity(0.2),
-                    checkmarkColor: Theme.of(context).primaryColor,
-                  ),
-                );
-              }).toList(),
+              children:
+                  _categories.map((category) {
+                    final isSelected = _selectedCategories.contains(category);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (_) => _toggleCategory(category),
+                        backgroundColor: Colors.grey[200],
+                        selectedColor: Theme.of(
+                          context,
+                        ).primaryColor.withOpacity(0.2),
+                        checkmarkColor: Theme.of(context).primaryColor,
+                      ),
+                    );
+                  }).toList(),
             ),
           ),
         ],
@@ -544,19 +597,13 @@ class _PromptsScreenState extends State<PromptsScreen> {
             isFavoritesView
                 ? 'Chưa có prompt yêu thích nào'
                 : 'Không tìm thấy prompt nào',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           if (isFavoritesView)
             Text(
               'Hãy thêm prompt vào danh sách yêu thích',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           const SizedBox(height: 16),
           if (_searchQuery.isNotEmpty ||

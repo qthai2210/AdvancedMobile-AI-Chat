@@ -2,8 +2,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/blocs/auth/auth_event.dart';
 import 'package:aichatbot/blocs/auth/auth_state.dart';
 
+/// Authentication bloc that handles user authentication states and events.
+///
+/// This bloc manages the authentication flow including login, registration,
+/// and social authentication features.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  // Mock accounts for testing
+  /// Mock user accounts for testing purposes.
+  /// Maps email addresses to passwords.
   final Map<String, String> _mockAccounts = {
     'user@example.com': 'password123',
     'demo@aichat.com': 'demo1234',
@@ -11,9 +16,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     'tushari23@gmail.com': '123456',
   };
 
+  /// Currently entered email address
   String _email = '';
+
+  /// Currently entered password
   String _password = '';
 
+  /// Creates a new instance of [AuthBloc].
+  ///
+  /// Initializes the bloc with default state and registers event handlers.
   AuthBloc() : super(const AuthState()) {
     on<EmailChanged>(_onEmailChanged);
     on<PasswordChanged>(_onPasswordChanged);
@@ -24,14 +35,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterSubmitted>(_onRegisterSubmitted);
   }
 
+  /// Handles email change events by updating the stored email.
+  ///
+  /// [event] contains the new email value.
   void _onEmailChanged(EmailChanged event, Emitter<AuthState> emit) {
     _email = event.email;
   }
 
+  /// Handles password change events by updating the stored password.
+  ///
+  /// [event] contains the new password value.
   void _onPasswordChanged(PasswordChanged event, Emitter<AuthState> emit) {
     _password = event.password;
   }
 
+  /// Processes login submission attempts.
+  ///
+  /// Validates credentials against mock accounts and emits appropriate states.
+  /// Includes a simulated network delay for realistic behavior.
   void _onLoginSubmitted(LoginSubmitted event, Emitter<AuthState> emit) async {
     emit(state.copyWith(status: AuthStatus.loading));
 
@@ -63,12 +84,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  /// Handles sign-up request events.
+  ///
+  /// Currently resets the authentication state to initial.
   void _onSignUpRequested(SignUpRequested event, Emitter<AuthState> emit) {
     // In a real app, you would navigate to sign up screen
     // For now, just reset the state
     emit(state.copyWith(status: AuthStatus.initial));
   }
 
+  /// Processes forgot password requests.
+  ///
+  /// Simulates sending a password reset email.
   void _onForgotPasswordRequested(
     ForgotPasswordRequested event,
     Emitter<AuthState> emit,
@@ -81,6 +108,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
+  /// Handles social login requests.
+  ///
+  /// Simulates successful authentication through social providers.
   void _onSocialLoginRequested(
     SocialLoginRequested event,
     Emitter<AuthState> emit,
@@ -104,6 +134,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
+  /// Processes new user registration requests.
+  ///
+  /// Adds the new account to mock accounts and simulates successful registration.
   void _onRegisterSubmitted(
     RegisterSubmitted event,
     Emitter<AuthState> emit,

@@ -4,6 +4,14 @@ import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
+/// A screen for managing multiple knowledge bases.
+///
+/// Features:
+/// * View list of knowledge bases
+/// * Search knowledge bases
+/// * Add new knowledge bases
+/// * View knowledge base details
+/// * Track knowledge base stats
 class KnowledgeManagementScreen extends StatefulWidget {
   const KnowledgeManagementScreen({super.key});
 
@@ -12,11 +20,20 @@ class KnowledgeManagementScreen extends StatefulWidget {
       _KnowledgeManagementScreenState();
 }
 
+/// State management for [KnowledgeManagementScreen].
+/// Handles knowledge base operations and UI updates.
 class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     with SingleTickerProviderStateMixin {
+  /// Controller for the search input field
   final TextEditingController _searchController = TextEditingController();
+
+  /// Current search query
   String _searchQuery = '';
+
+  /// Loading state for async operations
   bool _isLoading = false;
+
+  /// State for showing/hiding the add form
   bool _showAddForm = false;
 
   // Form controllers for adding new knowledge base
@@ -57,13 +74,15 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     super.dispose();
   }
 
+  /// Loads or refreshes the list of knowledge bases
   Future<void> _loadKnowledgeBases() async {
     setState(() => _isLoading = true);
 
     try {
       // In a real app, load from API or database
       await Future.delayed(
-          const Duration(milliseconds: 800)); // Simulate network delay
+        const Duration(milliseconds: 800),
+      ); // Simulate network delay
 
       // Create some sample data
       _knowledgeBases = [
@@ -90,15 +109,19 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     }
   }
 
+  /// Returns filtered knowledge bases based on search query
   List<KnowledgeBase> get _filteredKnowledgeBases {
     if (_searchQuery.isEmpty) return _knowledgeBases;
     return _knowledgeBases
-        .where((kb) =>
-            kb.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            kb.description.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where(
+          (kb) =>
+              kb.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              kb.description.toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
         .toList();
   }
 
+  /// Shows or hides the add knowledge base form
   void _toggleAddForm() {
     setState(() {
       _showAddForm = !_showAddForm;
@@ -143,9 +166,9 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     } catch (e) {
       // Handle error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -160,8 +183,12 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
       appBar: _buildAppBar(),
       drawer: MainAppDrawer(
         currentIndex: 2, // Index 2 corresponds to the Knowledge Base tab
-        onTabSelected: (index) => navigation_utils
-            .handleDrawerNavigation(context, index, currentIndex: 2),
+        onTabSelected:
+            (index) => navigation_utils.handleDrawerNavigation(
+              context,
+              index,
+              currentIndex: 2,
+            ),
       ),
       body: Stack(
         children: [
@@ -169,9 +196,10 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
             children: [
               _buildSearchBar(),
               Expanded(
-                child: _isLoading
-                    ? _buildLoadingState()
-                    : _filteredKnowledgeBases.isEmpty
+                child:
+                    _isLoading
+                        ? _buildLoadingState()
+                        : _filteredKnowledgeBases.isEmpty
                         ? _buildEmptyState()
                         : _buildKnowledgeBaseList(),
               ),
@@ -228,18 +256,17 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
         decoration: InputDecoration(
           hintText: 'Tìm kiếm bộ dữ liệu...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                  : null,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (value) {
           setState(() => _searchQuery = value);
@@ -263,10 +290,7 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
             _searchQuery.isEmpty
                 ? 'Chưa có bộ dữ liệu tri thức nào'
                 : 'Không tìm thấy bộ dữ liệu phù hợp với "$_searchQuery"',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -276,8 +300,10 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
               icon: const Icon(Icons.add),
               label: const Text('Thêm bộ dữ liệu tri thức'),
               style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
         ],
@@ -300,14 +326,13 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     // Source type icons count
     final sourceTypeCount = {
       for (var type in KnowledgeSourceType.values)
-        type: knowledgeBase.getSourcesByType(type).length
+        type: knowledgeBase.getSourcesByType(type).length,
     };
 
     // Get the 3 most used source types
-    final topSourceTypes = sourceTypeCount.entries
-        .where((e) => e.value > 0)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final topSourceTypes =
+        sourceTypeCount.entries.where((e) => e.value > 0).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -315,9 +340,10 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: knowledgeBase.isEnabled
-              ? Colors.transparent
-              : Colors.grey.shade300,
+          color:
+              knowledgeBase.isEnabled
+                  ? Colors.transparent
+                  : Colors.grey.shade300,
           width: knowledgeBase.isEnabled ? 0 : 1,
         ),
       ),
@@ -366,8 +392,10 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
 
   Widget _buildStatusChip(String label, Color color) {
     return Chip(
-      label: Text(label,
-          style: const TextStyle(fontSize: 12, color: Colors.white)),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12, color: Colors.white),
+      ),
       backgroundColor: color,
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
@@ -385,8 +413,10 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     );
   }
 
-  Widget _buildKnowledgeBaseStats(KnowledgeBase knowledgeBase,
-      List<MapEntry<KnowledgeSourceType, int>> topSourceTypes) {
+  Widget _buildKnowledgeBaseStats(
+    KnowledgeBase knowledgeBase,
+    List<MapEntry<KnowledgeSourceType, int>> topSourceTypes,
+  ) {
     return Row(
       children: [
         // Source statistics
@@ -477,19 +507,18 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
       ),
       child: Text(
         '+$count',
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[700],
-        ),
+        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
       ),
     );
   }
 
   Widget _buildProgressIndicator(KnowledgeBase knowledgeBase) {
     return LinearProgressIndicator(
-      value: knowledgeBase.totalSourcesCount > 0
-          ? knowledgeBase.activeSourcesCount / knowledgeBase.totalSourcesCount
-          : 0,
+      value:
+          knowledgeBase.totalSourcesCount > 0
+              ? knowledgeBase.activeSourcesCount /
+                  knowledgeBase.totalSourcesCount
+              : 0,
       backgroundColor: Colors.grey.shade200,
       valueColor: AlwaysStoppedAnimation<Color>(
         knowledgeBase.isEnabled ? Theme.of(context).primaryColor : Colors.grey,
@@ -525,10 +554,7 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
               children: [
                 const Text(
                   'Thêm bộ dữ liệu tri thức',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -586,16 +612,17 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Thêm'),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : const Text('Thêm'),
                   ),
                 ),
               ],
@@ -615,8 +642,8 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            KnowledgeDetailScreen(knowledgeBase: knowledgeBase),
+        builder:
+            (context) => KnowledgeDetailScreen(knowledgeBase: knowledgeBase),
       ),
     );
   }
