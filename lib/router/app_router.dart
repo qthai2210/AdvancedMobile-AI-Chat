@@ -1,6 +1,7 @@
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
+import 'package:aichatbot/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/login_screen.dart';
@@ -15,8 +16,15 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: '/splash',
     routes: [
+      // Add splash screen route
+      // Make sure to import SplashScreen at the top of the file
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/login',
         name: 'login',
