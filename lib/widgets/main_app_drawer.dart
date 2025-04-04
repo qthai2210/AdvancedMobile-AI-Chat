@@ -1,8 +1,12 @@
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
+import 'package:aichatbot/blocs/auth/auth_bloc.dart';
+import 'package:aichatbot/blocs/auth/auth_event.dart';
+import 'package:aichatbot/blocs/auth/auth_state.dart';
 
 class MainAppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -224,16 +228,87 @@ class MainAppDrawer extends StatelessWidget {
             // Navigate to help
           },
         ),
-        ListTile(
-          leading: const Icon(Icons.logout),
-          title: const Text('Logout'),
-          onTap: () {
-            Navigator.pop(context);
-            context.go('/login');
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) {
+            print(
+                "Previous status: ${previous.status}, Current status: ${current.status}");
+            print(
+                "Previous user: ${previous.user != null}, Current user: ${current.user != null}");
+
+            // Simplify the condition - listen for any state changes
+            return true;
           },
+          listener: (context, state) {
+            print("Listener triggered with Status: ${state.status}");
+            print("User is null: ${state.user == null}");
+
+            if (state.status == AuthStatus.failure) {
+              // Show error message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage ?? 'Logout failed'),
+                ),
+              );
+            }
+
+            // If user is null, navigate to login screen regardless of state
+            if (state.user == null) {
+              print("User is null, navigating to login");
+              // Use a longer delay to ensure UI updates
+              Future.delayed(const Duration(seconds: 1), () {
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              });
+            }
+          },
+          child: ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              // Close drawer
+              Navigator.pop(context);
+
+              // Show loading message
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Logging out...'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              // Gửi sự kiện logout với context để có thể chuyển hướng
+              context.read<AuthBloc>().add(LogoutRequested(context: context));
+            },
+          ),
         ),
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    // Close the drawer
+    Navigator.pop(context);
+
+    // Show loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Logging out...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // Dispatch logout event to AuthBloc
+    context.read<AuthBloc>().add(LogoutRequested());
+
+    // Add a delay to ensure the API call has time to complete
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Ensure we're still mounted before navigation
+    if (context.mounted) {
+      print("Forcing navigation to login page");
+      context.go('/login');
+    }
   }
 }

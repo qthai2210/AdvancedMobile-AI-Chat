@@ -6,7 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    BlocProvider<AuthBloc>(
+      create: (context) => AuthBloc(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

@@ -1,12 +1,17 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/blocs/auth/auth_event.dart';
 import 'package:aichatbot/blocs/auth/auth_state.dart';
+import 'package:aichatbot/services/api_client.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Authentication bloc that handles user authentication states and events.
 ///
 /// This bloc manages the authentication flow including login, registration,
 /// and social authentication features.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  final ApiClient _apiClient = ApiClient();
+
   /// Mock user accounts for testing purposes.
   /// Maps email addresses to passwords.
   final Map<String, String> _mockAccounts = {
@@ -33,6 +38,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ForgotPasswordRequested>(_onForgotPasswordRequested);
     on<SocialLoginRequested>(_onSocialLoginRequested);
     on<RegisterSubmitted>(_onRegisterSubmitted);
+    on<LogoutRequested>(_onLogoutRequested); // Add this line
   }
 
   /// Handles email change events by updating the stored email.
@@ -56,29 +62,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onLoginSubmitted(LoginSubmitted event, Emitter<AuthState> emit) async {
     emit(state.copyWith(status: AuthStatus.loading));
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await _apiClient.login(
+        email: _email,
+        password: _password,
+      );
 
-    // Check if credentials match any mock account
-    if (_mockAccounts.containsKey(_email) &&
-        _mockAccounts[_email] == _password) {
       emit(
         state.copyWith(
           status: AuthStatus.success,
           user: User(
-            id: '1',
+            id: response['user_id'],
             email: _email,
             name: _email.split('@').first,
-            // Navigate directly to home screen
             directNavigationPath: '/chat/detail/new',
+            accessToken: response['access_token'],
+            refreshToken: response['refresh_token'],
           ),
         ),
       );
-    } else {
+    } catch (error) {
       emit(
         state.copyWith(
           status: AuthStatus.failure,
-          errorMessage: 'Invalid email or password',
+          errorMessage: error.toString(),
         ),
       );
     }
@@ -88,9 +95,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ///
   /// Currently resets the authentication state to initial.
   void _onSignUpRequested(SignUpRequested event, Emitter<AuthState> emit) {
-    // In a real app, you would navigate to sign up screen
-    // For now, just reset the state
-    emit(state.copyWith(status: AuthStatus.initial));
+    emit(
+      state.copyWith(
+        status: AuthStatus.success,
+        user: User(
+          id: '',
+          email: '',
+          name: '',
+          directNavigationPath:
+              '/register', // Add navigation path to register screen
+        ),
+      ),
+    );
   }
 
   /// Processes forgot password requests.
@@ -143,23 +159,80 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(state.copyWith(status: AuthStatus.loading));
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await _apiClient.register(
+        email: event.email,
+        password: event.password,
+      );
 
-    // Add the new account to mock accounts
-    _mockAccounts[event.email] = event.password;
-
-    // Simulate successful registration
-    emit(
-      state.copyWith(
-        status: AuthStatus.success,
-        user: User(
-          id: '3',
-          email: event.email,
-          name: event.name,
-          directNavigationPath: '/home',
+      emit(
+        state.copyWith(
+          status: AuthStatus.success,
+          user: User(
+            id: response['user_id'],
+            email: event.email,
+            name: event.name,
+            directNavigationPath: '/home',
+            accessToken: response['access_token'],
+            refreshToken: response['refresh_token'],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
+  /// Handles logout request
+  void _onLogoutRequested(
+      LogoutRequested event, Emitter<AuthState> emit) async {
+    if (state.user?.accessToken == null) {
+      // If no user is logged in or no access token, just reset state
+      print("No user logged in or no access token, resetting state");
+      emit(const AuthState(status: AuthStatus.initial));
+
+      // Chuyển hướng đến trang login
+      if (event.context != null && event.context!.mounted) {
+        event.context!.go('/login');
+      }
+      return;
+    }
+
+    // Set loading state
+    print("Emitting loading state for logout");
+    emit(state.copyWith(status: AuthStatus.loading));
+
+    try {
+      print("Starting logout API call");
+      await _apiClient.logout(
+        accessToken: state.user!.accessToken!,
+        refreshToken: state.user!.refreshToken,
+      );
+      print("Logout API call successful");
+
+      // Reset auth state after successful logout - create a completely new state
+      // Important: Set user to null explicitly
+      print("Emitting initial state with null user");
+      emit(const AuthState(status: AuthStatus.initial, user: null));
+    } catch (error) {
+      // Log the error
+      print('Logout error: $error');
+
+      // First emit failure state to show error message
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        errorMessage: 'Logout failed: $error',
+      ));
+
+      // Important: Still log the user out locally even if API call fails
+      await Future.delayed(const Duration(milliseconds: 300));
+      print("Emitting initial state with null user after error");
+      emit(const AuthState(status: AuthStatus.initial, user: null));
+    }
   }
 }
