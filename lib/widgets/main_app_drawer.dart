@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
-import 'package:aichatbot/blocs/auth/auth_bloc.dart';
-import 'package:aichatbot/blocs/auth/auth_event.dart';
-import 'package:aichatbot/blocs/auth/auth_state.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 
 class MainAppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -285,30 +285,5 @@ class MainAppDrawer extends StatelessWidget {
         const SizedBox(height: 16),
       ],
     );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    // Close the drawer
-    Navigator.pop(context);
-
-    // Show loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Logging out...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-
-    // Dispatch logout event to AuthBloc
-    context.read<AuthBloc>().add(LogoutRequested());
-
-    // Add a delay to ensure the API call has time to complete
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Ensure we're still mounted before navigation
-    if (context.mounted) {
-      print("Forcing navigation to login page");
-      context.go('/login');
-    }
   }
 }

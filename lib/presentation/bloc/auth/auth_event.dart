@@ -35,7 +35,6 @@ class RegisterSubmitted extends AuthEvent {
   });
 }
 
-// New event for logout
 class LogoutRequested extends AuthEvent {
   final BuildContext? context;
 

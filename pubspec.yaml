@@ -16,6 +16,7 @@ dependencies:
   flutter_floating_bottom_bar: ^1.2.0
   image_picker: ^1.0.4
   http: ^1.1.0
+  get_it: ^8.0.3
 
 dev_dependencies:
   flutter_test:

@@ -1,56 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:aichatbot/blocs/auth/auth_bloc.dart';
+import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/router/app_router.dart';
-import 'package:go_router/go_router.dart';
-import 'screens/splash_screen.dart';
 
-void main() {
-  runApp(
-    BlocProvider<AuthBloc>(
-      create: (context) => AuthBloc(),
-      child: MyApp(),
-    ),
-  );
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize dependency injection
+  await di.init();
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
-      providers: [BlocProvider(create: (context) => AuthBloc())],
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (context) => di.sl<AuthBloc>(),
+        ),
+        BlocProvider<PromptBloc>(
+          create: (context) => di.sl<PromptBloc>(),
+        ),
+      ],
       child: MaterialApp.router(
-        title: 'Flutter Login',
-        debugShowCheckedModeBanner: false,
+        title: 'AI Chat Bot',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6A3DE8),
-            primary: const Color(0xFF6A3DE8),
-          ),
-          useMaterial3: true,
-          fontFamily: 'Roboto',
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Colors.grey, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFF6A3DE8), width: 1),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
-          ),
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
         routerConfig: AppRouter.router,
       ),

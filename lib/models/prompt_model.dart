@@ -82,4 +82,22 @@ class Prompt {
       ownerId: ownerId ?? this.ownerId,
     );
   }
+
+  /// Factory constructor to create a Prompt from JSON
+  factory Prompt.fromJson(Map<String, dynamic> json) {
+    return Prompt(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      content: json['content'] as String,
+      description: json['description'] as String,
+      categories: List<String>.from(json['categories'] ?? []),
+      useCount: json['useCount'] as int? ?? 0,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      authorName: json['authorName'] as String?,
+      authorId: json['authorId'] as String?,
+      isPrivate: json['isPrivate'] as bool? ?? false,
+      ownerId: json['ownerId'] as String?,
+    );
+  }
 }

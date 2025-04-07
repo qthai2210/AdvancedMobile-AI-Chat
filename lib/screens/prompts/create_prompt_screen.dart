@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/models/prompt_model.dart';
-import 'package:aichatbot/services/prompt_service.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+//import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 
 /// A screen for creating or editing AI chat prompts.
 ///
@@ -82,49 +87,33 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
 
     setState(() => _isLoading = true);
 
-    try {
-      final Prompt prompt;
+    // Lấy accessToken từ AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    final accessToken = authState.user?.accessToken;
 
-      if (_isEditing) {
-        // Update existing prompt
-        prompt = widget.editPrompt!.copyWith(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          content: _contentController.text.trim(),
-          categories: List.from(_selectedCategories),
-        );
+    if (accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Bạn cần đăng nhập để thực hiện chức năng này')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
 
-        await PromptService.updatePrivatePrompt(prompt);
-      } else {
-        // Create new prompt
-        prompt = await PromptService.createPrivatePrompt(
-          _titleController.text.trim(),
-          _contentController.text.trim(),
-          _descriptionController.text.trim(),
-          List.from(_selectedCategories),
-        );
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditing ? 'Đã cập nhật prompt' : 'Đã tạo prompt mới',
-            ),
-          ),
-        );
-        Navigator.pop(context, prompt);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    // Gọi sự kiện của PromptBloc
+    if (_isEditing) {
+      // Update existing prompt - cần triển khai thêm
+    } else {
+      // Create new prompt
+      context.read<PromptBloc>().add(CreatePromptRequested(
+            title: _titleController.text.trim(),
+            content: _contentController.text.trim(),
+            description: _descriptionController.text.trim(),
+            categories: List.from(_selectedCategories),
+            isPublic: false, // Set default to false or add UI control
+            language: 'vi', // Default language
+            accessToken: accessToken, // Pass the accessToken
+          ));
     }
   }
 
@@ -143,14 +132,35 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Chỉnh Sửa Prompt' : 'Tạo Prompt Mới'),
-      ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
+    return BlocListener<PromptBloc, PromptState>(
+      listener: (context, state) {
+        if (state.status == PromptStatus.success &&
+            state.currentPrompt != null) {
+          // Thành công
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isEditing ? 'Đã cập nhật prompt' : 'Đã tạo prompt mới',
+              ),
+            ),
+          );
+          Navigator.pop(context, state.currentPrompt);
+        } else if (state.status == PromptStatus.failure) {
+          // Thất bại
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: ${state.errorMessage}')),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_isEditing ? 'Chỉnh Sửa Prompt' : 'Tạo Prompt Mới'),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Form(
@@ -173,6 +183,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
                   ),
                 ),
               ),
+      ),
     );
   }
 
@@ -235,19 +246,18 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children:
-              _allCategories.map((category) {
-                final isSelected = _selectedCategories.contains(category);
-                final color = Prompt.getCategoryColor(category);
-                return FilterChip(
-                  label: Text(category),
-                  selected: isSelected,
-                  onSelected: (_) => _toggleCategory(category),
-                  backgroundColor: Colors.grey[200],
-                  selectedColor: color.withOpacity(0.2),
-                  checkmarkColor: color,
-                );
-              }).toList(),
+          children: _allCategories.map((category) {
+            final isSelected = _selectedCategories.contains(category);
+            final color = Prompt.getCategoryColor(category);
+            return FilterChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (_) => _toggleCategory(category),
+              backgroundColor: Colors.grey[200],
+              selectedColor: color.withOpacity(0.2),
+              checkmarkColor: color,
+            );
+          }).toList(),
         ),
       ],
     );
@@ -364,17 +374,16 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child:
-            _isLoading
-                ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-                : Text(_isEditing ? 'Cập nhật' : 'Lưu prompt'),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(_isEditing ? 'Cập nhật' : 'Lưu prompt'),
       ),
     );
   }
