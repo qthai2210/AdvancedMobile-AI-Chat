@@ -70,8 +70,8 @@ class _BotListScreenState extends State<BotListScreen> {
           (bot) =>
               bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               bot.description.toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ),
+                    _searchQuery.toLowerCase(),
+                  ),
         )
         .toList();
   }
@@ -140,27 +140,26 @@ class _BotListScreenState extends State<BotListScreen> {
   void _deleteBot(AIBot bot) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Xóa Bot'),
-            content: Text('Bạn có chắc muốn xóa bot "${bot.name}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _bots.removeWhere((b) => b.id == bot.id);
-                  });
-                },
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Xóa'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa Bot'),
+        content: Text('Bạn có chắc muốn xóa bot "${bot.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _bots.removeWhere((b) => b.id == bot.id);
+              });
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -175,53 +174,51 @@ class _BotListScreenState extends State<BotListScreen> {
             icon: const Icon(Icons.share),
             tooltip: 'Share AI Chat',
             onSelected: _handleShare,
-            itemBuilder:
-                (context) => [
-                  const PopupMenuItem(
-                    value: 'slack',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.workspaces_outlined,
-                          color: Color(0xFF4A154B),
-                        ),
-                        SizedBox(width: 12),
-                        Text('Publish to Slack'),
-                      ],
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'slack',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.workspaces_outlined,
+                      color: Color(0xFF4A154B),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'telegram',
-                    child: Row(
-                      children: [
-                        Icon(Icons.send, color: Color(0xFF0088CC)),
-                        SizedBox(width: 12),
-                        Text('Share to Telegram'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'messenger',
-                    child: Row(
-                      children: [
-                        Icon(Icons.message, color: Color(0xFF0084FF)),
-                        SizedBox(width: 12),
-                        Text('Send to Messenger'),
-                      ],
-                    ),
-                  ),
-                ],
+                    SizedBox(width: 12),
+                    Text('Publish to Slack'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'telegram',
+                child: Row(
+                  children: [
+                    Icon(Icons.send, color: Color(0xFF0088CC)),
+                    SizedBox(width: 12),
+                    Text('Share to Telegram'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'messenger',
+                child: Row(
+                  children: [
+                    Icon(Icons.message, color: Color(0xFF0084FF)),
+                    SizedBox(width: 12),
+                    Text('Send to Messenger'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
       drawer: MainAppDrawer(
         currentIndex: 1, // Index 1 corresponds to the AI Bots tab in the drawer
-        onTabSelected:
-            (index) => navigation_utils.handleDrawerNavigation(
-              context,
-              index,
-              currentIndex: 1,
-            ),
+        onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
+          context,
+          index,
+          currentIndex: 1,
+        ),
       ),
       body: Column(
         children: [
@@ -269,18 +266,17 @@ class _BotListScreenState extends State<BotListScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm kiếm AI BOT...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon:
-              _searchQuery.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
-                  )
-                  : null,
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (value) {
