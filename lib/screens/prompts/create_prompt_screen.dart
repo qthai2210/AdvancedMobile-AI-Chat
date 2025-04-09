@@ -5,6 +5,7 @@ import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class CreatePromptScreen extends StatefulWidget {
   const CreatePromptScreen({Key? key}) : super(key: key);
@@ -60,24 +61,17 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
           // Show loading indicator
         } else if (state.status == PromptStatus.success &&
             state.newPrompt != null) {
-          // Reset submission flag
           _isSubmitting = false;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Prompt created successfully!')),
-          );
+          context.showSuccessNotification('Prompt đã được tạo thành công!');
 
           // Navigate back to prompts screen
-          Navigator.of(context).pop(true); // Return true to indicate success
+          Navigator.of(context).pop(true);
         } else if (state.status == PromptStatus.failure && _isSubmitting) {
-          // Reset submission flag
           _isSubmitting = false;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(
-                    'Error: ${state.errorMessage ?? "Failed to create prompt"}')),
-          );
+          context.showApiErrorNotification(
+              state.errorMessage ?? "Failed to create prompt");
         }
       },
       child: Scaffold(

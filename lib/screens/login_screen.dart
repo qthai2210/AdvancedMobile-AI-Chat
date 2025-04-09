@@ -6,6 +6,7 @@ import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,18 +39,24 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'Authentication failed'),
-            ),
-          );
-        } else if (state.status == AuthStatus.success) {
-          // Navigate directly to chat detail or chat screen
-          if (state.user?.directNavigationPath != null) {
-            context.go(state.user!.directNavigationPath!);
-          } else {
-            context.go('/chat');
-          }
+          context.showAuthErrorNotification(
+              state.errorMessage ?? 'Đăng nhập thất bại');
+        }
+        if (state.status == AuthStatus.success) {
+          context.showSuccessNotification('Đăng nhập thành công');
+
+          // Thêm đoạn code này để tự động chuyển trang
+          Future.delayed(const Duration(milliseconds: 500), () {
+            // Sử dụng Go Router nếu ứng dụng của bạn đang dùng
+            try {
+              context.go(
+                  '/chat'); // hoặc '/prompts' tùy theo cấu trúc route của bạn
+            } catch (_) {
+              // Fallback cho Navigation 1.0 nếu Go Router không khả dụng
+              Navigator.of(context)
+                  .pushReplacementNamed('/chat'); // hoặc route khác
+            }
+          });
         }
       },
       child: Scaffold(

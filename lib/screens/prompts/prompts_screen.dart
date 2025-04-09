@@ -16,6 +16,9 @@ import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+import 'package:aichatbot/widgets/app_notification.dart';
+import 'package:aichatbot/utils/error_formatter.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class PrivatePromptsScreen extends StatelessWidget {
   const PrivatePromptsScreen({Key? key}) : super(key: key);
@@ -147,11 +150,23 @@ class _PromptsScreenState extends State<PromptsScreen> {
               accessToken: authState.user!.accessToken!,
               limit: 20,
               offset: 0,
-              isFavorite: false,
+              isFavorite: context.read<PromptBloc>().state.isFavoriteFilter,
+              query: _searchController.text.isEmpty
+                  ? null
+                  : _searchController.text,
             ),
           );
     } else {
       debugPrint("Cannot load prompts: user not authenticated");
+      AppNotification.showWarning(
+        context,
+        'Bạn cần đăng nhập để xem prompts',
+        actionLabel: 'Đăng nhập',
+        onAction: () {
+          // Chuyển đến trang đăng nhập
+          Navigator.of(context).pushReplacementNamed('/login');
+        },
+      );
     }
   }
 
@@ -161,21 +176,26 @@ class _PromptsScreenState extends State<PromptsScreen> {
     final accessToken = authState.user?.accessToken;
 
     if (accessToken != null) {
-      // In a real implementation, you would dispatch an event to toggle favorite
-      // context.read<PromptBloc>().add(
-      //   ToggleFavoriteRequested(
-      //     promptId: prompt.id,
-      //     accessToken: accessToken,
-      //   ),
-      // );
+      context.read<PromptBloc>().add(
+            ToggleFavoriteRequested(
+              promptId: prompt.id,
+              accessToken: accessToken,
+            ),
+          );
 
-      // For now, just show a SnackBar
       final message = prompt.isFavorite
           ? 'Đã xóa khỏi danh sách yêu thích'
           : 'Đã thêm vào danh sách yêu thích';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      AppNotification.showSuccess(context, message);
+    } else {
+      AppNotification.showWarning(
+        context,
+        'Bạn cần đăng nhập để sử dụng tính năng này',
+        actionLabel: 'Đăng nhập',
+        onAction: () {
+          Navigator.of(context).pushReplacementNamed('/login');
+        },
       );
     }
   }
@@ -183,19 +203,17 @@ class _PromptsScreenState extends State<PromptsScreen> {
   /// Saves a public prompt as a private prompt
   void _saveAsPrivate(Prompt prompt) async {
     // Implementation would dispatch an event to save as private
-    // For now, just show a SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã lưu "${prompt.title}" vào prompt riêng tư'),
-      ),
+    AppNotification.showSuccess(
+      context,
+      'Đã lưu "${prompt.title}" vào prompts riêng tư',
     );
   }
 
   /// Uses the selected prompt in a new chat conversation
   void _usePrompt(Prompt prompt) {
-    // Navigate to chat with this prompt content
     try {
       context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
+      context.showInfoNotification('Đã chuyển sang trò chuyện mới');
     } catch (e) {
       // Fallback to regular navigation
       try {
@@ -209,11 +227,10 @@ class _PromptsScreenState extends State<PromptsScreen> {
           (route) => false,
         );
       } catch (e2) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Navigation error: $e2. Please try again.'),
-            duration: const Duration(seconds: 3),
-          ),
+        context.showErrorNotification(
+          'Không thể chuyển trang, vui lòng thử lại sau',
+          actionLabel: 'Thử lại',
+          onAction: () => _usePrompt(prompt),
         );
       }
     }
@@ -387,125 +404,147 @@ class _PromptsScreenState extends State<PromptsScreen> {
       create: (context) => di.sl<PromptBloc>(),
       child: Builder(
         builder: (context) {
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Prompts'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.person),
-                  tooltip: 'My Private Prompts',
-                  onPressed: _navigateToPrivatePrompts,
-                ),
-                BlocBuilder<PromptBloc, PromptState>(
-                  builder: (context, state) {
-                    return IconButton(
-                      icon: Icon(
-                        state.showOnlyFavorites
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                      ),
-                      color: state.showOnlyFavorites ? Colors.red : null,
-                      onPressed: _toggleFavoritesView,
-                      tooltip: state.showOnlyFavorites
-                          ? 'Show all prompts'
-                          : 'Show favorites',
-                    );
-                  },
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.sort),
-                  onSelected: _changeSortMethod,
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'popular',
-                      child: Text('Sort by Popularity'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'recent',
-                      child: Text('Sort by Recent'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'alphabetical',
-                      child: Text('Sort Alphabetically'),
-                    ),
-                  ],
-                ),
-                BlocBuilder<PromptBloc, PromptState>(
-                  builder: (context, state) {
-                    return IconButton(
-                      icon:
-                          Icon(state.isGridView ? Icons.list : Icons.grid_view),
-                      onPressed: _toggleViewMode,
-                      tooltip: state.isGridView ? 'List view' : 'Grid view',
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () async {
-                    // Navigate to create prompt screen
-                    final result = await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreatePromptScreen(),
-                      ),
-                    );
-                    // Nếu quay lại với result = true (đã tạo prompt mới), load lại danh sách
-                    if (result == true) {
-                      _loadPrompts();
-                    }
-                  },
-                ),
-              ],
-            ),
-            drawer: MainAppDrawer(
-              currentIndex: 3,
-              onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
-                context,
-                index,
-                currentIndex: 3,
-              ),
-            ),
-            body: Column(
-              children: [
-                _buildSearchBar(),
-                _buildCategoryFilter(),
-                Expanded(
-                  child: BlocBuilder<PromptBloc, PromptState>(
+          return BlocListener<PromptBloc, PromptState>(
+            listener: (context, state) {
+              // Xử lý các trạng thái và hiển thị thông báo
+              if (state.status == PromptStatus.failure) {
+                AppNotification.showError(
+                  context,
+                  ErrorFormatter.formatApiError(state.errorMessage),
+                );
+              }
+
+              // Hiển thị thông báo khi tạo prompt thành công
+              if (state.newPrompt != null) {
+                AppNotification.showSuccess(
+                  context,
+                  'Đã tạo prompt mới thành công',
+                );
+              }
+            },
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('Prompts'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.person),
+                    tooltip: 'My Private Prompts',
+                    onPressed: _navigateToPrivatePrompts,
+                  ),
+                  BlocBuilder<PromptBloc, PromptState>(
                     builder: (context, state) {
-                      if (state.status == PromptStatus.initial) {
-                        return const Center(child: Text('Hãy tìm kiếm prompt'));
-                      } else if (state.status == PromptStatus.loading &&
-                          state.prompts.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else {
-                        final sortedPrompts = state.sortedPrompts();
-                        return _buildPromptContentView(
-                            sortedPrompts, state.isGridView);
+                      return IconButton(
+                        icon: Icon(
+                          state.showOnlyFavorites
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                        ),
+                        color: state.showOnlyFavorites ? Colors.red : null,
+                        onPressed: _toggleFavoritesView,
+                        tooltip: state.showOnlyFavorites
+                            ? 'Show all prompts'
+                            : 'Show favorites',
+                      );
+                    },
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.sort),
+                    onSelected: _changeSortMethod,
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'popular',
+                        child: Text('Sort by Popularity'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'recent',
+                        child: Text('Sort by Recent'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'alphabetical',
+                        child: Text('Sort Alphabetically'),
+                      ),
+                    ],
+                  ),
+                  BlocBuilder<PromptBloc, PromptState>(
+                    builder: (context, state) {
+                      return IconButton(
+                        icon: Icon(
+                            state.isGridView ? Icons.list : Icons.grid_view),
+                        onPressed: _toggleViewMode,
+                        tooltip: state.isGridView ? 'List view' : 'Grid view',
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () async {
+                      // Navigate to create prompt screen
+                      final result = await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const CreatePromptScreen(),
+                        ),
+                      );
+                      // Nếu quay lại với result = true (đã tạo prompt mới), load lại danh sách
+                      if (result == true) {
+                        _loadPrompts();
                       }
                     },
                   ),
-                ),
-              ],
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
+                ],
+              ),
+              drawer: MainAppDrawer(
+                currentIndex: 3,
+                onTabSelected: (index) =>
+                    navigation_utils.handleDrawerNavigation(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const CreatePromptScreen()),
-                ).then((result) {
-                  if (result != null) {
-                    // Refresh the list if a prompt was created
-                    _loadPrompts();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Prompt created successfully')),
-                    );
-                  }
-                });
-              },
-              tooltip: 'Tạo Prompt Mới',
-              child: const Icon(Icons.add),
+                  index,
+                  currentIndex: 3,
+                ),
+              ),
+              body: Column(
+                children: [
+                  _buildSearchBar(),
+                  _buildCategoryFilter(),
+                  Expanded(
+                    child: BlocBuilder<PromptBloc, PromptState>(
+                      builder: (context, state) {
+                        if (state.status == PromptStatus.initial) {
+                          return const Center(
+                              child: Text('Hãy tìm kiếm prompt'));
+                        } else if (state.status == PromptStatus.loading &&
+                            state.prompts.isEmpty) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        } else {
+                          final sortedPrompts = state.sortedPrompts();
+                          return _buildPromptContentView(
+                              sortedPrompts, state.isGridView);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const CreatePromptScreen()),
+                  ).then((result) {
+                    if (result != null) {
+                      // Refresh the list if a prompt was created
+                      _loadPrompts();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Prompt created successfully')),
+                      );
+                    }
+                  });
+                },
+                tooltip: 'Tạo Prompt Mới',
+                child: const Icon(Icons.add),
+              ),
             ),
           );
         },
