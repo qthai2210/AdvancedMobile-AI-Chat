@@ -21,12 +21,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 
 class ChatDetailScreen extends StatefulWidget {
-  final String? threadId;
   final bool isNewChat;
+  final String? threadId;
   final String? initialPrompt;
 
-  const ChatDetailScreen(
-      {super.key, this.threadId, required this.isNewChat, this.initialPrompt});
+  const ChatDetailScreen({
+    Key? key,
+    this.isNewChat = false,
+    this.threadId,
+    this.initialPrompt,
+  }) : super(key: key);
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();

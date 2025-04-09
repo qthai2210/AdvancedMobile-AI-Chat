@@ -10,9 +10,7 @@ import 'package:aichatbot/domain/usecases/auth/login_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/logout_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/register_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
-//import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
-//import 'package:aichatbot/domain/usecases/prompt/get_prompts_usecase.dart';
-//import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/get_prompts_usecase.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 
@@ -30,10 +28,8 @@ Future<void> init() async {
 
   sl.registerFactory(
     () => PromptBloc(
+      getPromptsUsecase: sl(),
       createPromptUsecase: sl(),
-      //updatePromptUsecase: sl(),
-      //deletePromptUsecase: sl(),
-      //getPromptsUsecase: sl(),
     ),
   );
 
@@ -41,10 +37,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
   sl.registerLazySingleton(() => LogoutUsecase(sl()));
+  sl.registerLazySingleton(() => GetPromptsUsecase(sl()));
   sl.registerLazySingleton(() => CreatePromptUsecase(sl()));
-  //sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
-  //sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
-  //sl.registerLazySingleton(() => GetPromptsUsecase(sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(

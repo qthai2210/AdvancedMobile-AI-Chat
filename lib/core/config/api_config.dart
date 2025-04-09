@@ -1,8 +1,6 @@
 class ApiConfig {
   static const String authBaseUrl = 'https://auth-api.dev.jarvis.cx/api/v1';
   static const String jarvisBaseUrl = 'https://api.dev.jarvis.cx/api/v1';
-  static const String knowledgeBaseUrl =
-      'https://knowledge-api.dev.jarvis.cx/api/v1';
 
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',

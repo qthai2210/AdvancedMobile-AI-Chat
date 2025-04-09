@@ -2,6 +2,14 @@ import 'package:aichatbot/domain/entities/user.dart';
 
 enum AuthStatus { initial, loading, success, failure }
 
+extension AuthStatusX on AuthStatus {
+  bool get isInitial => this == AuthStatus.initial;
+  bool get isLoading => this == AuthStatus.loading;
+  bool get isSuccess => this == AuthStatus.success;
+  bool get isFailure => this == AuthStatus.failure;
+  bool get hasUser => isSuccess;
+}
+
 class AuthState {
   final AuthStatus status;
   final User? user;

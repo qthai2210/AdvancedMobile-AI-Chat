@@ -2,7 +2,7 @@ import 'package:aichatbot/data/datasources/remote/auth_api_service.dart';
 import 'package:aichatbot/domain/entities/user.dart';
 import 'package:aichatbot/domain/repositories/auth_repository.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
-import 'package:aichatbot/core/errors/failures.dart';
+import 'package:aichatbot/core/errors/auth_failure.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApiService authApiService;

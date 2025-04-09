@@ -1,4 +1,4 @@
-import 'package:aichatbot/domain/entities/prompt.dart';
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/domain/repositories/prompt_repository.dart';
 
 class CreatePromptUsecase {
@@ -6,23 +6,25 @@ class CreatePromptUsecase {
 
   CreatePromptUsecase(this.repository);
 
-  Future<Prompt> call({
+  Future<PromptModel> call({
     required String accessToken,
     required String title,
     required String content,
     required String description,
-    required List<String> categories,
+    required String category,
     required bool isPublic,
     required String language,
+    String? xJarvisGuid,
   }) async {
     return await repository.createPrompt(
       accessToken: accessToken,
       title: title,
       content: content,
       description: description,
-      categories: categories,
+      category: category,
       isPublic: isPublic,
       language: language,
+      xJarvisGuid: xJarvisGuid,
     );
   }
 }

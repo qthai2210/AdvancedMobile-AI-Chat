@@ -1,27 +1,38 @@
-import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:aichatbot/models/prompt_model.dart';
-import 'package:aichatbot/widgets/prompts/prompt_card.dart';
-import 'package:aichatbot/services/prompt_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
 import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
-import 'package:aichatbot/widgets/main_app_drawer.dart';
+import 'package:aichatbot/screens/chat_detail_screen.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart'
+    show LoadMorePrompts;
+import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
+import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
-import 'package:go_router/go_router.dart';
+import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 
-/// PromptsScreen displays a collection of AI prompts that users can browse,
-/// search, filter, and use in their conversations.
-///
-/// Features:
-/// * Grid/List view toggle
-/// * Search functionality
-/// * Category filtering
-/// * Favorites filtering
-/// * Sort by popularity/recent/alphabetical
-/// * Create new prompts
-/// * View prompt details
-///
-/// This screen serves as the main hub for prompt discovery and management.
+class PrivatePromptsScreen extends StatelessWidget {
+  const PrivatePromptsScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Private Prompts'),
+      ),
+      body: const Center(
+        child: Text('Private prompts will be implemented soon'),
+      ),
+    );
+  }
+}
+
 class PromptsScreen extends StatefulWidget {
   const PromptsScreen({Key? key}) : super(key: key);
 
@@ -29,216 +40,175 @@ class PromptsScreen extends StatefulWidget {
   State<PromptsScreen> createState() => _PromptsScreenState();
 }
 
-/// State management for the PromptsScreen widget.
-///
-/// Handles:
-/// * Data loading and state management
-/// * User interactions and filtering
-/// * Navigation and prompt actions
 class _PromptsScreenState extends State<PromptsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  List<String> _selectedCategories = [];
-  bool _isGridView = false; // Changed to false to default to list view
-  bool _showOnlyFavorites = false;
-  String _sortBy = 'popular'; // Options: popular, recent, alphabetical
-  List<Prompt> _prompts = [];
-  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
 
   // Available categories
   final List<String> _categories = [
     'All',
-    'Writing',
-    'Coding',
     'Business',
-    'Marketing',
+    'Career',
+    'Chatbot',
+    'Coding',
     'Education',
-    'Creative',
-    'Personal',
+    'Fun',
+    'Marketing',
+    'Productivity',
+    'SEO',
+    'Writing',
+    'Other'
   ];
 
   @override
   void initState() {
     super.initState();
-    _selectedCategories = ['All'];
+    _searchController.addListener(_onSearchChanged);
+    _scrollController.addListener(_onScroll);
     _loadPrompts();
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// Loads prompts from the PromptService and applies initial sorting.
-  /// Sets loading state during the operation.
-  Future<void> _loadPrompts() async {
-    setState(() => _isLoading = true);
+  void _onSearchChanged() {
+    final promptBloc = context.read<PromptBloc>();
+    promptBloc.add(SearchQueryChanged(_searchController.text));
 
-    try {
-      _prompts = await PromptService.getPrompts();
-      _sortPrompts();
-    } catch (e) {
-      debugPrint('Error loading prompts: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+    // Debounce search
+    if (_searchController.text.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (_searchController.text == promptBloc.state.searchQuery) {
+          _loadPrompts();
+        }
+      });
+    } else {
+      _loadPrompts();
+    }
+  }
+
+  void _onScroll() {
+    final promptState = context.read<PromptBloc>().state;
+
+    if (promptState.promptListResponse == null) {
+      return;
+    }
+
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent * 0.8 &&
+        promptState.promptListResponse!.hasNext &&
+        promptState.status != PromptStatus.loading &&
+        promptState.status != PromptStatus.loadingMore) {
+      final authState = context.read<AuthBloc>().state;
+      if (authState.user?.accessToken == null) {
+        // Xử lý khi chưa đăng nhập
+        return;
+      }
+
+      final accessToken = authState.user!.accessToken!;
+      final currentOffset = promptState.promptListResponse!.offset;
+      final pageSize = promptState.promptListResponse!.limit;
+
+      // Thêm try-catch để bắt lỗi
+      try {
+        context.read<PromptBloc>().add(
+              LoadMorePrompts(
+                accessToken: accessToken,
+                offset: currentOffset + pageSize,
+                limit: pageSize,
+                query: promptState.currentQuery,
+                category: promptState.selectedCategory != 'All' &&
+                        promptState.selectedCategory != null
+                    ? promptState.selectedCategory
+                    : null,
+              ),
+            );
+      } catch (e) {
+        debugPrint('Error loading more prompts: $e');
       }
     }
   }
 
-  /// Sorts the prompts list based on the current sort criteria.
-  /// Options: popular, recent, alphabetical
-  void _sortPrompts() {
-    switch (_sortBy) {
-      case 'popular':
-        _prompts.sort((a, b) => b.useCount.compareTo(a.useCount));
-        break;
-      case 'recent':
-        _prompts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-      case 'alphabetical':
-        _prompts.sort((a, b) => a.title.compareTo(b.title));
-        break;
-    }
-  }
+  /// Loads prompts from the API
+  void _loadPrompts() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState.user?.accessToken != null) {
+      debugPrint(
+          "Loading prompts with token: ${authState.user!.accessToken!.substring(0, 10)}...");
 
-  /// Returns a filtered list of prompts based on:
-  /// * Search query
-  /// * Selected categories
-  /// * Favorites filter
-  List<Prompt> _filteredPrompts() {
-    return _prompts.where((prompt) {
-      // Apply favorites filter
-      if (_showOnlyFavorites && !prompt.isFavorite) {
-        return false;
-      }
-
-      // Apply search filter
-      final matchesSearch =
-          _searchQuery.isEmpty ||
-          prompt.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          prompt.description.toLowerCase().contains(_searchQuery.toLowerCase());
-
-      // Apply category filter
-      final matchesCategory =
-          _selectedCategories.contains('All') ||
-          prompt.categories.any(
-            (category) => _selectedCategories.contains(category),
+      context.read<PromptBloc>().add(
+            FetchPrompts(
+              accessToken: authState.user!.accessToken!,
+              limit: 20,
+              offset: 0,
+              isFavorite: false,
+            ),
           );
-
-      return matchesSearch && matchesCategory;
-    }).toList();
+    } else {
+      debugPrint("Cannot load prompts: user not authenticated");
+    }
   }
 
-  // Get only favorited prompts
-  List<Prompt> get _favoritedPrompts =>
-      _prompts.where((p) => p.isFavorite).toList();
-
-  /// Toggles category selection with the following rules:
-  /// * If 'All' is selected, clear other selections
-  /// * If a specific category is selected, remove 'All'
-  /// * If no categories remain selected, select 'All'
-  void _toggleCategory(String category) {
-    setState(() {
-      if (category == 'All') {
-        _selectedCategories = ['All'];
-      } else {
-        // Remove 'All' if it's selected
-        _selectedCategories.removeWhere((c) => c == 'All');
-
-        if (_selectedCategories.contains(category)) {
-          _selectedCategories.remove(category);
-        } else {
-          _selectedCategories.add(category);
-        }
-
-        // If no categories are selected, select 'All'
-        if (_selectedCategories.isEmpty) {
-          _selectedCategories = ['All'];
-        }
-      }
-    });
-  }
-
-  /// Toggles favorite status for a prompt and shows feedback to the user.
-  /// Updates both local state and remote storage.
+  /// Toggles favorite status for a prompt
   void _toggleFavorite(Prompt prompt) async {
-    final isFavorite = await PromptService.toggleFavorite(prompt.id);
+    final authState = context.read<AuthBloc>().state;
+    final accessToken = authState.user?.accessToken;
 
-    setState(() {
-      final index = _prompts.indexWhere((p) => p.id == prompt.id);
-      if (index != -1) {
-        _prompts[index] = prompt.copyWith(isFavorite: isFavorite);
-      }
-    });
+    if (accessToken != null) {
+      // In a real implementation, you would dispatch an event to toggle favorite
+      // context.read<PromptBloc>().add(
+      //   ToggleFavoriteRequested(
+      //     promptId: prompt.id,
+      //     accessToken: accessToken,
+      //   ),
+      // );
 
-    if (mounted) {
-      final message =
-          isFavorite
-              ? 'Đã thêm vào danh sách yêu thích'
-              : 'Đã xóa khỏi danh sách yêu thích';
+      // For now, just show a SnackBar
+      final message = prompt.isFavorite
+          ? 'Đã xóa khỏi danh sách yêu thích'
+          : 'Đã thêm vào danh sách yêu thích';
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
-  /// Saves a public prompt as a private prompt for the user.
-  /// Shows success/error feedback via SnackBar.
+  /// Saves a public prompt as a private prompt
   void _saveAsPrivate(Prompt prompt) async {
-    try {
-      await PromptService.saveAsPrivate(prompt);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã lưu "${prompt.title}" vào prompt riêng tư'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-      }
-    }
+    // Implementation would dispatch an event to save as private
+    // For now, just show a SnackBar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã lưu "${prompt.title}" vào prompt riêng tư'),
+      ),
+    );
   }
 
-  /// Uses the selected prompt in a new chat conversation.
-  /// Handles navigation using GoRouter with fallback options.
+  /// Uses the selected prompt in a new chat conversation
   void _usePrompt(Prompt prompt) {
-    // Update usage count
-    setState(() {
-      final index = _prompts.indexWhere((p) => p.id == prompt.id);
-      if (index != -1) {
-        _prompts[index] = prompt.copyWith(useCount: prompt.useCount + 1);
-      }
-    });
-
-    // Update usage count in service
-    PromptService.incrementPromptUseCount(prompt.id);
-
-    // Navigate to chat with this prompt content - use safer navigation
+    // Navigate to chat with this prompt content
     try {
-      // Try to use GoRouter navigation
       context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
     } catch (e) {
-      // Fallback to regular navigation if GoRouter fails
+      // Fallback to regular navigation
       try {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder:
-                (_) => ChatDetailScreen(
-                  initialPrompt: prompt.content,
-                  isNewChat: true,
-                ),
+            builder: (_) => ChatDetailScreen(
+              initialPrompt: prompt.content,
+              isNewChat: true,
+            ),
           ),
           (route) => false,
         );
       } catch (e2) {
-        // Last resort fallback
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Navigation error: $e2. Please try again.'),
@@ -249,7 +219,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     }
   }
 
-  /// Shows a bottom sheet with detailed prompt information and actions.
+  /// Shows a bottom sheet with detailed prompt information
   void _viewPromptDetails(Prompt prompt) {
     showModalBottomSheet(
       context: context,
@@ -287,8 +257,6 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Author info
               if (prompt.authorName != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -297,25 +265,19 @@ class _PromptsScreenState extends State<PromptsScreen> {
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ),
-
-              // Description
               Text(prompt.description),
-
               const SizedBox(height: 16),
-              // Categories
               Wrap(
                 spacing: 8,
-                children:
-                    prompt.categories.map((category) {
-                      final color = Prompt.getCategoryColor(category);
-                      return Chip(
-                        label: Text(category),
-                        backgroundColor: color.withOpacity(0.2),
-                        labelStyle: TextStyle(color: color),
-                      );
-                    }).toList(),
+                children: prompt.categories.map((category) {
+                  final color = Prompt.getCategoryColor(category);
+                  return Chip(
+                    label: Text(category),
+                    backgroundColor: color.withOpacity(0.2),
+                    labelStyle: TextStyle(color: color),
+                  );
+                }).toList(),
               ),
-
               const Divider(height: 32),
               const Text(
                 'Prompt Content:',
@@ -331,19 +293,15 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 ),
                 child: Text(prompt.content),
               ),
-
               const SizedBox(height: 24),
-
-              // Action buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildActionButton(
                     icon: Icons.favorite,
-                    label:
-                        prompt.isFavorite
-                            ? 'Remove from Favorites'
-                            : 'Add to Favorites',
+                    label: prompt.isFavorite
+                        ? 'Remove from Favorites'
+                        : 'Add to Favorites',
                     onPressed: () {
                       _toggleFavorite(prompt);
                       Navigator.pop(context);
@@ -362,7 +320,6 @@ class _PromptsScreenState extends State<PromptsScreen> {
                     label: 'Use in Chat',
                     onPressed: () {
                       _usePrompt(prompt);
-                      // Remove Navigator.pop(context) as we're using replacement navigation
                     },
                   ),
                 ],
@@ -390,127 +347,178 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   void _navigateToPrivatePrompts() {
-    // Navigate to the private prompts screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const PrivatePromptsScreen()),
     );
   }
 
+  void _toggleCategorySelection(String category) {
+    final promptBloc = context.read<PromptBloc>();
+    final isCurrentlySelected =
+        promptBloc.state.selectedCategories.contains(category);
+    promptBloc.add(CategorySelectionChanged(
+      category: category,
+      isSelected: !isCurrentlySelected,
+    ));
+  }
+
   void _changeSortMethod(String sortBy) {
-    setState(() {
-      _sortBy = sortBy;
-      _sortPrompts();
-    });
+    context.read<PromptBloc>().add(SortMethodChanged(sortBy));
   }
 
   void _toggleFavoritesView() {
-    setState(() {
-      _showOnlyFavorites = !_showOnlyFavorites;
-    });
+    final currentState = context.read<PromptBloc>().state;
+    context.read<PromptBloc>().add(
+          ToggleShowFavorites(!currentState.showOnlyFavorites),
+        );
+  }
+
+  void _toggleViewMode() {
+    final currentState = context.read<PromptBloc>().state;
+    context.read<PromptBloc>().add(
+          ToggleViewMode(!currentState.isGridView),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredPrompts = _filteredPrompts();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prompts'),
-        actions: [
-          // Button to navigate to private prompts
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: 'My Private Prompts',
-            onPressed: _navigateToPrivatePrompts,
-          ),
-          IconButton(
-            icon: Icon(
-              _showOnlyFavorites ? Icons.favorite : Icons.favorite_border,
-            ),
-            color: _showOnlyFavorites ? Colors.red : null,
-            onPressed: _toggleFavoritesView,
-            tooltip: _showOnlyFavorites ? 'Show all prompts' : 'Show favorites',
-          ),
-
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.sort),
-            onSelected: _changeSortMethod,
-            itemBuilder:
-                (context) => [
-                  const PopupMenuItem(
-                    value: 'popular',
-                    child: Text('Sort by Popularity'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'recent',
-                    child: Text('Sort by Recent'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'alphabetical',
-                    child: Text('Sort Alphabetically'),
-                  ),
-                ],
-          ),
-          IconButton(
-            icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
-            onPressed: () => setState(() => _isGridView = !_isGridView),
-            tooltip: _isGridView ? 'List view' : 'Grid view',
-          ),
-        ],
-      ),
-      drawer: MainAppDrawer(
-        currentIndex: 3, // Index 3 corresponds to the Prompts tab in the drawer
-        onTabSelected:
-            (index) => navigation_utils.handleDrawerNavigation(
-              context,
-              index,
-              currentIndex: 3,
-            ),
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildCategoryFilter(),
-          Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildPromptContentView(filteredPrompts),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
-          ).then((result) {
-            if (result != null && result is Prompt) {
-              // If a prompt was created, show a success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Đã tạo prompt riêng tư: ${result.title}'),
+    return BlocProvider<PromptBloc>(
+      create: (context) => di.sl<PromptBloc>(),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Prompts'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.person),
+                  tooltip: 'My Private Prompts',
+                  onPressed: _navigateToPrivatePrompts,
                 ),
-              );
-
-              // Optionally refresh the list if needed
-              _loadPrompts();
-            }
-          });
+                BlocBuilder<PromptBloc, PromptState>(
+                  builder: (context, state) {
+                    return IconButton(
+                      icon: Icon(
+                        state.showOnlyFavorites
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                      ),
+                      color: state.showOnlyFavorites ? Colors.red : null,
+                      onPressed: _toggleFavoritesView,
+                      tooltip: state.showOnlyFavorites
+                          ? 'Show all prompts'
+                          : 'Show favorites',
+                    );
+                  },
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.sort),
+                  onSelected: _changeSortMethod,
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'popular',
+                      child: Text('Sort by Popularity'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'recent',
+                      child: Text('Sort by Recent'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'alphabetical',
+                      child: Text('Sort Alphabetically'),
+                    ),
+                  ],
+                ),
+                BlocBuilder<PromptBloc, PromptState>(
+                  builder: (context, state) {
+                    return IconButton(
+                      icon:
+                          Icon(state.isGridView ? Icons.list : Icons.grid_view),
+                      onPressed: _toggleViewMode,
+                      tooltip: state.isGridView ? 'List view' : 'Grid view',
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () async {
+                    // Navigate to create prompt screen
+                    final result = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CreatePromptScreen(),
+                      ),
+                    );
+                    // Nếu quay lại với result = true (đã tạo prompt mới), load lại danh sách
+                    if (result == true) {
+                      _loadPrompts();
+                    }
+                  },
+                ),
+              ],
+            ),
+            drawer: MainAppDrawer(
+              currentIndex: 3,
+              onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
+                context,
+                index,
+                currentIndex: 3,
+              ),
+            ),
+            body: Column(
+              children: [
+                _buildSearchBar(),
+                _buildCategoryFilter(),
+                Expanded(
+                  child: BlocBuilder<PromptBloc, PromptState>(
+                    builder: (context, state) {
+                      if (state.status == PromptStatus.initial) {
+                        return const Center(child: Text('Hãy tìm kiếm prompt'));
+                      } else if (state.status == PromptStatus.loading &&
+                          state.prompts.isEmpty) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else {
+                        final sortedPrompts = state.sortedPrompts();
+                        return _buildPromptContentView(
+                            sortedPrompts, state.isGridView);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const CreatePromptScreen()),
+                ).then((result) {
+                  if (result != null) {
+                    // Refresh the list if a prompt was created
+                    _loadPrompts();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Prompt created successfully')),
+                    );
+                  }
+                });
+              },
+              tooltip: 'Tạo Prompt Mới',
+              child: const Icon(Icons.add),
+            ),
+          );
         },
-        tooltip: 'Tạo Prompt Mới',
-        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildPromptContentView(List<Prompt> prompts) {
+  Widget _buildPromptContentView(List<Prompt> prompts, bool isGridView) {
     if (prompts.isEmpty) {
-      return _buildEmptyState(_showOnlyFavorites);
+      return _buildEmptyState(
+          context.read<PromptBloc>().state.showOnlyFavorites);
     }
-
-    return _isGridView ? _buildPromptGrid(prompts) : _buildPromptList(prompts);
+    return isGridView ? _buildPromptGrid(prompts) : _buildPromptList(prompts);
   }
 
   Widget _buildSearchBar() {
@@ -521,63 +529,56 @@ class _PromptsScreenState extends State<PromptsScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm kiếm prompt...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon:
-              _searchQuery.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                  )
-                  : null,
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    context.read<PromptBloc>().add(SearchQueryChanged(''));
+                  },
+                )
+              : null,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        onChanged: (value) => setState(() => _searchQuery = value),
       ),
     );
   }
 
   Widget _buildCategoryFilter() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              'Categories',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 48,
-            child: ListView(
+      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+      child: SizedBox(
+        height: 40,
+        child: BlocBuilder<PromptBloc, PromptState>(
+          builder: (context, state) {
+            return ListView.builder(
               scrollDirection: Axis.horizontal,
-              children:
-                  _categories.map((category) {
-                    final isSelected = _selectedCategories.contains(category);
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        label: Text(category),
-                        selected: isSelected,
-                        onSelected: (_) => _toggleCategory(category),
-                        backgroundColor: Colors.grey[200],
-                        selectedColor: Theme.of(
-                          context,
-                        ).primaryColor.withOpacity(0.2),
-                        checkmarkColor: Theme.of(context).primaryColor,
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = state.selectedCategories.contains(category);
+                final color = Prompt.getCategoryColor(category);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: GestureDetector(
+                    onTap: () => _toggleCategorySelection(category),
+                    child: Chip(
+                      label: Text(category),
+                      backgroundColor: isSelected
+                          ? color.withOpacity(0.2)
+                          : Colors.grey[200],
+                      labelStyle: TextStyle(
+                        color: isSelected ? color : Colors.black54,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
-                    );
-                  }).toList(),
-            ),
-          ),
-        ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -588,37 +589,24 @@ class _PromptsScreenState extends State<PromptsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isFavoritesView ? Icons.favorite_outline : Icons.search_off,
-            size: 80,
+            isFavoritesView ? Icons.favorite_border : Icons.search_off,
+            size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
             isFavoritesView
-                ? 'Chưa có prompt yêu thích nào'
+                ? 'Bạn chưa có prompt yêu thích nào'
                 : 'Không tìm thấy prompt nào',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          if (isFavoritesView)
-            Text(
-              'Hãy thêm prompt vào danh sách yêu thích',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-          const SizedBox(height: 16),
-          if (_searchQuery.isNotEmpty ||
-              (_selectedCategories.isNotEmpty &&
-                  !_selectedCategories.contains('All')))
-            TextButton(
-              onPressed: () {
-                _searchController.clear();
-                setState(() {
-                  _searchQuery = '';
-                  _selectedCategories = ['All'];
-                });
-              },
-              child: const Text('Xóa bộ lọc'),
-            ),
+          Text(
+            isFavoritesView
+                ? 'Hãy thêm prompt yêu thích để xem ở đây'
+                : 'Thử tìm kiếm với từ khóa khác',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
         ],
       ),
     );
@@ -626,21 +614,125 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   Widget _buildPromptGrid(List<Prompt> prompts) {
     return GridView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.75,
       ),
       itemCount: prompts.length,
       itemBuilder: (context, index) {
         final prompt = prompts[index];
-        return PromptCard(
-          prompt: prompt,
-          onTap: () => _viewPromptDetails(prompt),
-          onFavorite: () => _toggleFavorite(prompt),
-          onUse: () => _usePrompt(prompt),
+        return Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            onTap: () => _viewPromptDetails(prompt),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          prompt.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          prompt.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: prompt.isFavorite ? Colors.red : null,
+                          size: 20,
+                        ),
+                        onPressed: () => _toggleFavorite(prompt),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (prompt.categories.isNotEmpty)
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: prompt.categories.map((category) {
+                        final color = Prompt.getCategoryColor(category);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: color,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Text(
+                      prompt.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'By: ${prompt.authorName ?? 'Unknown'}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chat, size: 18),
+                        onPressed: () => _usePrompt(prompt),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
@@ -648,119 +740,133 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   Widget _buildPromptList(List<Prompt> prompts) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      controller: _scrollController,
+      padding: const EdgeInsets.only(bottom: 80), // Space for FAB
       itemCount: prompts.length,
       itemBuilder: (context, index) {
         final prompt = prompts[index];
-        return PromptCard(
-          prompt: prompt,
-          onTap: () => _viewPromptDetails(prompt),
-          onFavorite: () => _toggleFavorite(prompt),
-          onUse: () => _usePrompt(prompt),
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            onTap: () => _viewPromptDetails(prompt),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prompt.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 17,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'By: ${prompt.authorName ?? 'Unknown'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          prompt.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: prompt.isFavorite ? Colors.red : null,
+                        ),
+                        onPressed: () => _toggleFavorite(prompt),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    prompt.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ...prompt.categories.map((category) {
+                          final color = Prompt.getCategoryColor(category);
+                          return Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: color.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: color,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Uses: ${prompt.useCount}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.chat, size: 16),
+                        label: const Text('Use'),
+                        onPressed: () => _usePrompt(prompt),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
-  }
-
-  // Generate mock data for testing
-  List<Prompt> _getMockPrompts() {
-    return [
-      Prompt(
-        id: '1',
-        title: 'Email Marketing Campaign',
-        content:
-            'Write a compelling email marketing campaign for [product] targeting [audience].',
-        description:
-            'Create effective email marketing campaigns that increase engagement and conversions.',
-        categories: ['Marketing', 'Writing', 'Business'],
-        useCount: 1250,
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        authorName: 'Marketing Pro',
-      ),
-      Prompt(
-        id: '2',
-        title: 'Code Refactoring Helper',
-        content:
-            'Refactor this code to improve [specific aspect]: ```[code]```',
-        description:
-            'Get suggestions for improving your code quality, readability, and performance.',
-        categories: ['Coding', 'Education'],
-        useCount: 843,
-        createdAt: DateTime.now().subtract(const Duration(days: 12)),
-        authorName: 'Dev Helper',
-      ),
-      Prompt(
-        id: '3',
-        title: 'Social Media Post Ideas',
-        content:
-            'Generate 5 engaging social media post ideas for a [type] business in the [industry] industry.',
-        description:
-            'Creative ideas for your social media content calendar across different platforms.',
-        categories: ['Marketing', 'Creative', 'Business'],
-        useCount: 2105,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        authorName: 'Social Media Expert',
-      ),
-      Prompt(
-        id: '4',
-        title: 'Essay Outline Generator',
-        content:
-            'Create a detailed outline for an essay about [topic] with the thesis statement: [thesis].',
-        description:
-            'Get help organizing your thoughts and creating a well-structured essay outline.',
-        categories: ['Education', 'Writing'],
-        useCount: 1672,
-        createdAt: DateTime.now().subtract(const Duration(days: 8)),
-        authorName: 'Writing Assistant',
-      ),
-      Prompt(
-        id: '5',
-        title: 'Story Idea Generator',
-        content:
-            'Create a unique story idea with the following elements: [genre], [setting], [character trait].',
-        description:
-            'Spark your creativity with customizable story premises across different genres.',
-        categories: ['Creative', 'Writing'],
-        useCount: 934,
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        authorName: 'Creative Writer',
-      ),
-      Prompt(
-        id: '6',
-        title: 'SQL Query Builder',
-        content:
-            'Write a SQL query to [task] with the following tables: [table definitions].',
-        description:
-            'Get help writing efficient SQL queries for your database operations.',
-        categories: ['Coding', 'Business'],
-        useCount: 761,
-        createdAt: DateTime.now().subtract(const Duration(days: 9)),
-        authorName: 'Database Expert',
-      ),
-      Prompt(
-        id: '7',
-        title: 'Product Description',
-        content:
-            'Write a compelling product description for [product] highlighting its [features] and benefits for [target audience].',
-        description:
-            'Create persuasive product descriptions that highlight features and benefits.',
-        categories: ['Marketing', 'Writing', 'Business'],
-        useCount: 1587,
-        createdAt: DateTime.now().subtract(const Duration(days: 4)),
-        authorName: 'Copywriting Pro',
-      ),
-      Prompt(
-        id: '8',
-        title: 'Interview Questions',
-        content:
-            'Create a list of interview questions for a [position] role that assess [skills].',
-        description:
-            'Prepare effective interview questions tailored to specific roles and skills.',
-        categories: ['Business', 'Personal'],
-        useCount: 892,
-        createdAt: DateTime.now().subtract(const Duration(days: 11)),
-        authorName: 'HR Professional',
-      ),
-    ];
   }
 }

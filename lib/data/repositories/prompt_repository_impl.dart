@@ -1,9 +1,9 @@
+import 'package:aichatbot/core/errors/exceptions.dart';
+import 'package:aichatbot/core/errors/failures.dart';
 import 'package:aichatbot/data/datasources/remote/prompt_api_service.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/domain/repositories/prompt_repository.dart';
-import 'package:aichatbot/core/errors/exceptions.dart';
-import 'package:aichatbot/core/errors/failures.dart';
 
 class PromptRepositoryImpl implements PromptRepository {
   final PromptApiService promptApiService;
@@ -11,18 +11,47 @@ class PromptRepositoryImpl implements PromptRepository {
   PromptRepositoryImpl({required this.promptApiService});
 
   @override
-  Future<Prompt> createPrompt({
+  Future<Map<String, dynamic>> getPrompts({
+    required String accessToken,
+    String? query,
+    int? offset,
+    int? limit,
+    String? category,
+    bool? isFavorite,
+    bool? isPublic,
+  }) async {
+    try {
+      return await promptApiService.getPrompts(
+        accessToken: accessToken,
+        query: query,
+        offset: offset,
+        limit: limit,
+        category: category,
+        isFavorite: isFavorite,
+        isPublic: isPublic,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    } on UnauthorizedException catch (e) {
+      throw AuthFailure(e.message);
+    } catch (e) {
+      throw UnexpectedFailure(e.toString());
+    }
+  }
+
+  @override
+  Future<PromptModel> createPrompt({
     required String accessToken,
     required String title,
     required String content,
     required String description,
-    required List<String> categories,
+    required String category,
     required bool isPublic,
     required String language,
+    String? xJarvisGuid,
   }) async {
     try {
-      final String category = categories.isNotEmpty ? categories[0] : 'Writing';
-      final promptModel = await promptApiService.createPrompt(
+      final response = await promptApiService.createPrompt(
         accessToken: accessToken,
         title: title,
         content: content,
@@ -30,12 +59,16 @@ class PromptRepositoryImpl implements PromptRepository {
         category: category,
         isPublic: isPublic,
         language: language,
+        xJarvisGuid: xJarvisGuid,
       );
-      return promptModel;
+
+      return PromptModel.fromJson(response);
     } on ServerException catch (e) {
-      throw PromptFailure(e.message);
+      throw ServerFailure(e.message);
+    } on UnauthorizedException catch (e) {
+      throw AuthFailure(e.message);
     } catch (e) {
-      throw PromptFailure('Unexpected error: $e');
+      throw UnexpectedFailure(e.toString());
     }
   }
 
@@ -44,34 +77,8 @@ class PromptRepositoryImpl implements PromptRepository {
     required String accessToken,
     required Prompt prompt,
   }) async {
-    try {
-      final promptModel = await promptApiService.updatePrompt(
-        accessToken: accessToken,
-        promptId: prompt.id,
-        promptData: (prompt as PromptModel).toJson(),
-      );
-      return promptModel;
-    } on ServerException catch (e) {
-      throw PromptFailure(e.message);
-    } catch (e) {
-      throw PromptFailure('Unexpected error: $e');
-    }
-  }
-
-  @override
-  Future<List<Prompt>> getPrompts({
-    required String accessToken,
-  }) async {
-    try {
-      final promptModels = await promptApiService.getPrompts(
-        accessToken: accessToken,
-      );
-      return promptModels;
-    } on ServerException catch (e) {
-      throw PromptFailure(e.message);
-    } catch (e) {
-      throw PromptFailure('Unexpected error: $e');
-    }
+    // Implement update method as needed
+    throw UnimplementedError();
   }
 
   @override
@@ -79,15 +86,16 @@ class PromptRepositoryImpl implements PromptRepository {
     required String accessToken,
     required String promptId,
   }) async {
-    try {
-      await promptApiService.deletePrompt(
-        accessToken: accessToken,
-        promptId: promptId,
-      );
-    } on ServerException catch (e) {
-      throw PromptFailure(e.message);
-    } catch (e) {
-      throw PromptFailure('Unexpected error: $e');
-    }
+    // Implement delete method as needed
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> toggleFavorite({
+    required String accessToken,
+    required String promptId,
+  }) async {
+    // Implement toggle favorite method as needed
+    throw UnimplementedError();
   }
 }

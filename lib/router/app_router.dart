@@ -9,6 +9,7 @@ import 'package:aichatbot/screens/register_screen.dart';
 import 'package:aichatbot/screens/home_screen.dart';
 import 'package:aichatbot/screens/chat_ai_screen.dart';
 import 'package:aichatbot/screens/chat_detail_screen.dart';
+import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
 
 class AppRouter {
   static final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -59,6 +60,11 @@ class AppRouter {
         path: '/prompts',
         name: 'prompts',
         builder: (context, state) => const PromptsScreen(),
+      ),
+      GoRoute(
+        path: '/prompts/create',
+        name: 'createPrompt',
+        builder: (context, state) => const CreatePromptScreen(),
       ),
       // Updated route for chat detail to handle deep linking
       GoRoute(

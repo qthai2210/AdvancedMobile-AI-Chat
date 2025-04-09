@@ -5,6 +5,8 @@ import 'package:aichatbot/domain/usecases/auth/login_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/register_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/logout_usecase.dart';
 import 'package:aichatbot/core/errors/failures.dart';
+
+// Ensure that AuthFailure is defined in the 'failures.dart' file or replace it with the correct class name.
 import 'package:go_router/go_router.dart';
 
 /// Authentication bloc that handles user authentication states and events.
@@ -68,7 +70,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.success,
         user: user,
       ));
-    } on AuthFailure catch (failure) {
+    } on Failure catch (failure) {
       emit(state.copyWith(
         status: AuthStatus.failure,
         errorMessage: failure.message,
@@ -131,9 +133,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       emit(state.copyWith(
         status: AuthStatus.success,
-        user: user,
       ));
-    } on AuthFailure catch (failure) {
+    } on Failure catch (failure) {
+      // If AuthFailure is a specific subclass of Failure, ensure it is defined and replace 'Failure' with 'AuthFailure'.
       emit(state.copyWith(
         status: AuthStatus.failure,
         errorMessage: failure.message,
@@ -177,7 +179,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (event.context != null && event.context!.mounted) {
         event.context!.go('/login');
       }
-    } on AuthFailure catch (failure) {
+    } on Failure catch (failure) {
       // Log the error
       print('Logout error: ${failure.message}');
 

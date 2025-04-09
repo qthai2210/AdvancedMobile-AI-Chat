@@ -46,6 +46,16 @@ class Prompt {
         return Colors.pink;
       case 'personal':
         return Colors.teal;
+      case 'career':
+        return Colors.deepOrange;
+      case 'chatbot':
+        return Colors.indigo;
+      case 'fun':
+        return Colors.pinkAccent;
+      case 'productivity':
+        return Colors.lightBlue;
+      case 'seo':
+        return Colors.cyan;
       default:
         return Colors.grey;
     }

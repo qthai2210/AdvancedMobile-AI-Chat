@@ -1,8 +1,8 @@
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
-import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/router/app_router.dart';
 
 void main() async {
