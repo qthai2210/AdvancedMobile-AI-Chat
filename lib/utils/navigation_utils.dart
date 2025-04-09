@@ -33,15 +33,18 @@ void handleDrawerNavigation(BuildContext context, int index,
       context.go('/prompts');
       break;
     case 4:
-      // Settings - chưa có route
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings screen coming soon')),
-      );
+      context.go('/bot_management');
       break;
     case 5:
       // Help & Support - chưa có route
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Help & Support coming soon')),
+      );
+      break;
+    case 6:
+      // Settings - chưa có route
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Settings screen coming soon')),
       );
       break;
   }

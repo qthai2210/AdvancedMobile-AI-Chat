@@ -1,3 +1,4 @@
+import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
@@ -45,6 +46,11 @@ class AppRouter {
         path: '/chat',
         name: 'chat',
         builder: (context, state) => const ChatAIScreen(),
+      ),
+      GoRoute(
+        path: '/bot_management',
+        name: 'bot_management',
+        builder: (context, state) => const BotListScreen(),
       ),
       GoRoute(
         path: '/email',
