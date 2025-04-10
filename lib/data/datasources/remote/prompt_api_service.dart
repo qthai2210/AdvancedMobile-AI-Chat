@@ -1,15 +1,16 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:aichatbot/core/config/api_config.dart';
-import 'package:aichatbot/core/errors/exceptions.dart';
+import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:dio/dio.dart';
+
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+import 'package:aichatbot/core/network/api_service.dart';
 
 class PromptApiService {
-  final http.Client client;
-  final Map<String, String> _headers = ApiConfig.defaultHeaders;
-
-  PromptApiService({required this.client});
-
+  final ApiService _apiService = sl.get<ApiService>();
+  PromptApiService() {
+    // Set the base URL for the Dio instance
+    _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
+  }
   // Phương thức lấy danh sách prompts
   Future<Map<String, dynamic>> getPrompts({
     required String accessToken,
@@ -21,58 +22,36 @@ class PromptApiService {
     bool? isPublic,
   }) async {
     // Build query parameters
-    final queryParams = <String, String>{};
+    final queryParams = <String, dynamic>{};
     if (query != null && query.isNotEmpty) queryParams['query'] = query;
-    if (offset != null) queryParams['offset'] = offset.toString();
-    if (limit != null) queryParams['limit'] = limit.toString();
+    if (offset != null) queryParams['offset'] = offset;
+    if (limit != null) queryParams['limit'] = limit;
     if (category != null &&
         category.isNotEmpty &&
         category.toLowerCase() != 'all')
       queryParams['category'] = category.toLowerCase();
-    if (isFavorite != null) queryParams['isFavorite'] = isFavorite.toString();
-    if (isPublic != null) queryParams['isPublic'] = isPublic.toString();
-
-    final Uri uri = Uri.parse('${ApiConfig.jarvisBaseUrl}/prompts')
-        .replace(queryParameters: queryParams);
-
-    final headers = {
-      ..._headers,
-      'Authorization': 'Bearer $accessToken',
-      'Accept': 'application/json',
-    };
+    if (isFavorite != null) queryParams['isFavorite'] = isFavorite;
+    if (isPublic != null) queryParams['isPublic'] = isPublic;
 
     try {
-      // Logging API details for debugging
-      print('--------- API REQUEST: GET PROMPTS ---------');
-      print('URL: $uri');
-      print('Headers: ${_sanitizeHeadersForLog(headers)}');
-      print('Query Parameters: $queryParams');
+      final response = await _apiService.dio.get(
+        '/prompts',
+        queryParameters: queryParams,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Accept': 'application/json',
+          },
+        ),
+      );
 
-      final response = await client
-          .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 30));
-
-      // Log response
-      print('--------- API RESPONSE: GET PROMPTS ---------');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${_truncateResponseForLog(response.body)}');
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else if (response.statusCode == 401) {
-        // Sửa lỗi ở đây - tạo đối tượng mới của UnauthorizedException
-        throw UnauthorizedException('Unauthorized: ${response.body}');
-      } else {
-        throw ServerException('Failed to get prompts: ${response.body}');
-      }
+      return _apiService.handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data as Map<String, dynamic>,
+      );
     } catch (e) {
-      print('--------- API ERROR: GET PROMPTS ---------');
-      print('Error: $e');
-
-      if (e is UnauthorizedException || e is ServerException) {
-        rethrow;
-      }
-      throw ServerException('Failed to get prompts: $e');
+      final exception = _apiService.handleError(e);
+      throw exception;
     }
   }
 
@@ -87,10 +66,7 @@ class PromptApiService {
     required String language,
     String? xJarvisGuid,
   }) async {
-    final Uri uri = Uri.parse('${ApiConfig.jarvisBaseUrl}/prompts');
-
     final headers = {
-      ..._headers,
       'Authorization': 'Bearer $accessToken',
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -110,44 +86,20 @@ class PromptApiService {
       'language': language,
     };
 
-    final encodedBody = jsonEncode(body);
-
     try {
-      // Log request details
-      print('--------- API REQUEST: CREATE PROMPT ---------');
-      print('URL: $uri');
-      print('Headers: ${_sanitizeHeadersForLog(headers)}');
-      print('Body: $body');
+      final response = await _apiService.dio.post(
+        '/prompts',
+        data: body,
+        options: Options(headers: headers),
+      );
 
-      final response = await client
-          .post(
-            uri,
-            headers: headers,
-            body: encodedBody,
-          )
-          .timeout(const Duration(seconds: 30));
-
-      // Log response
-      print('--------- API RESPONSE: CREATE PROMPT ---------');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${_truncateResponseForLog(response.body)}');
-
-      if (response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else if (response.statusCode == 401) {
-        throw UnauthorizedException('Unauthorized: ${response.body}');
-      } else {
-        throw ServerException(
-            'Failed to create prompt (${response.statusCode}): ${response.body}');
-      }
+      return _apiService.handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data as Map<String, dynamic>,
+      );
     } catch (e) {
-      print('--------- API ERROR: CREATE PROMPT ---------');
-      print('Error: $e');
-
-      if (e is UnauthorizedException || e is ServerException) {
-        rethrow;
-      }
-      throw ServerException('Failed to create prompt: $e');
+      final exception = _apiService.handleError(e);
+      throw exception;
     }
   }
 
@@ -156,44 +108,25 @@ class PromptApiService {
     required String promptId,
     required Map<String, dynamic> promptData,
   }) async {
-    final Uri uri = Uri.parse('${ApiConfig.jarvisBaseUrl}/prompts/$promptId');
-
-    final headers = {
-      ..._headers,
-      'Authorization': 'Bearer $accessToken',
-    };
-
-    final encodedBody = jsonEncode(promptData);
-
     try {
-      // Log request details
-      print('--------- API REQUEST: UPDATE PROMPT ---------');
-      print('URL: $uri');
-      print('Headers: ${_sanitizeHeadersForLog(headers)}');
-      print('Body: $promptData');
+      final response = await _apiService.dio.put(
+        '/prompts/$promptId',
+        data: promptData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
 
-      final response = await client
-          .put(
-            uri,
-            headers: headers,
-            body: encodedBody,
-          )
-          .timeout(const Duration(seconds: 30));
-
-      // Log response
-      print('--------- API RESPONSE: UPDATE PROMPT ---------');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${_truncateResponseForLog(response.body)}');
-
-      if (response.statusCode == 200) {
-        return PromptModel.fromJson(jsonDecode(response.body));
-      } else {
-        throw ServerException('Failed to update prompt: ${response.body}');
-      }
+      return _apiService.handleResponse<PromptModel>(
+        response,
+        (data) => PromptModel.fromJson(data),
+      );
     } catch (e) {
-      print('--------- API ERROR: UPDATE PROMPT ---------');
-      print('Error: $e');
-      throw ServerException('Failed to update prompt: $e');
+      final exception = _apiService.handleError(e);
+      throw exception;
     }
   }
 
@@ -201,38 +134,23 @@ class PromptApiService {
     required String accessToken,
     required String promptId,
   }) async {
-    final Uri uri = Uri.parse('${ApiConfig.jarvisBaseUrl}/prompts/$promptId');
-
-    final headers = {
-      ..._headers,
-      'Authorization': 'Bearer $accessToken',
-    };
-
     try {
-      // Log request details
-      print('--------- API REQUEST: DELETE PROMPT ---------');
-      print('URL: $uri');
-      print('Headers: ${_sanitizeHeadersForLog(headers)}');
+      final response = await _apiService.dio.delete(
+        '/prompts/$promptId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
+      );
 
-      final response = await client
-          .delete(
-            uri,
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
-
-      // Log response
-      print('--------- API RESPONSE: DELETE PROMPT ---------');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${_truncateResponseForLog(response.body)}');
-
-      if (response.statusCode != 204) {
-        throw ServerException('Failed to delete prompt: ${response.body}');
-      }
+      _apiService.handleResponse<void>(
+        response,
+        (_) {}, // No data to return for successful delete
+      );
     } catch (e) {
-      print('--------- API ERROR: DELETE PROMPT ---------');
-      print('Error: $e');
-      throw ServerException('Failed to delete prompt: $e');
+      final exception = _apiService.handleError(e);
+      throw exception;
     }
   }
 

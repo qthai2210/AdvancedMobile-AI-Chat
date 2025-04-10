@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:aichatbot/core/network/api_service.dart';
 import 'package:aichatbot/data/datasources/remote/auth_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/prompt_api_service.dart';
 import 'package:aichatbot/data/repositories/auth_repository_impl.dart';
@@ -47,15 +48,20 @@ Future<void> init() async {
   sl.registerLazySingleton<PromptRepository>(
     () => PromptRepositoryImpl(promptApiService: sl()),
   );
+  // Core
+  sl.registerLazySingleton(() => ApiService());
 
   // Data sources
   sl.registerLazySingleton(
-    () => AuthApiService(client: sl()),
+    () => AuthApiService(),
   );
   sl.registerLazySingleton(
-    () => PromptApiService(client: sl()),
+    () => PromptApiService(),
   );
 
   // External
-  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      )));
 }

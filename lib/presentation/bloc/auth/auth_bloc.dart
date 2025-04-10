@@ -153,7 +153,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       LogoutRequested event, Emitter<AuthState> emit) async {
     if (state.user?.accessToken == null) {
       // If no user is logged in or no access token, just reset state
-      print("No user logged in or no access token, resetting state");
+
       emit(const AuthState(status: AuthStatus.initial));
 
       // Redirect to login page

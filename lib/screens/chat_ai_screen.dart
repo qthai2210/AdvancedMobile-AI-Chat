@@ -1,6 +1,6 @@
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+
 import 'package:aichatbot/screens/tabs/chat_tab.dart';
 import 'package:aichatbot/screens/tabs/profile_tab.dart';
 import 'package:aichatbot/screens/tabs/history_tab.dart';
@@ -49,11 +49,11 @@ class _ChatAIScreenState extends State<ChatAIScreen>
     const Color(0xFF6A3DE8), // Settings
   ];
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  // void _onTabTapped(int index) {
+  //   setState(() {
+  //     _currentIndex = index;
+  //   });
+  // }
 
   void _navigateToTab(int index) {
     // Handle the special case for Knowledge Base tab

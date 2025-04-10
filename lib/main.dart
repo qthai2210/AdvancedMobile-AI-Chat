@@ -10,7 +10,8 @@ void main() async {
 
   // Initialize dependency injection
   await di.init();
-
+  // remove deubg banner
+  // debugPaintSizeEnabled = false;
   runApp(const MyApp());
 }
 

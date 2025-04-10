@@ -3,6 +3,7 @@ import 'package:aichatbot/domain/entities/user.dart';
 import 'package:aichatbot/domain/repositories/auth_repository.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
 import 'package:aichatbot/core/errors/auth_failure.dart';
+import 'package:flutter/material.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApiService authApiService;
@@ -15,6 +16,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
+      print('Login request: $email, $password');
       final userModel = await authApiService.login(
         email: email,
         password: password,

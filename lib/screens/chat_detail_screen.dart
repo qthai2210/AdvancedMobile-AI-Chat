@@ -2,16 +2,13 @@ import 'package:aichatbot/screens/knowledge_management/knowledge_management_scre
 import 'package:aichatbot/widgets/chat/ai_agent_selector.dart';
 import 'package:aichatbot/widgets/chat/chat_dialogs.dart';
 import 'package:aichatbot/widgets/chat/chat_message_list.dart';
-import 'package:aichatbot/widgets/main_app_drawer.dart'; // Changed import
+import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/models/message_model.dart';
 import 'package:aichatbot/models/ai_agent_model.dart';
 import 'package:aichatbot/models/chat_thread.dart';
-import 'package:aichatbot/widgets/chat/message_bubble.dart';
-import 'package:aichatbot/widgets/chat/chat_input_field.dart';
-import 'package:aichatbot/widgets/chat/chat_history_overlay.dart';
-import 'package:aichatbot/widgets/chat/ai_typing_indicator.dart';
+
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
 import 'package:aichatbot/widgets/chat/image_preview.dart';
 import 'package:aichatbot/services/prompt_service.dart';

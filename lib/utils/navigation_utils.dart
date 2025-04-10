@@ -1,11 +1,5 @@
-import 'package:aichatbot/screens/email_composer_screen.dart';
-import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:aichatbot/screens/chat_ai_screen.dart';
-import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
-import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
-import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 
 /// Handles navigation from drawer tabs
 void handleDrawerNavigation(BuildContext context, int index,

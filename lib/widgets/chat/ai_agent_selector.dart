@@ -37,7 +37,7 @@ class AIAgentSelector extends StatelessWidget {
                   final agent = AIAgents.agents[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: agent.color.withOpacity(0.2),
+                      backgroundColor: agent.color,
                       child: Text(
                         agent.name.substring(0, 1),
                         style: TextStyle(

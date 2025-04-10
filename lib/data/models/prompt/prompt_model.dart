@@ -1,5 +1,4 @@
 import 'package:aichatbot/domain/entities/prompt.dart';
-import 'package:flutter/material.dart';
 
 class PromptModel extends Prompt {
   const PromptModel({
