@@ -8,6 +8,7 @@ import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:aichatbot/widgets/error_dialog.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -38,22 +39,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          // Show error dialog instead of SnackBar for better user experience
-          ErrorDialog.show(
-            context,
-            title: 'Registration Failed',
-            message: state.errorMessage != null
-                ? ErrorFormatter.formatAuthError(state.errorMessage!)
-                : 'Registration failed. Please try again.',
-            buttonText: 'Try Again',
+          debugPrint(
+              'Auth failure with message type: ${state.errorMessage.runtimeType}');
+
+          final formattedError =
+              ErrorFormatter.formatAuthError(state.errorMessage);
+          debugPrint('Formatted error: $formattedError');
+
+          context.showErrorNotification(
+            formattedError,
+            actionLabel: 'Thử lại',
           );
         } else if (state.status == AuthStatus.success) {
-          // Navigate directly to chat detail or chat screen
-          if (state.user?.directNavigationPath != null) {
-            context.go(state.user!.directNavigationPath!);
-          } else {
-            context.go('/chat');
-          }
+          // Xử lý thành công
         }
       },
       child: Scaffold(
@@ -248,7 +246,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // Register Button
           BlocBuilder<AuthBloc, AuthState>(
             buildWhen: (previous, current) => previous.status != current.status,
             builder: (context, state) {
@@ -256,20 +253,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 text: 'Create Account',
                 isLoading: state.status == AuthStatus.loading,
                 onPressed: () {
-                  if (_passwordController.text ==
-                      _confirmPasswordController.text) {
-                    context.read<AuthBloc>().add(
-                          RegisterSubmitted(
-                            name: _nameController.text,
-                            email: _emailController.text,
-                            password: _passwordController.text,
-                          ),
-                        );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Passwords don't match")),
+                  // Kiểm tra các field có dữ liệu không
+                  if (_nameController.text.isEmpty ||
+                      _emailController.text.isEmpty ||
+                      _passwordController.text.isEmpty ||
+                      _confirmPasswordController.text.isEmpty) {
+                    context.showWarningNotification(
+                      'Vui lòng điền đầy đủ thông tin',
                     );
+                    return;
                   }
+
+                  // Kiểm tra định dạng email
+                  final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRegExp.hasMatch(_emailController.text)) {
+                    context.showWarningNotification(
+                      'Email không đúng định dạng, vui lòng kiểm tra lại',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra password trùng khớp
+                  if (_passwordController.text !=
+                      _confirmPasswordController.text) {
+                    context.showWarningNotification(
+                      'Mật khẩu nhập lại không khớp',
+                    );
+                    return;
+                  }
+
+                  // Gửi form đăng ký
+                  context.read<AuthBloc>().add(
+                        RegisterSubmitted(
+                          name: _nameController.text,
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                        ),
+                      );
                 },
                 type: ButtonType.filled,
                 gradient: const LinearGradient(

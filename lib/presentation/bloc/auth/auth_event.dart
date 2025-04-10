@@ -12,7 +12,15 @@ class PasswordChanged extends AuthEvent {
   PasswordChanged(this.password);
 }
 
-class LoginSubmitted extends AuthEvent {}
+class LoginSubmitted extends AuthEvent {
+  final String email;
+  final String password;
+
+  LoginSubmitted({
+    required this.email,
+    required this.password,
+  });
+}
 
 class ForgotPasswordRequested extends AuthEvent {}
 
