@@ -91,7 +91,8 @@ class PromptState {
 
   List<PromptModel> sortedPrompts() {
     final filteredList = filteredPrompts();
-
+    print('Filtered prompts: ${filteredList.length}'); // Debugging line
+    print('Sort by: $sortBy'); // Debugging line
     switch (sortBy) {
       case 'popular':
         filteredList.sort((a, b) => b.useCount.compareTo(a.useCount));

@@ -400,12 +400,22 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<PromptBloc>(
-      create: (context) => di.sl<PromptBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<PromptBloc>.value(
+          value: di.sl<PromptBloc>(),
+        ),
+      ],
       child: Builder(
         builder: (context) {
+          // This will ensure the bloc is accessible in the current context
+          final promptBloc = context.read<PromptBloc>();
+          debugPrint('PromptBloc instance: $promptBloc');
+
           return BlocListener<PromptBloc, PromptState>(
+            bloc: promptBloc, // Explicitly provide the bloc instance
             listener: (context, state) {
+              debugPrint('BlocListener received state: ${state.status}');
               // Xử lý các trạng thái và hiển thị thông báo
               if (state.status == PromptStatus.failure) {
                 AppNotification.showError(
@@ -506,8 +516,34 @@ class _PromptsScreenState extends State<PromptsScreen> {
                   _buildSearchBar(),
                   _buildCategoryFilter(),
                   Expanded(
-                    child: BlocBuilder<PromptBloc, PromptState>(
+                    child: BlocConsumer<PromptBloc, PromptState>(
+                      bloc: promptBloc, // Explicitly provide the bloc instance
+                      listenWhen: (previous, current) =>
+                          previous.status != current.status ||
+                          previous.prompts.length != current.prompts.length,
+                      listener: (context, state) {
+                        debugPrint('PromptBloc state updated: ${state.status}');
+                        debugPrint('Prompts count: ${state.prompts.length}');
+                      },
+                      buildWhen: (previous, current) {
+                        debugPrint(
+                            'Checking if UI needs rebuild: ${previous.status} -> ${current.status}');
+                        debugPrint(
+                            'Previous prompts: ${previous.prompts.length}, Current prompts: ${current.prompts.length}');
+                        return previous.status != current.status ||
+                            previous.prompts != current.prompts ||
+                            previous.isGridView != current.isGridView ||
+                            previous.showOnlyFavorites !=
+                                current.showOnlyFavorites ||
+                            previous.searchQuery != current.searchQuery ||
+                            previous.selectedCategories !=
+                                current.selectedCategories ||
+                            previous.sortBy != current.sortBy;
+                      },
                       builder: (context, state) {
+                        debugPrint('Building UI with state: ${state.status}');
+                        debugPrint('Prompts count: ${state.prompts.length}');
+
                         if (state.status == PromptStatus.initial) {
                           return const Center(
                               child: Text('Hãy tìm kiếm prompt'));
@@ -517,6 +553,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
                               child: CircularProgressIndicator());
                         } else {
                           final sortedPrompts = state.sortedPrompts();
+                          debugPrint(
+                              'Sorted prompts count: ${sortedPrompts.length}');
                           return _buildPromptContentView(
                               sortedPrompts, state.isGridView);
                         }
@@ -553,11 +591,25 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   Widget _buildPromptContentView(List<Prompt> prompts, bool isGridView) {
-    if (prompts.isEmpty) {
-      return _buildEmptyState(
-          context.read<PromptBloc>().state.showOnlyFavorites);
-    }
-    return isGridView ? _buildPromptGrid(prompts) : _buildPromptList(prompts);
+    return BlocBuilder<PromptBloc, PromptState>(
+      builder: (context, state) {
+        // Get the most recent state to ensure we're displaying the latest data
+        final currentPrompts = state.sortedPrompts();
+
+        // Use debugPrint instead of print for more reliable output
+        debugPrint('Current prompts count: ${currentPrompts.length}');
+        if (currentPrompts.isNotEmpty) {
+          debugPrint('First prompt title: ${currentPrompts.first.title}');
+        }
+
+        if (currentPrompts.isEmpty) {
+          return _buildEmptyState(state.showOnlyFavorites);
+        }
+        return isGridView
+            ? _buildPromptGrid(currentPrompts)
+            : _buildPromptList(currentPrompts);
+      },
+    );
   }
 
   Widget _buildSearchBar() {

@@ -112,32 +112,4 @@ class AuthApiService {
       throw _apiService.handleError(e);
     }
   }
-
-  // Helper methods for logging
-  Map<String, dynamic> _sanitizeLoginBodyForLog(Map<String, dynamic> body) {
-    final sanitizedBody = Map<String, dynamic>.from(body);
-    if (sanitizedBody.containsKey('password')) {
-      sanitizedBody['password'] = '********';
-    }
-    return sanitizedBody;
-  }
-
-  Map<String, String> _sanitizeHeadersForLog(Map<String, String> headers) {
-    final sanitizedHeaders = Map<String, String>.from(headers);
-    if (sanitizedHeaders.containsKey('Authorization')) {
-      final authValue = sanitizedHeaders['Authorization'] ?? '';
-      if (authValue.length > 15) {
-        sanitizedHeaders['Authorization'] = '${authValue.substring(0, 15)}...';
-      }
-    }
-    return sanitizedHeaders;
-  }
-
-  String _truncateResponseForLog(String response) {
-    const maxLength = 1000;
-    if (response.length > maxLength) {
-      return '${response.substring(0, maxLength)}...';
-    }
-    return response;
-  }
 }

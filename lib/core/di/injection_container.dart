@@ -26,8 +26,7 @@ Future<void> init() async {
       logoutUsecase: sl(),
     ),
   );
-
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => PromptBloc(
       getPromptsUsecase: sl(),
       createPromptUsecase: sl(),

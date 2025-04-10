@@ -16,8 +16,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'user@example.com');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _emailController = TextEditingController(text: '2test@gmail.com');
+  final _passwordController = TextEditingController(text: '22102003T');
   bool _obscurePassword = true;
 
   @override
@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
               state.errorMessage ?? 'Đăng nhập thất bại');
         }
         if (state.status == AuthStatus.success) {
-          context.showSuccessNotification('Đăng nhập thành công');
+          //context.showSuccessNotification('Đăng nhập thành công');
 
           // Thêm đoạn code này để tự động chuyển trang
           Future.delayed(const Duration(milliseconds: 500), () {
