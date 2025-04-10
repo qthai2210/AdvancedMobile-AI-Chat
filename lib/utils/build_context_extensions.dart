@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:aichatbot/widgets/app_notification.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
+import 'package:aichatbot/widgets/error_dialog.dart';
+import 'package:aichatbot/widgets/success_dialog.dart';
 
 extension BuildContextExtensions on BuildContext {
   void showSuccessNotification(
@@ -9,12 +11,13 @@ extension BuildContextExtensions on BuildContext {
     String? actionLabel,
     Duration duration = const Duration(seconds: 3),
   }) {
-    AppNotification.showSuccess(
+    // Using the new SuccessDialog instead of SnackBar
+    SuccessDialog.show(
       this,
-      message,
-      onAction: onAction,
-      actionLabel: actionLabel,
-      duration: duration,
+      title: 'Success',
+      message: message,
+      buttonText: actionLabel ?? 'OK',
+      onButtonPressed: onAction ?? () => Navigator.of(this).pop(),
     );
   }
 
@@ -24,12 +27,13 @@ extension BuildContextExtensions on BuildContext {
     String? actionLabel,
     Duration duration = const Duration(seconds: 4),
   }) {
-    AppNotification.showError(
+    // Using the new ErrorDialog instead of SnackBar
+    ErrorDialog.show(
       this,
-      message,
-      onAction: onAction,
-      actionLabel: actionLabel,
-      duration: duration,
+      title: 'Error',
+      message: message,
+      buttonText: actionLabel ?? 'OK',
+      onButtonPressed: onAction ?? () => Navigator.of(this).pop(),
     );
   }
 
@@ -44,7 +48,6 @@ extension BuildContextExtensions on BuildContext {
       message,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
@@ -59,7 +62,6 @@ extension BuildContextExtensions on BuildContext {
       message,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
@@ -74,7 +76,6 @@ extension BuildContextExtensions on BuildContext {
       ErrorFormatter.formatApiError(error),
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
@@ -89,7 +90,6 @@ extension BuildContextExtensions on BuildContext {
       ErrorFormatter.formatAuthError(error),
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 }

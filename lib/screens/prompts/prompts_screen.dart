@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
-import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
+
 import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
-import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
+
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart'
@@ -15,7 +15,7 @@ import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:aichatbot/core/di/injection_container.dart' as di;
-import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+
 import 'package:aichatbot/widgets/app_notification.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:aichatbot/utils/build_context_extensions.dart';

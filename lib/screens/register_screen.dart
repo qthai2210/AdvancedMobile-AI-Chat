@@ -6,6 +6,8 @@ import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
+import 'package:aichatbot/utils/error_formatter.dart';
+import 'package:aichatbot/widgets/error_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,10 +38,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'Registration failed'),
-            ),
+          // Show error dialog instead of SnackBar for better user experience
+          ErrorDialog.show(
+            context,
+            title: 'Registration Failed',
+            message: state.errorMessage != null
+                ? ErrorFormatter.formatAuthError(state.errorMessage!)
+                : 'Registration failed. Please try again.',
+            buttonText: 'Try Again',
           );
         } else if (state.status == AuthStatus.success) {
           // Navigate directly to chat detail or chat screen

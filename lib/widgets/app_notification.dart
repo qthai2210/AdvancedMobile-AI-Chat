@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 enum NotificationType { success, error, warning, info }
 
 class AppNotification extends StatelessWidget {
   final String message;
+  final String? title;
   final NotificationType type;
   final VoidCallback? onAction;
   final String? actionLabel;
-  final Duration duration;
   final IconData? customIcon;
   final bool showIcon;
-  final bool isDismissible;
-
   const AppNotification({
     Key? key,
     required this.message,
+    this.title,
     this.type = NotificationType.info,
     this.onAction,
     this.actionLabel,
-    this.duration = const Duration(seconds: 3),
     this.customIcon,
     this.showIcon = true,
-    this.isDismissible = true,
   }) : super(key: key);
 
   IconData get _icon {
@@ -80,174 +78,210 @@ class AppNotification extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: _backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: _borderColor.withOpacity(0.3)),
+    // Get the appropriate title based on notification type if not provided
+    final notificationTitle = title ?? _getDefaultTitle();
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: isDismissible
-              ? () => ScaffoldMessenger.of(context).hideCurrentSnackBar()
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
+      elevation: 5,
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with icon and title
+            Row(
               children: [
                 if (showIcon) ...[
-                  Icon(_icon, color: _iconColor),
-                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(_icon, color: _iconColor, size: 28),
+                  ),
+                  const SizedBox(width: 16),
                 ],
                 Expanded(
                   child: Text(
-                    message,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
+                    notificationTitle,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                if (onAction != null && actionLabel != null) ...[
-                  TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                      onAction!();
-                    },
-                    child: Text(
-                      actionLabel!,
-                      style: TextStyle(
-                        color: _iconColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ] else if (isDismissible) ...[
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 16),
-                    onPressed: () =>
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    color: Colors.grey[600],
-                  ),
-                ],
               ],
             ),
-          ),
+
+            const SizedBox(height: 20),
+
+            // Message content
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[800],
+                  height: 1.4,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: onAction != null && actionLabel != null
+                  ? MainAxisAlignment.spaceBetween
+                  : MainAxisAlignment.end,
+              children: [
+                if (onAction != null && actionLabel != null)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onAction!();
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: _iconColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                    ),
+                    child: Text(actionLabel!),
+                  ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _iconColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                  ),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  static void show(
+  // Helper method to get default title based on notification type
+  String _getDefaultTitle() {
+    switch (type) {
+      case NotificationType.success:
+        return 'Success';
+      case NotificationType.error:
+        return 'Error';
+      case NotificationType.warning:
+        return 'Warning';
+      case NotificationType.info:
+        return 'Information';
+    }
+  }
+
+  static Future<void> show(
     BuildContext context,
     String message, {
+    String? title,
     NotificationType type = NotificationType.info,
     VoidCallback? onAction,
     String? actionLabel,
-    Duration duration = const Duration(seconds: 3),
     IconData? customIcon,
     bool showIcon = true,
-    bool isDismissible = true,
-  }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: AppNotification(
+    bool barrierDismissible = true,
+  }) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AppNotification(
           message: message,
+          title: title,
           type: type,
           onAction: onAction,
           actionLabel: actionLabel,
           customIcon: customIcon,
           showIcon: showIcon,
-          isDismissible: isDismissible,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        duration: duration,
-        padding: EdgeInsets.zero,
-        margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-        dismissDirection: DismissDirection.horizontal,
-      ),
+        );
+      },
     );
   }
 
-  static void showSuccess(
+  static Future<void> showSuccess(
     BuildContext context,
     String message, {
+    String? title,
     VoidCallback? onAction,
     String? actionLabel,
-    Duration duration = const Duration(seconds: 3),
   }) {
-    show(
+    return show(
       context,
       message,
+      title: title ?? 'Success',
       type: NotificationType.success,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
-  static void showError(
+  static Future<void> showError(
     BuildContext context,
     String message, {
+    String? title,
     VoidCallback? onAction,
     String? actionLabel,
-    Duration duration = const Duration(seconds: 4),
   }) {
-    show(
+    return show(
       context,
       message,
+      title: title ?? 'Error',
       type: NotificationType.error,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
-  static void showWarning(
+  static Future<void> showWarning(
     BuildContext context,
     String message, {
+    String? title,
     VoidCallback? onAction,
     String? actionLabel,
-    Duration duration = const Duration(seconds: 4),
   }) {
-    show(
+    return show(
       context,
       message,
+      title: title ?? 'Warning',
       type: NotificationType.warning,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 
-  static void showInfo(
+  static Future<void> showInfo(
     BuildContext context,
     String message, {
+    String? title,
     VoidCallback? onAction,
     String? actionLabel,
-    Duration duration = const Duration(seconds: 3),
   }) {
-    show(
+    return show(
       context,
       message,
+      title: title ?? 'Information',
       type: NotificationType.info,
       onAction: onAction,
       actionLabel: actionLabel,
-      duration: duration,
     );
   }
 }
