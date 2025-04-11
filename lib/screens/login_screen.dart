@@ -269,7 +269,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 text: 'Log in',
                 isLoading: state.status == AuthStatus.loading,
                 onPressed: () {
-                  context.read<AuthBloc>().add(LoginSubmitted());
+                  // Kiểm tra các field có dữ liệu không
+                  if (_emailController.text.isEmpty ||
+                      _passwordController.text.isEmpty) {
+                    context.showWarningNotification(
+                      'Vui lòng nhập email và mật khẩu',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra định dạng email
+                  final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRegExp.hasMatch(_emailController.text)) {
+                    context.showWarningNotification(
+                      'Email không đúng định dạng, vui lòng kiểm tra lại',
+                    );
+                    return;
+                  }
+
+                  // Gửi request đăng nhập
+                  context.read<AuthBloc>().add(
+                        LoginSubmitted(
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                        ),
+                      );
                 },
                 type: ButtonType.filled,
                 gradient: const LinearGradient(

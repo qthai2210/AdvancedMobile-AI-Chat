@@ -78,7 +78,7 @@ Future<void> init() async {
 
   // Data sources
   sl.registerLazySingleton(
-    () => AuthApiService(),
+    () => AuthApiService(dio: sl()),
   );
   sl.registerLazySingleton(
     () => PromptApiService(),

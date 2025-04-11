@@ -1,44 +1,87 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+
 class ErrorFormatter {
-  static String formatApiError(dynamic error) {
-    // Xử lý các loại lỗi phổ biến
-    if (error is String && error.contains('Failed to get prompts')) {
-      return 'Không thể tải prompts, vui lòng thử lại sau';
+  static String formatAuthError(dynamic error) {
+    debugPrint('Auth error raw: $error');
+
+    // Trường hợp 1: error là Map (response data từ API)
+    if (error is Map<String, dynamic>) {
+      final code = error['code'];
+      final errorMessage = error['error'];
+      final details = error['details'];
+
+      debugPrint(
+          'Error code: $code, message: $errorMessage, details: $details');
+
+      // Lỗi email không đúng định dạng
+      if (code == 'SCHEMA_ERROR') {
+        String detailStr = '';
+
+        if (details is Map && details['message'] != null) {
+          detailStr = details['message'].toString();
+        }
+
+        if (errorMessage != null) {
+          detailStr = errorMessage.toString();
+        }
+
+        if (detailStr.contains('email')) {
+          return 'Email không đúng định dạng, vui lòng kiểm tra lại';
+        }
+
+        if (detailStr.contains('password')) {
+          return 'Mật khẩu không hợp lệ, vui lòng kiểm tra lại';
+        }
+
+        return 'Thông tin không hợp lệ, vui lòng kiểm tra lại';
+      }
+
+      // Các lỗi xác thực khác
+      if (code == 'EMAIL_PASSWORD_MISMATCH' || code == 'INVALID_CREDENTIALS') {
+        return 'Email hoặc mật khẩu không đúng';
+      }
+
+      if (code == 'EMAIL_EXISTS' || code == 'USER_EXISTS') {
+        return 'Email này đã được đăng ký';
+      }
+
+      // Nếu có error message rõ ràng từ API
+      if (errorMessage != null) {
+        return errorMessage.toString();
+      }
+
+      return 'Đã xảy ra lỗi trong quá trình xác thực, vui lòng thử lại';
     }
 
-    if (error is String && error.contains('Unauthorized')) {
-      return 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại';
+    // Trường hợp 2: error là String (có thể là JSON string hoặc message)
+    if (error is String) {
+      try {
+        final jsonError = json.decode(error);
+        return formatAuthError(jsonError);
+      } catch (e) {
+        // Không phải JSON string
+        debugPrint('Error parsing JSON: $e');
+      }
+
+      // Các pattern thông dụng
+      if (error.contains('email') &&
+          (error.contains('valid') || error.contains('format'))) {
+        return 'Email không đúng định dạng, vui lòng kiểm tra lại';
+      }
+
+      if (error.contains('password') &&
+          (error.contains('match') || error.contains('wrong'))) {
+        return 'Email hoặc mật khẩu không đúng';
+      }
     }
 
-    if (error is String && error.contains('Connection refused') ||
-        error is String && error.contains('SocketException')) {
-      return 'Không thể kết nối đến máy chủ, vui lòng kiểm tra kết nối mạng';
-    }
-
-    if (error is String && error.contains('timed out')) {
-      return 'Kết nối quá thời gian, vui lòng thử lại sau';
-    }
-
-    // Nếu không có xử lý cụ thể, trả về thông báo chung
-    return 'Đã xảy ra lỗi, vui lòng thử lại sau';
+    // Trường hợp mặc định
+    return 'Đã xảy ra lỗi trong quá trình xác thực, vui lòng thử lại';
   }
 
-  static String formatAuthError(String error) {
-    print('Auth error: $error');
-    if (error.contains('invalid_grant') ||
-        error.contains('invalid_credentials')) {
-      return 'Email hoặc mật khẩu không đúng';
-    }
-
-    if (error.contains('email_exists')) {
-      return 'Email này đã được đăng ký';
-    }
-
-    if (error.contains('weak_password')) {
-      return 'Mật khẩu quá yếu, vui lòng chọn mật khẩu mạnh hơn';
-    }
-    if (error.contains(' email must be a valid email')) {
-      return 'Email không hợp lệ, vui lòng nhập lại';
-    }
-    return 'Đã xảy ra lỗi trong quá trình xác thực, vui lòng thử lại';
+  static String formatApiError(dynamic error) {
+    // Code xử lý lỗi API khác
+    return 'Đã xảy ra lỗi, vui lòng thử lại sau';
   }
 }

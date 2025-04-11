@@ -13,7 +13,7 @@ extension AuthStatusX on AuthStatus {
 class AuthState {
   final AuthStatus status;
   final User? user;
-  final String? errorMessage;
+  final dynamic errorMessage; // Thay đổi từ String? thành dynamic
 
   const AuthState({
     this.status = AuthStatus.initial,
@@ -21,7 +21,11 @@ class AuthState {
     this.errorMessage,
   });
 
-  AuthState copyWith({AuthStatus? status, User? user, String? errorMessage}) {
+  AuthState copyWith({
+    AuthStatus? status,
+    User? user,
+    dynamic errorMessage, // Thay đổi từ String? thành dynamic
+  }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
