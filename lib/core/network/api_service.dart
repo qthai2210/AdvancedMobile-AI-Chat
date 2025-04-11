@@ -45,7 +45,19 @@ class ApiService {
   T handleResponse<T>(Response response, T Function(dynamic data) onSuccess) {
     switch (response.statusCode) {
       case 200:
+        // Handle 200 as success response
+        return onSuccess(response.data);
       case 201:
+        // Handle 200 and 201 as success responses
+        return onSuccess(response.data);
+
+      case 202:
+        // Handle 200 and 202 as success responses
+        return onSuccess(response.data);
+      case 203:
+        // Handle 202 and 203 as success responses
+        return onSuccess(response.data);
+
       case 204:
         return onSuccess(response.data);
       case 401:

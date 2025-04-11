@@ -1,0 +1,50 @@
+  /// Loads conversation history from the API
+  Future<void> _loadConversations() async {
+    try {
+      setState(() {
+        _isLoadingConversations = true;
+      });
+      
+      // Get authentication token
+      final authState = di.sl<AuthBloc>().state;
+      final accessToken = authState.user?.accessToken ?? '';
+      
+      if (accessToken.isEmpty) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Call the use case to fetch conversations
+      final response = await _getConversationsUseCase(
+        accessToken: accessToken,
+        assistantModel: AssistantModel.DIFY,
+        limit: 20.0,
+        cursor: _nextCursor,
+      );
+      
+      setState(() {
+        // If this is the first page, replace conversations
+        // Otherwise add to existing conversations
+        if (_nextCursor == null) {
+          _conversations = response.items;
+        } else {
+          _conversations = [..._conversations, ...response.items];
+        }
+        
+        // Update cursor for pagination
+        _nextCursor = response.hasMore ? response.cursor : null;
+        _isLoadingConversations = false;
+      });
+      
+      debugPrint('Loaded ${response.items.length} conversations');
+    } catch (error) {
+      setState(() {
+        _isLoadingConversations = false;
+      });
+      
+      debugPrint('Error loading conversations: $error');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load conversation history: ${error.toString()}')),
+      );
+    }
+  }

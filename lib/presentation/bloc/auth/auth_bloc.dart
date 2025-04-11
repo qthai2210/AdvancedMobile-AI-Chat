@@ -5,6 +5,7 @@ import 'package:aichatbot/domain/usecases/auth/login_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/register_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/logout_usecase.dart';
 import 'package:aichatbot/core/errors/failures.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 
 // Ensure that AuthFailure is defined in the 'failures.dart' file or replace it with the correct class name.
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUsecase loginUsecase;
   final RegisterUsecase registerUsecase;
   final LogoutUsecase logoutUsecase;
+  final SecureStorageUtil _secureStorage = SecureStorageUtil();
 
   /// Currently entered email address
   String _email = '';
@@ -70,6 +72,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.success,
         user: user,
       ));
+      // save access and refresh token to secure storage
+      await _secureStorage.writeSecureData(
+        accessToken: user.accessToken,
+        refreshToken: user.refreshToken,
+      );
     } on Failure catch (failure) {
       emit(state.copyWith(
         status: AuthStatus.failure,
