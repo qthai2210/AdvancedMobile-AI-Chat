@@ -1,49 +1,86 @@
+import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:dio/dio.dart';
+import 'package:aichatbot/core/config/api_config.dart';
+import 'package:aichatbot/core/errors/exceptions.dart';
 import 'package:aichatbot/data/models/auth/user_model.dart';
-import 'package:aichatbot/domain/entities/user.dart'; // Ensure User is imported
+import 'package:aichatbot/core/network/api_service.dart';
 
 class AuthApiService {
-  final Dio dio;
-
-  AuthApiService({required this.dio});
-
-  Future<User> login({required String email, required String password}) async {
+  final ApiService _apiService = sl.get<ApiService>();
+  AuthApiService() {
+    // Set the base URL for the Dio instance
+    _apiService.dio.options.baseUrl = ApiConfig.authBaseUrl;
+  }
+  Future<UserModel> login({
+    required String email,
+    required String password,
+  }) async {
+    const endpoint = '/auth/password/sign-in';
+    final body = {
+      'email': email,
+      'password': password,
+    };
     try {
-      final response = await dio.post(
-        '/api/v1/auth/password/sign-in',
-        data: {'email': email, 'password': password},
+      final response = await _apiService.dio.post(
+        endpoint,
+        data: body,
       );
-
-      return UserModel.fromJson(
-        response.data,
-        email,
-        name: response.data['name'],
+      return _apiService.handleResponse<UserModel>(
+        response,
+        (data) {
+          if (data['access_token'] == null ||
+              data['refresh_token'] == null ||
+              data['user_id'] == null) {
+            throw InvalidResponseFormatException();
+          }
+          return UserModel.fromJson(data, email);
+        },
       );
     } catch (e) {
-      // Không bọc trong ServerException, để repository xử lý trực tiếp
-      rethrow;
+      print('Login error: $e');
+      print('Login error response: ${e.toString()}');
+      if (e is InvalidResponseFormatException) {
+        rethrow;
+      }
+      throw _apiService.handleError(e);
     }
   }
 
-  Future<User> register({
+  Future<UserModel> register({
     required String email,
     required String password,
     required String name,
   }) async {
+    const endpoint = '/auth/password/sign-up';
+
+    final body = {
+      'email': email,
+      'password': password,
+      'verification_callback_url': 'aichatbot://verify',
+    };
+
     try {
-      final response = await dio.post(
-        '/api/v1/auth/password/sign-up',
-        data: {'email': email, 'password': password, 'name': name},
+      final response = await _apiService.dio.post(
+        endpoint,
+        data: body,
       );
 
-      return UserModel.fromJson(
-        response.data,
-        email,
-        name: response.data['name'],
+      return _apiService.handleResponse<UserModel>(
+        response,
+        (data) {
+          if (data['access_token'] == null ||
+              data['refresh_token'] == null ||
+              data['user_id'] == null) {
+            throw InvalidResponseFormatException();
+          }
+          return UserModel.fromJson(data, email, name: name);
+        },
       );
     } catch (e) {
-      // Không bọc trong ServerException, để repository xử lý trực tiếp
-      rethrow;
+      if (e is InvalidResponseFormatException) {
+        rethrow;
+      }
+      throw _apiService.handleError(e);
     }
   }
 
@@ -51,19 +88,28 @@ class AuthApiService {
     required String accessToken,
     String? refreshToken,
   }) async {
+    const endpoint = '/auth/sessions/current';
+
+    // Create options with custom headers for this request
+    final headers = _apiService.createAuthHeader(accessToken);
+
+    if (refreshToken != null) {
+      headers['X-Stack-Refresh-Token'] = refreshToken;
+    }
+
     try {
-      await dio.post(
-        '/api/v1/auth/logout',
-        data: {'refreshToken': refreshToken},
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-          },
-        ),
+      final response = await _apiService.dio.delete(
+        endpoint,
+        options: Options(headers: headers),
+        data: {},
+      );
+
+      _apiService.handleResponse<void>(
+        response,
+        (_) {}, // No data to return for successful logout
       );
     } catch (e) {
-      // Không bọc trong ServerException, để repository xử lý trực tiếp
-      rethrow;
+      throw _apiService.handleError(e);
     }
   }
 }

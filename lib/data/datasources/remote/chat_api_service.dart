@@ -1,4 +1,5 @@
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
@@ -15,13 +16,17 @@ class ChatApiService {
   }
 
   Future<MessageResponseModel> sendMessage({
-    required String accessToken,
     required MessageRequestModel request,
   }) async {
     const endpoint = '/ai-chat/messages';
 
     try {
+      // Get the access token from secure storage
+      final accessToken = await SecureStorageUtil().getAccessToken();
       // Create headers for the request with authentication
+      if (accessToken == null) {
+        throw UnauthorizedException('Access token is null');
+      }
       final headers = _apiService.createAuthHeader(accessToken);
       headers['Content-Type'] = 'application/json';
       print('Headers123: $headers');

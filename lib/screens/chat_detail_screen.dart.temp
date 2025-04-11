@@ -1,50 +1,43 @@
-  /// Loads conversation history from the API
-  Future<void> _loadConversations() async {
-    try {
-      setState(() {
-        _isLoadingConversations = true;
-      });
-      
-      // Get authentication token
-      final authState = di.sl<AuthBloc>().state;
-      final accessToken = authState.user?.accessToken ?? '';
-      
-      if (accessToken.isEmpty) {
-        throw Exception('User not authenticated');
-      }
-      
-      // Call the use case to fetch conversations
-      final response = await _getConversationsUseCase(
-        accessToken: accessToken,
-        assistantModel: AssistantModel.DIFY,
-        limit: 20.0,
-        cursor: _nextCursor,
-      );
-      
-      setState(() {
-        // If this is the first page, replace conversations
-        // Otherwise add to existing conversations
-        if (_nextCursor == null) {
-          _conversations = response.items;
-        } else {
-          _conversations = [..._conversations, ...response.items];
-        }
+  void _handleChatState(ChatState state) {
+    if (state.status == ChatStatus.loading) {
+      // The message is already shown as "typing" from the _sendMessage method
+      // Nothing to do here as we've already updated the UI to show typing status
+    } else if (state.status == ChatStatus.success) {
+      // Handle successful message response from API
+      if (state.response != null) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(
+            Message(
+              text: state.response!.content,
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        });
         
-        // Update cursor for pagination
-        _nextCursor = response.hasMore ? response.cursor : null;
-        _isLoadingConversations = false;
-      });
-      
-      debugPrint('Loaded ${response.items.length} conversations');
-    } catch (error) {
+        _scrollToBottom();
+      }
+    } else if (state.status == ChatStatus.error) {
+      // Handle error state
       setState(() {
-        _isLoadingConversations = false;
+        _isTyping = false;
+        _messages.add(
+          Message(
+            text: "Sorry, there was an error processing your request: ${state.errorMessage ?? 'Unknown error'}",
+            isUser: false,
+            timestamp: DateTime.now(),
+            agent: _selectedAgent,
+          ),
+        );
       });
       
-      debugPrint('Error loading conversations: $error');
-      
+      // Show error in snackbar
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load conversation history: ${error.toString()}')),
+        SnackBar(content: Text('Error: ${state.errorMessage ?? 'Unknown error'}')),
       );
+      
+      _scrollToBottom();
     }
   }

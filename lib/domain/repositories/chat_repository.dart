@@ -8,7 +8,6 @@ abstract class ChatRepository {
   /// [request] The message request containing content and metadata
   /// Returns a [Future] that completes with the AI's response message
   Future<MessageResponseModel> sendMessage({
-    required String accessToken,
     required MessageRequestModel request,
   });
 }

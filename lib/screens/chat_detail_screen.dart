@@ -20,6 +20,9 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_event.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart';
+import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
+import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
+import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
@@ -274,7 +277,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
         if (accessToken.isEmpty) {
           throw Exception('User not authenticated');
-        } // Create conversation history for the API request
+        }
+
+        // Create conversation history for the API request
         List<msg_model.ChatMessage> conversationHistory = _messages.map((msg) {
           return msg_model.ChatMessage(
               role: msg.isUser ? 'user' : 'model',
@@ -289,7 +294,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           "29178123-34d4-4e52-94fb-8e580face2d5"));
         }).toList();
 
-        // mock AssistantModel        // Create API request
+        // Create API request
         final requestModel = msg_model.MessageRequestModel(
           content: message,
           files: [],
@@ -302,28 +307,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               id: _selectedAgent.id),
         );
 
-        // Send message to API
-        final response = await _sendMessageUseCase(
-          accessToken: accessToken,
-          request: requestModel,
-        );
-
-        // Add AI response to chat
-        setState(() {
-          _isTyping = false;
-          _messages.add(
-            Message(
-              text: response.content,
-              isUser: false,
-              timestamp: DateTime.now(),
-              agent: _selectedAgent,
-            ),
-          );
-        });
-
-        _scrollToBottom();
+        // Use ChatBloc to send the message
+        context.read<ChatBloc>().add(SendMessageEvent(request: requestModel));
       } catch (error) {
-        // Handle errors
+        // Handle initial errors (like not authenticated)
         setState(() {
           _isTyping = false;
           // Add error message
@@ -338,7 +325,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           );
         });
 
-        print('Error sending message: $error');
+        print('Error preparing message: $error');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${error.toString()}')),
@@ -558,115 +545,179 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _handleChatState(ChatState state) {
+    if (state.status == ChatStatus.loading) {
+      // The message is already shown as "typing" from the _sendMessage method
+      // Nothing to do here as we've already updated the UI to show typing status
+    } else if (state.status == ChatStatus.success) {
+      // Handle successful message response from API
+      if (state.response != null) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(
+            Message(
+              text: state.response!.content,
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        });
+
+        _scrollToBottom();
+      }
+    } else if (state.status == ChatStatus.error) {
+      // Handle error state
+      setState(() {
+        _isTyping = false;
+        _messages.add(
+          Message(
+            text:
+                "Sorry, there was an error processing your request: ${state.errorMessage ?? 'Unknown error'}",
+            isUser: false,
+            timestamp: DateTime.now(),
+            agent: _selectedAgent,
+          ),
+        );
+      });
+
+      // Show error in snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error: ${state.errorMessage ?? 'Unknown error'}')),
+      );
+
+      _scrollToBottom();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => di.sl<ConversationBloc>(),
-      child: BlocConsumer<ConversationBloc, ConversationState>(
-        listener: (context, state) {
-          // _handleConversationState(state);
-        },
-        builder: (context, state) {
-          return Scaffold(
-            key: _scaffoldKey,
-            // Replace ChatHistoryDrawer with MainAppDrawer
-            drawer: MainAppDrawer(
-              currentIndex: _selectedTabIndex,
-              onTabSelected: (index) => navigation_utils
-                  .handleDrawerNavigation(context, index, currentIndex: 0),
-            ),
-            appBar: _buildAppBar(),
-            body: Stack(
-              children: [
-                // Main chat content
-                Column(
-                  children: [
-                    // Messages list
-                    Expanded(
-                      child: ChatMessageList(
-                        messages: _messages,
-                        scrollController: _scrollController,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => di.sl<ConversationBloc>(),
+        ),
+        BlocProvider(
+          create: (context) => di.sl<ChatBloc>(),
+        ),
+      ],
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<ConversationBloc, ConversationState>(
+            listener: (context, state) {
+              // _handleConversationState(state);
+            },
+          ),
+          BlocListener<ChatBloc, ChatState>(
+            listener: (context, state) {
+              _handleChatState(state);
+            },
+          ),
+        ],
+        child: Builder(
+          builder: (context) {
+            return Scaffold(
+              key: _scaffoldKey,
+              // Replace ChatHistoryDrawer with MainAppDrawer
+              drawer: MainAppDrawer(
+                currentIndex: _selectedTabIndex,
+                onTabSelected: (index) => navigation_utils
+                    .handleDrawerNavigation(context, index, currentIndex: 0),
+              ),
+              appBar: _buildAppBar(),
+              body: Stack(
+                children: [
+                  // Main chat content
+                  Column(
+                    children: [
+                      // Messages list
+                      Expanded(
+                        child: ChatMessageList(
+                          messages: _messages,
+                          scrollController: _scrollController,
+                        ),
                       ),
-                    ),
 
-                    // Image preview if an image is selected
-                    if (_selectedImage != null)
-                      ImagePreview(
-                        imageFile: _selectedImage!,
-                        onRemove: _removeSelectedImage,
-                        messageController: _messageController,
-                      ),
+                      // Image preview if an image is selected
+                      if (_selectedImage != null)
+                        ImagePreview(
+                          imageFile: _selectedImage!,
+                          onRemove: _removeSelectedImage,
+                          messageController: _messageController,
+                        ),
 
-                    // Input area
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).canvasColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, -1),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          // Prompt button
-                          IconButton(
-                            icon: const Icon(Icons.psychology_outlined),
-                            onPressed: _showPromptSelector,
-                            tooltip: 'Use a prompt',
-                          ),
-
-                          // Image button
-                          IconButton(
-                            icon: const Icon(Icons.image),
-                            onPressed: _toggleImageOptions,
-                            tooltip: 'Add image',
-                          ),
-
-                          // Text field
-                          Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              decoration: const InputDecoration(
-                                hintText: 'Type a message...',
-                                border: InputBorder.none,
-                              ),
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: (_) => _sendMessage(),
+                      // Input area
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).canvasColor,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, -1),
                             ),
-                          ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Prompt button
+                            IconButton(
+                              icon: const Icon(Icons.psychology_outlined),
+                              onPressed: _showPromptSelector,
+                              tooltip: 'Use a prompt',
+                            ),
 
-                          // Send button
-                          IconButton(
-                            icon: const Icon(Icons.send),
-                            onPressed: _sendMessage,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ],
+                            // Image button
+                            IconButton(
+                              icon: const Icon(Icons.image),
+                              onPressed: _toggleImageOptions,
+                              tooltip: 'Add image',
+                            ),
+
+                            // Text field
+                            Expanded(
+                              child: TextField(
+                                controller: _messageController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Type a message...',
+                                  border: InputBorder.none,
+                                ),
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
+                            ),
+
+                            // Send button
+                            IconButton(
+                              icon: const Icon(Icons.send),
+                              onPressed: _sendMessage,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                // History panel - shown conditionally
-                if (_showHistory) _buildHistoryPanel(),
-              ],
-            ),
+                  // History panel - shown conditionally
+                  if (_showHistory) _buildHistoryPanel(),
+                ],
+              ),
 
-            // Image options bottom sheet
-            bottomSheet: _showImageOptions
-                ? ImageCaptureOptions(
-                    onPickFromGallery: _pickImageFromGallery,
-                    onTakePhoto: _takePhoto,
-                    onCaptureScreenshot: _captureScreenshot,
-                    onClose: () => setState(() => _showImageOptions = false),
-                  )
-                : null,
-          );
-        },
+              // Image options bottom sheet
+              bottomSheet: _showImageOptions
+                  ? ImageCaptureOptions(
+                      onPickFromGallery: _pickImageFromGallery,
+                      onTakePhoto: _takePhoto,
+                      onCaptureScreenshot: _captureScreenshot,
+                      onClose: () => setState(() => _showImageOptions = false),
+                    )
+                  : null,
+            );
+          },
+        ),
       ),
     );
   }

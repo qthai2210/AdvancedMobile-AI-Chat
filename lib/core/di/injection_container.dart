@@ -2,6 +2,7 @@ import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart'
 import 'package:aichatbot/data/repositories/conversation_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/conversation_repository.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
@@ -46,6 +47,12 @@ Future<void> init() async {
       getConversationsUsecase: sl(),
     ),
   );
+
+  sl.registerLazySingleton(
+    () => ChatBloc(
+      sendMessageUseCase: sl(),
+    ),
+  );
   // sl.registerLazySingleton(
   //   () => ChatBloc(
   //     sendMessageUseCase: sl(),
@@ -78,7 +85,7 @@ Future<void> init() async {
 
   // Data sources
   sl.registerLazySingleton(
-    () => AuthApiService(dio: sl()),
+    () => AuthApiService(),
   );
   sl.registerLazySingleton(
     () => PromptApiService(),

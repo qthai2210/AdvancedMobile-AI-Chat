@@ -12,11 +12,9 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<MessageResponseModel> sendMessage(
-      {required String accessToken,
-      required MessageRequestModel request}) async {
+      {required MessageRequestModel request}) async {
     try {
       final response = await chatApiService.sendMessage(
-        accessToken: accessToken,
         request: request,
       );
       return response;
