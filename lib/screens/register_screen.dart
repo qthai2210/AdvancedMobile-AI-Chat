@@ -51,7 +51,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             actionLabel: 'Thử lại',
           );
         } else if (state.status == AuthStatus.success) {
-          // Xử lý thành công
+          context.showSuccessNotification('Đăng ký thành công');
+
+          // Tự động chuyển hướng đến trang login sau khi đăng ký thành công
+          Future.delayed(const Duration(milliseconds: 500), () {
+            try {
+              context.go('/login');
+            } catch (_) {
+              // Fallback cho Navigation 1.0 nếu GoRouter gặp lỗi
+              Navigator.of(context).pushReplacementNamed('/login');
+            }
+          });
         }
       },
       child: Scaffold(

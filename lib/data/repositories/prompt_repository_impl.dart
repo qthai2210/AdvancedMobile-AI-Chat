@@ -4,6 +4,7 @@ import 'package:aichatbot/data/datasources/remote/prompt_api_service.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/domain/repositories/prompt_repository.dart';
+import 'package:flutter/foundation.dart';
 
 class PromptRepositoryImpl implements PromptRepository {
   final PromptApiService promptApiService;
@@ -45,13 +46,15 @@ class PromptRepositoryImpl implements PromptRepository {
     required String title,
     required String content,
     required String description,
-    required String category,
-    required bool isPublic,
-    required String language,
+    String? category,
+    bool isPublic = false,
+    String? language,
     String? xJarvisGuid,
   }) async {
     try {
-      final response = await promptApiService.createPrompt(
+      debugPrint('PromptRepositoryImpl.createPrompt: Creating prompt "$title"');
+
+      final result = await promptApiService.createPrompt(
         accessToken: accessToken,
         title: title,
         content: content,
@@ -62,40 +65,119 @@ class PromptRepositoryImpl implements PromptRepository {
         xJarvisGuid: xJarvisGuid,
       );
 
-      return PromptModel.fromJson(response);
-    } on ServerException catch (e) {
-      throw ServerFailure(e.message);
-    } on UnauthorizedException catch (e) {
-      throw AuthFailure(e.message);
+      debugPrint('PromptRepositoryImpl.createPrompt: Success');
+      return result;
     } catch (e) {
-      throw UnexpectedFailure(e.toString());
+      debugPrint('PromptRepositoryImpl.createPrompt error: $e');
+      rethrow;
     }
   }
 
   @override
-  Future<Prompt> updatePrompt({
+  Future<PromptModel> updatePrompt({
     required String accessToken,
-    required Prompt prompt,
+    required String promptId,
+    String? title,
+    String? content,
+    String? description,
+    String? category,
+    bool? isPublic,
+    String? language,
+    String? xJarvisGuid,
   }) async {
-    // Implement update method as needed
-    throw UnimplementedError();
+    try {
+      debugPrint(
+          'PromptRepositoryImpl.updatePrompt: Updating prompt $promptId');
+
+      final result = await promptApiService.updatePrompt(
+        accessToken: accessToken,
+        promptId: promptId,
+        title: title,
+        content: content,
+        description: description,
+        category: category,
+        isPublic: isPublic,
+        language: language,
+        xJarvisGuid: xJarvisGuid,
+      );
+
+      debugPrint('PromptRepositoryImpl.updatePrompt: Success');
+      return result;
+    } catch (e) {
+      debugPrint('PromptRepositoryImpl.updatePrompt error: $e');
+      rethrow;
+    }
   }
 
   @override
-  Future<void> deletePrompt({
+  Future<bool> deletePrompt({
     required String accessToken,
     required String promptId,
+    String? xJarvisGuid,
   }) async {
-    // Implement delete method as needed
-    throw UnimplementedError();
+    try {
+      debugPrint(
+          'PromptRepositoryImpl.deletePrompt: Deleting prompt $promptId');
+
+      final result = await promptApiService.deletePrompt(
+        accessToken: accessToken,
+        promptId: promptId,
+        xJarvisGuid: xJarvisGuid,
+      );
+
+      debugPrint('PromptRepositoryImpl.deletePrompt: Success');
+      return result;
+    } catch (e) {
+      debugPrint('PromptRepositoryImpl.deletePrompt error: $e');
+      rethrow;
+    }
   }
 
   @override
-  Future<bool> toggleFavorite({
+  Future<bool> addFavorite({
     required String accessToken,
     required String promptId,
+    String? xJarvisGuid,
   }) async {
-    // Implement toggle favorite method as needed
-    throw UnimplementedError();
+    try {
+      debugPrint(
+          'PromptRepositoryImpl.addFavorite: Adding prompt $promptId to favorites');
+
+      final result = await promptApiService.addFavorite(
+        accessToken: accessToken,
+        promptId: promptId,
+        xJarvisGuid: xJarvisGuid,
+      );
+
+      debugPrint('PromptRepositoryImpl.addFavorite: Success');
+      return result;
+    } catch (e) {
+      debugPrint('PromptRepositoryImpl.addFavorite error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> removeFavorite({
+    required String accessToken,
+    required String promptId,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      debugPrint(
+          'PromptRepositoryImpl.removeFavorite: Removing prompt $promptId from favorites');
+
+      final result = await promptApiService.removeFavorite(
+        accessToken: accessToken,
+        promptId: promptId,
+        xJarvisGuid: xJarvisGuid,
+      );
+
+      debugPrint('PromptRepositoryImpl.removeFavorite: Success');
+      return result;
+    } catch (e) {
+      debugPrint('PromptRepositoryImpl.removeFavorite error: $e');
+      rethrow;
+    }
   }
 }

@@ -12,30 +12,50 @@ abstract class PromptRepository {
     bool? isPublic,
   });
 
+  /// Tạo một prompt mới
   Future<PromptModel> createPrompt({
     required String accessToken,
     required String title,
     required String content,
     required String description,
-    required String category,
-    required bool isPublic,
-    required String language,
+    String? category,
+    bool isPublic,
+    String? language,
     String? xJarvisGuid,
   });
 
-  Future<Prompt> updatePrompt({
-    required String accessToken,
-    required Prompt prompt,
-  });
-
-  Future<void> deletePrompt({
+  /// Cập nhật một prompt
+  Future<PromptModel> updatePrompt({
     required String accessToken,
     required String promptId,
+    String? title,
+    String? content,
+    String? description,
+    String? category,
+    bool? isPublic,
+    String? language,
+    String? xJarvisGuid,
   });
 
-  Future<bool> toggleFavorite({
+  /// Xóa một prompt
+  Future<bool> deletePrompt({
     required String accessToken,
     required String promptId,
+    String? xJarvisGuid,
+  });
+
+  /// Thêm prompt vào danh sách yêu thích
+  Future<bool> addFavorite({
+    required String accessToken,
+    required String promptId,
+    String? xJarvisGuid,
+  });
+
+  /// Xóa prompt khỏi danh sách yêu thích
+  Future<bool> removeFavorite({
+    required String accessToken,
+    required String promptId,
+    String? xJarvisGuid,
   });
 }
 

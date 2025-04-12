@@ -2,6 +2,8 @@ import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart'
 import 'package:aichatbot/data/repositories/conversation_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/conversation_repository.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -24,6 +26,8 @@ import 'package:aichatbot/data/repositories/chat_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/chat_repository.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
+import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/remove_favorite_usecase.dart';
 
 final sl = GetIt.instance;
 
@@ -40,6 +44,10 @@ Future<void> init() async {
     () => PromptBloc(
       getPromptsUsecase: sl(),
       createPromptUsecase: sl(),
+      addFavoriteUsecase: sl(),
+      removeFavoriteUsecase: sl(),
+      updatePromptUsecase: sl(),
+      deletePromptUsecase: sl(),
     ),
   );
   sl.registerLazySingleton(
@@ -65,8 +73,12 @@ Future<void> init() async {
   sl.registerLazySingleton(() => LogoutUsecase(sl()));
   sl.registerLazySingleton(() => GetPromptsUsecase(sl()));
   sl.registerLazySingleton(() => CreatePromptUsecase(sl()));
+  sl.registerLazySingleton(() => AddFavoriteUsecase(sl()));
+  sl.registerLazySingleton(() => RemoveFavoriteUsecase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
   sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
+  sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
+  sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),

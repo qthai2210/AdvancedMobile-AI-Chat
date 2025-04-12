@@ -1,8 +1,8 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:aichatbot/data/datasources/remote/auth_api_service.dart';
 import 'package:aichatbot/domain/entities/user.dart';
 import 'package:aichatbot/domain/repositories/auth_repository.dart';
-import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApiService authApiService;
@@ -15,65 +15,37 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      debugPrint(
-          'Login request: $email, ${password.isNotEmpty ? "****" : "empty"}');
-      final userModel = await authApiService.login(
+      debugPrint('Login request in repository: $email');
+      final user = await authApiService.login(
         email: email,
         password: password,
       );
-      return userModel;
-    } on DioException catch (e) {
-      debugPrint('Login DioException: ${e.message}');
-
-      // Trả về response data gốc nếu có
-      if (e.response?.data != null) {
-        debugPrint('Login error response data: ${e.response!.data}');
-        throw e.response!.data;
-      }
-
-      // Nếu không có response data, tạo error message có định dạng thống nhất
-      throw {
-        'code': 'HTTP_ERROR',
-        'error': e.message ?? 'Đã xảy ra lỗi kết nối'
-      };
+      return user;
     } catch (e) {
-      debugPrint('Login general error: $e');
-      throw {'code': 'UNKNOWN_ERROR', 'error': e.toString()};
+      debugPrint('Login error in repository: $e');
+      // Truyền thẳng lỗi lên không chuyển đổi
+      rethrow;
     }
   }
 
   @override
   Future<User> register({
+    required String name,
     required String email,
     required String password,
-    required String name,
   }) async {
     try {
-      debugPrint(
-          'Register request: $email, ${password.isNotEmpty ? "****" : "empty"}, $name');
-      final userModel = await authApiService.register(
+      debugPrint('Register request: $email, $name');
+      final user = await authApiService.register(
+        name: name,
         email: email,
         password: password,
-        name: name,
       );
-      return userModel;
-    } on DioException catch (e) {
-      debugPrint('Register DioException: ${e.message}');
-
-      // Trả về response data gốc nếu có
-      if (e.response?.data != null) {
-        debugPrint('Register error response data: ${e.response!.data}');
-        throw e.response!.data;
-      }
-
-      // Nếu không có response data, tạo error message có định dạng thống nhất
-      throw {
-        'code': 'HTTP_ERROR',
-        'error': e.message ?? 'Đã xảy ra lỗi kết nối'
-      };
+      return user;
     } catch (e) {
-      debugPrint('Register general error: $e');
-      throw {'code': 'UNKNOWN_ERROR', 'error': e.toString()};
+      debugPrint('Register error in repository: $e');
+      // Truyền thẳng lỗi lên không chuyển đổi, tương tự như login
+      rethrow;
     }
   }
 
@@ -83,27 +55,13 @@ class AuthRepositoryImpl implements AuthRepository {
     String? refreshToken,
   }) async {
     try {
-      debugPrint('Logout request');
       await authApiService.logout(
         accessToken: accessToken,
         refreshToken: refreshToken,
       );
-    } on DioException catch (e) {
-      debugPrint('Logout DioException: ${e.message}');
-
-      // Trả về response data gốc nếu có
-      if (e.response?.data != null) {
-        throw e.response!.data;
-      }
-
-      // Nếu không có response data, tạo error message có định dạng thống nhất
-      throw {
-        'code': 'HTTP_ERROR',
-        'error': e.message ?? 'Đã xảy ra lỗi kết nối'
-      };
     } catch (e) {
-      debugPrint('Logout general error: $e');
-      throw {'code': 'UNKNOWN_ERROR', 'error': e.toString()};
+      debugPrint('Logout error in repository: $e');
+      rethrow;
     }
   }
 }

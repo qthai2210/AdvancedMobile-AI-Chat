@@ -5,83 +5,86 @@ class ErrorFormatter {
   static String formatAuthError(dynamic error) {
     debugPrint('Auth error raw: $error');
 
-    // Trường hợp 1: error là Map (response data từ API)
+    // Trường hợp 1: error là Map (response data từ API hoặc lỗi kết nối)
     if (error is Map<String, dynamic>) {
       final code = error['code'];
       final errorMessage = error['error'];
-      final details = error['details'];
 
-      debugPrint(
-          'Error code: $code, message: $errorMessage, details: $details');
-
-      // Lỗi email không đúng định dạng
-      if (code == 'SCHEMA_ERROR') {
-        String detailStr = '';
-
-        if (details is Map && details['message'] != null) {
-          detailStr = details['message'].toString();
-        }
-
-        if (errorMessage != null) {
-          detailStr = errorMessage.toString();
-        }
-
-        if (detailStr.contains('email')) {
-          return 'Email không đúng định dạng, vui lòng kiểm tra lại';
-        }
-
-        if (detailStr.contains('password')) {
-          return 'Mật khẩu không hợp lệ, vui lòng kiểm tra lại';
-        }
-
-        return 'Thông tin không hợp lệ, vui lòng kiểm tra lại';
+      // Lỗi email hoặc mật khẩu không đúng
+      if (code == 'EMAIL_PASSWORD_MISMATCH') {
+        return 'Email hoặc mật khẩu không đúng, vui lòng kiểm tra lại';
       }
 
-      // Các lỗi xác thực khác
-      if (code == 'EMAIL_PASSWORD_MISMATCH' || code == 'INVALID_CREDENTIALS') {
-        return 'Email hoặc mật khẩu không đúng';
+      // Lỗi mật khẩu quá ngắn
+      if (code == 'PASSWORD_TOO_SHORT') {
+        int minLength = 8;
+        if (error['details'] is Map && error['details']['min_length'] != null) {
+          minLength =
+              int.tryParse(error['details']['min_length'].toString()) ?? 8;
+        }
+        return 'Mật khẩu phải có ít nhất $minLength ký tự';
       }
 
-      if (code == 'EMAIL_EXISTS' || code == 'USER_EXISTS') {
-        return 'Email này đã được đăng ký';
-      }
-
-      // Nếu có error message rõ ràng từ API
+      // Các lỗi khác
       if (errorMessage != null) {
         return errorMessage.toString();
       }
-
-      return 'Đã xảy ra lỗi trong quá trình xác thực, vui lòng thử lại';
     }
 
-    // Trường hợp 2: error là String (có thể là JSON string hoặc message)
+    // Các xử lý khác giữ nguyên
+    // Trường hợp 2: error là String JSON
     if (error is String) {
       try {
-        final jsonError = json.decode(error);
-        return formatAuthError(jsonError);
-      } catch (e) {
-        // Không phải JSON string
-        debugPrint('Error parsing JSON: $e');
+        final jsonError = jsonDecode(error);
+        if (jsonError is Map<String, dynamic>) {
+          return formatAuthError(jsonError);
+        }
+      } catch (_) {
+        // Ignore JSON parse errors
       }
 
-      // Các pattern thông dụng
-      if (error.contains('email') &&
-          (error.contains('valid') || error.contains('format'))) {
-        return 'Email không đúng định dạng, vui lòng kiểm tra lại';
-      }
-
-      if (error.contains('password') &&
-          (error.contains('match') || error.contains('wrong'))) {
-        return 'Email hoặc mật khẩu không đúng';
+      if (error.contains('timeout') ||
+          error.contains('connection') ||
+          error.contains('network')) {
+        return 'Kết nối không ổn định, vui lòng thử lại sau';
       }
     }
 
-    // Trường hợp mặc định
-    return 'Đã xảy ra lỗi trong quá trình xác thực, vui lòng thử lại';
+    // Mặc định
+    return 'Đã xảy ra lỗi, vui lòng thử lại sau';
   }
 
-  static String formatApiError(dynamic error) {
-    // Code xử lý lỗi API khác
+  static String formatPromptError(dynamic error) {
+    debugPrint('Prompt error raw: $error');
+
+    // Trường hợp error là Map
+    if (error is Map<String, dynamic>) {
+      final code = error['code'];
+      final errorMessage = error['error'];
+
+      // Xử lý các loại lỗi liên quan đến favorite
+      if (code == 'FAVORITE_ERROR') {
+        return errorMessage?.toString() ??
+            'Không thể thực hiện thao tác yêu thích, vui lòng thử lại sau';
+      }
+
+      // Xử lý lỗi xác thực
+      if (code == 'UNAUTHORIZED') {
+        return 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại';
+      }
+
+      // Xử lý lỗi mạng
+      if (code == 'NETWORK_ERROR') {
+        return 'Lỗi kết nối mạng, vui lòng kiểm tra kết nối và thử lại';
+      }
+
+      // Nếu có error message cụ thể, hiển thị nó
+      if (errorMessage != null) {
+        return errorMessage.toString();
+      }
+    }
+
+    // Mặc định
     return 'Đã xảy ra lỗi, vui lòng thử lại sau';
   }
 }

@@ -73,15 +73,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.success,
         user: user,
       ));
-      // save access and refresh token to secure storage
+      // save access token, refresh token and user id to secure storage
       await _secureStorage.writeSecureData(
         accessToken: user.accessToken,
         refreshToken: user.refreshToken,
+        // userId: user.userId,
       );
     } catch (error) {
       debugPrint('Login error in bloc: $error (${error.runtimeType})');
 
-      // Truyền error object nguyên bản không chuyển đổi
       emit(state.copyWith(
         status: AuthStatus.failure,
         errorMessage: error,
@@ -124,27 +124,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Processes new user registration requests.
-  void _onRegisterSubmitted(
+  Future<void> _onRegisterSubmitted(
     RegisterSubmitted event,
     Emitter<AuthState> emit,
   ) async {
     emit(state.copyWith(status: AuthStatus.loading));
 
     try {
-      final user = await registerUsecase(
+      debugPrint('Register request: ${event.email}, ${event.name}');
+
+      await registerUsecase(
+        name: event.name,
         email: event.email,
         password: event.password,
-        name: event.name,
       );
 
+      // Emit registrationSuccess thay vì success
       emit(state.copyWith(
         status: AuthStatus.success,
-        user: user,
+        // Không set user ở đây vì chúng ta muốn người dùng đăng nhập
       ));
     } catch (error) {
       debugPrint('Register error in bloc: $error (${error.runtimeType})');
 
-      // Truyền error object nguyên bản không chuyển đổi
       emit(state.copyWith(
         status: AuthStatus.failure,
         errorMessage: error,

@@ -1,109 +1,127 @@
 import 'package:aichatbot/domain/entities/prompt.dart';
 
-class PromptModel extends Prompt {
-  const PromptModel({
-    required String id,
-    required String title,
-    required String content,
-    String? description,
-    required List<String> categories,
-    int useCount = 0,
-    bool isFavorite = false,
-    required DateTime createdAt,
-    String? authorName,
-    String? authorId,
-    bool isPrivate = false,
-    String? ownerId,
-  }) : super(
-          id: id,
-          title: title,
-          content: content,
-          description: description ?? '',
-          categories: categories,
-          useCount: useCount,
-          isFavorite: isFavorite,
-          createdAt: createdAt,
-          authorName: authorName,
-          authorId: authorId,
-          isPrivate: isPrivate,
-          ownerId: ownerId,
-        );
+class PromptModel {
+  final String id;
+  final String title;
+  final String description;
+  final String content;
+  final bool isFavorite;
+  final String? category;
+  final bool isPublic;
+  final bool? isOwner;
+
+  // Các thuộc tính khác...
+
+  final String? userId;
+  final String? userName;
+  final String? language;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int useCount;
+
+  PromptModel({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.content,
+    required this.isFavorite,
+    required this.createdAt,
+    required this.updatedAt,
+    this.category,
+    this.isPublic = false,
+    this.isOwner,
+    this.userId,
+    this.userName,
+    this.language,
+    this.useCount = 0,
+  });
 
   factory PromptModel.fromJson(Map<String, dynamic> json) {
-    String id = json['_id'] ?? json['id'] ?? '';
-
-    // Safely handle categories
-    List<String> categories = [];
-    if (json['categories'] != null) {
-      categories = List<String>.from(json['categories']);
-    } else if (json['category'] != null && json['category'] is String) {
-      categories = [json['category']];
+    // Xử lý categories từ API
+    String? categoryValue;
+    if (json['categories'] != null &&
+        json['categories'] is List &&
+        (json['categories'] as List).isNotEmpty) {
+      // Take the first category from the list if available
+      categoryValue = (json['categories'] as List).first.toString();
+    } else {
+      // Otherwise use the category field directly
+      categoryValue = json['category']?.toString();
     }
 
     return PromptModel(
-      id: id,
+      id: json['_id'] ?? '',
       title: json['title'] ?? '',
+      description: json['description'] ?? '',
       content: json['content'] ?? '',
-      description: json['description'],
-      categories: categories,
-      useCount: json['useCount'] ?? 0,
       isFavorite: json['isFavorite'] ?? false,
+      category: json['category'],
+      isPublic: json['isPublic'] ?? false,
+      isOwner: json['isOwner'],
+      userId: json['userId'],
+      userName: json['userName'],
+      language: json['language'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      authorName: json['userName'] ?? json['authorName'],
-      authorId: json['userId'] ?? json['authorId'],
-      isPrivate: json['isPrivate'] ?? !(json['isPublic'] ?? true),
-      ownerId: json['ownerId'] ?? json['userId'],
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
+      useCount: json['useCount'] ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      '_id': id,
       'title': title,
-      'content': content,
       'description': description,
-      'category': categories.isNotEmpty ? categories[0] : 'other',
-      'categories': categories,
-      'useCount': useCount,
+      'content': content,
       'isFavorite': isFavorite,
+      'category': category,
+      'isPublic': isPublic,
+      'isOwner': isOwner,
+      'userId': userId,
+      'userName': userName,
+      'language': language,
       'createdAt': createdAt.toIso8601String(),
-      'authorName': authorName,
-      'authorId': authorId,
-      'isPrivate': isPrivate,
-      'ownerId': ownerId,
+      'updatedAt': updatedAt.toIso8601String(),
+      'useCount': useCount,
     };
   }
 
-  // Helper method to return a copy with modified fields
+  // Cập nhật phương thức copyWith
   PromptModel copyWith({
     String? id,
     String? title,
-    String? content,
     String? description,
-    List<String>? categories,
-    int? useCount,
+    String? content,
     bool? isFavorite,
+    String? category,
+    bool? isPublic,
+    bool? isOwner,
+    String? userId,
+    String? userName,
+    String? language,
     DateTime? createdAt,
-    String? authorName,
-    String? authorId,
-    bool? isPrivate,
-    String? ownerId,
+    DateTime? updatedAt,
+    int? useCount,
   }) {
     return PromptModel(
       id: id ?? this.id,
       title: title ?? this.title,
-      content: content ?? this.content,
       description: description ?? this.description,
-      categories: categories ?? this.categories,
-      useCount: useCount ?? this.useCount,
+      content: content ?? this.content,
       isFavorite: isFavorite ?? this.isFavorite,
+      category: category ?? this.category,
+      isPublic: isPublic ?? this.isPublic,
+      isOwner: isOwner ?? this.isOwner,
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
+      language: language ?? this.language,
       createdAt: createdAt ?? this.createdAt,
-      authorName: authorName ?? this.authorName,
-      authorId: authorId ?? this.authorId,
-      isPrivate: isPrivate ?? this.isPrivate,
-      ownerId: ownerId ?? this.ownerId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      useCount: useCount ?? this.useCount,
     );
   }
 }

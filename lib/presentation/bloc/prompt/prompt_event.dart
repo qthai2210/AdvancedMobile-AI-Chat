@@ -1,6 +1,8 @@
 import 'package:aichatbot/domain/entities/prompt.dart';
 
-abstract class PromptEvent {}
+abstract class PromptEvent {
+  const PromptEvent();
+}
 
 class FetchPrompts extends PromptEvent {
   final String accessToken;
@@ -46,7 +48,7 @@ class CreatePromptRequested extends PromptEvent {
   final String title;
   final String content;
   final String description;
-  final List<String> categories;
+  final String category;
   final bool isPublic;
   final String language;
   final String accessToken;
@@ -55,47 +57,63 @@ class CreatePromptRequested extends PromptEvent {
     required this.title,
     required this.content,
     required this.description,
-    required this.categories,
+    required this.category,
     required this.accessToken,
     this.isPublic = false,
     this.language = 'vi',
   });
 }
 
-class UpdatePromptRequested extends PromptEvent {
-  final Prompt prompt;
+class UpdatePrompt extends PromptEvent {
   final String accessToken;
+  final String promptId;
+  final String title;
+  final String description;
+  final String content;
+  final String category;
+  final bool isPublic;
 
-  UpdatePromptRequested({
-    required this.prompt,
+  UpdatePrompt({
     required this.accessToken,
+    required this.promptId,
+    required this.title,
+    required this.description,
+    required this.content,
+    required this.category,
+    required this.isPublic,
   });
 }
 
-class DeletePromptRequested extends PromptEvent {
-  final String promptId;
+class DeletePrompt extends PromptEvent {
   final String accessToken;
+  final String promptId;
+  final String? xJarvisGuid;
 
-  DeletePromptRequested({
-    required this.promptId,
+  const DeletePrompt({
     required this.accessToken,
+    required this.promptId,
+    this.xJarvisGuid,
   });
 }
 
 class ToggleFavoriteRequested extends PromptEvent {
   final String promptId;
   final String accessToken;
+  final bool currentFavoriteStatus;
+  final String? xJarvisGuid;
 
   ToggleFavoriteRequested({
     required this.promptId,
     required this.accessToken,
+    required this.currentFavoriteStatus,
+    this.xJarvisGuid,
   });
 }
 
 class SearchQueryChanged extends PromptEvent {
   final String query;
 
-  SearchQueryChanged(this.query);
+  const SearchQueryChanged(this.query);
 }
 
 class CategorySelected extends PromptEvent {
@@ -108,7 +126,7 @@ class CategorySelectionChanged extends PromptEvent {
   final String category;
   final bool isSelected;
 
-  CategorySelectionChanged({
+  const CategorySelectionChanged({
     required this.category,
     required this.isSelected,
   });
@@ -117,19 +135,19 @@ class CategorySelectionChanged extends PromptEvent {
 class ToggleShowFavorites extends PromptEvent {
   final bool showOnlyFavorites;
 
-  ToggleShowFavorites(this.showOnlyFavorites);
-}
-
-class SortMethodChanged extends PromptEvent {
-  final String sortBy;
-
-  SortMethodChanged(this.sortBy);
+  const ToggleShowFavorites(this.showOnlyFavorites);
 }
 
 class ToggleViewMode extends PromptEvent {
   final bool isGridView;
 
-  ToggleViewMode(this.isGridView);
+  const ToggleViewMode(this.isGridView);
+}
+
+class SortMethodChanged extends PromptEvent {
+  final String sortBy;
+
+  const SortMethodChanged(this.sortBy);
 }
 
 class CreatePrompt extends PromptEvent {
@@ -153,3 +171,5 @@ class CreatePrompt extends PromptEvent {
     this.xJarvisGuid,
   });
 }
+
+class ResetPromptState extends PromptEvent {}
