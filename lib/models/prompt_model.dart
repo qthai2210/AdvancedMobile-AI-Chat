@@ -5,7 +5,7 @@ class Prompt {
   final String title;
   final String content;
   final String description;
-  final List<String> categories;
+  final String category;
   final int useCount;
   final bool isFavorite;
   final DateTime createdAt;
@@ -20,7 +20,7 @@ class Prompt {
     required this.title,
     required this.content,
     required this.description,
-    required this.categories,
+    required this.category,
     this.useCount = 0,
     this.isFavorite = false,
     required this.createdAt,
@@ -58,7 +58,7 @@ class Prompt {
     String? title,
     String? content,
     String? description,
-    List<String>? categories,
+    String? category,
     int? useCount,
     bool? isFavorite,
     DateTime? createdAt,
@@ -72,7 +72,7 @@ class Prompt {
       title: title ?? this.title,
       content: content ?? this.content,
       description: description ?? this.description,
-      categories: categories ?? this.categories,
+      category: category ?? this.category,
       useCount: useCount ?? this.useCount,
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
@@ -90,7 +90,7 @@ class Prompt {
       title: json['title'] as String,
       content: json['content'] as String,
       description: json['description'] as String,
-      categories: List<String>.from(json['categories'] ?? []),
+      category: json['categories'] as String,
       useCount: json['useCount'] as int? ?? 0,
       isFavorite: json['isFavorite'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),

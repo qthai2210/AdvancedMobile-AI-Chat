@@ -73,7 +73,7 @@ extension BuildContextExtensions on BuildContext {
   }) {
     AppNotification.showError(
       this,
-      ErrorFormatter.formatApiError(error),
+      ErrorFormatter.formatAuthError(error),
       onAction: onAction,
       actionLabel: actionLabel,
     );
@@ -90,6 +90,56 @@ extension BuildContextExtensions on BuildContext {
       ErrorFormatter.formatAuthError(error),
       onAction: onAction,
       actionLabel: actionLabel,
+    );
+  }
+
+  void showConfirmationDialog({
+    required String title,
+    required String content,
+    required String confirmText,
+    required String cancelText,
+    required VoidCallback onConfirm,
+    VoidCallback? onCancel,
+    bool barrierDismissible = true,
+  }) {
+    showDialog(
+      context: this,
+      barrierDismissible: barrierDismissible,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              if (onCancel != null) onCancel();
+            },
+            child: Text(
+              cancelText,
+              style: TextStyle(
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onConfirm();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(confirmText),
+          ),
+        ],
+      ),
     );
   }
 }

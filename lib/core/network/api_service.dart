@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
 import 'package:aichatbot/core/network/dio_interceptors.dart';
+import 'package:flutter/foundation.dart';
 
 /// Base API service that handles common functionality for API requests
 ///
@@ -38,7 +39,7 @@ class ApiService {
   /// Creates authorization header with bearer token
   Map<String, String> createAuthHeader(String accessToken) {
     return {
-      'Authorization': 'Bearer $accessToken',
+      'Authorization': '$accessToken',
     };
   }
 
@@ -74,43 +75,51 @@ class ApiService {
   }
 
   /// Handles and formats errors from API calls
-  Exception handleError(dynamic error) {
+  dynamic handleError(dynamic error) {
     if (error is DioException) {
-      if (error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout ||
-          error.type == DioExceptionType.sendTimeout) {
-        return NetworkException(
-            'Network timeout error. Please check your connection.');
+      debugPrint('DioException: ${error.type}, Message: ${error.message}');
+
+      // Nếu có response data, trả về nó
+      if (error.response?.data != null && error.response?.data is Map) {
+        return error.response!.data;
       }
 
-      if (error.type == DioExceptionType.connectionError) {
-        return NetworkException(
-            'No internet connection. Please check your network.');
+      // Các xử lý lỗi khác
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          return NetworkException(
+              'Network timeout error. Please check your connection.');
+        case DioExceptionType.connectionError:
+          return NetworkException(
+              'No internet connection. Please check your network.');
+        default:
+          // Handle error response
+          if (error.response != null) {
+            final statusCode = error.response?.statusCode;
+            final data = error.response?.data;
+
+            if (statusCode == 401 || statusCode == 403) {
+              return UnauthorizedException('Authentication error: $data');
+            } else if (statusCode == 404) {
+              return NotFoundException('Resource not found: $data');
+            }
+          }
+
+          return ServerException('Server error: ${error.message}');
       }
-
-      // Handle error response
-      if (error.response != null) {
-        final statusCode = error.response?.statusCode;
-        final data = error.response?.data;
-
-        if (statusCode == 401 || statusCode == 403) {
-          return UnauthorizedException('Authentication error: $data');
-        } else if (statusCode == 404) {
-          return NotFoundException('Resource not found: $data');
-        }
-      }
-
-      return ServerException('Server error: ${error.message}');
     }
 
-    // For non-Dio exceptions, preserve the original type if it's already a custom exception
-    if (error is ServerException ||
-        error is UnauthorizedException ||
-        error is NetworkException) {
+    // Nếu error đã là Map lỗi phù hợp, trả về trực tiếp
+    if (error is Map && error['code'] != null) {
       return error;
     }
 
-    // Default error
-    return ServerException('Unexpected error: $error');
+    // Các lỗi khác
+    return {
+      'code': 'UNEXPECTED_ERROR',
+      'error': 'Đã xảy ra lỗi không mong đợi: $error'
+    };
   }
 }

@@ -1,71 +1,77 @@
+import 'package:aichatbot/domain/entities/prompt.dart';
+import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/remove_favorite_usecase.dart';
+import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/domain/usecases/prompt/get_prompts_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
-import 'package:aichatbot/data/models/prompt/prompt_list_model.dart'
-    as prompt_list;
-import 'package:aichatbot/core/errors/failures.dart';
+import 'package:aichatbot/data/models/prompt/prompt_list_model.dart';
 
 class PromptBloc extends Bloc<PromptEvent, PromptState> {
   final GetPromptsUsecase getPromptsUsecase;
   final CreatePromptUsecase createPromptUsecase;
+  final UpdatePromptUsecase updatePromptUsecase;
+  final DeletePromptUsecase deletePromptUsecase;
+  final AddFavoriteUsecase addFavoriteUsecase;
+  final RemoveFavoriteUsecase removeFavoriteUsecase;
 
   PromptBloc({
     required this.getPromptsUsecase,
     required this.createPromptUsecase,
+    required this.updatePromptUsecase,
+    required this.deletePromptUsecase,
+    required this.addFavoriteUsecase,
+    required this.removeFavoriteUsecase,
   }) : super(const PromptState()) {
     on<FetchPrompts>(_onFetchPrompts);
-    on<LoadMorePrompts>(_onLoadMorePrompts);
-    on<SearchQueryChanged>(_onSearchQueryChanged);
-    on<CategorySelected>(_onCategorySelected);
-    on<CategorySelectionChanged>(_onCategorySelectionChanged);
-    on<SortMethodChanged>(_onSortMethodChanged);
-    on<ToggleShowFavorites>(_onToggleShowFavorites);
-    on<ToggleViewMode>(_onToggleViewMode);
-    on<ToggleFavoriteRequested>(_onToggleFavoriteRequested);
     on<CreatePrompt>(_onCreatePrompt);
+    on<UpdatePrompt>(_onUpdatePrompt);
+    on<DeletePrompt>(_onDeletePrompt);
+    on<ToggleFavoriteRequested>(_onToggleFavoriteRequested);
+    on<ResetPromptState>(_onResetPromptState);
+    // Các events khác...
   }
 
-  void _onFetchPrompts(
+  // Các handlers hiện tại...
+
+  Future<void> _onFetchPrompts(
     FetchPrompts event,
     Emitter<PromptState> emit,
   ) async {
-    emit(state.copyWith(status: PromptStatus.loading));
-
     try {
-      // Thêm log để kiểm tra
-      print(
-          "Fetching prompts with parameters: ${event.accessToken.substring(0, 10)}..., query: ${event.query}, offset: ${event.offset}, limit: ${event.limit}, category: ${event.category}, isFavorite: ${event.isFavorite}, isPublic: ${event.isPublic}");
+      // Đánh dấu trạng thái đang tải
+      emit(state.copyWith(
+        status: PromptStatus.loading,
+        currentQuery: event.query,
+        isFavoriteFilter: event.isFavorite,
+        selectedCategory: event.category,
+      ));
 
+      // Gọi use case để lấy danh sách prompts
       final result = await getPromptsUsecase(
         accessToken: event.accessToken,
-        query: event.query ?? state.currentQuery,
-        offset: event.offset ?? 0,
-        limit: event.limit ?? 20,
-        category: event.category ?? state.selectedCategory,
-        isFavorite: event.isFavorite ?? state.isFavoriteFilter,
-        isPublic: event.isPublic,
+        limit: event.limit,
+        offset: event.offset,
+        category: event.category,
+        isFavorite: event.isFavorite,
+        query: event.query,
       );
 
-      // Log để kiểm tra kết quả trả về
-      print(
-          "Prompts fetched successfully. Items count: ${result.items.length}");
-
+      // Cập nhật state với kết quả
       emit(state.copyWith(
         status: PromptStatus.success,
         prompts: result.items,
         promptListResponse: result,
-        currentQuery: event.query ?? state.currentQuery,
-        selectedCategory: event.category ?? state.selectedCategory,
-        searchQuery: event.query ?? state.searchQuery,
       ));
 
-      // Log state sau khi cập nhật
-      print("Updated state with ${state.prompts.length} prompts");
+      debugPrint('Prompts fetched successfully: ${result.items.length} items');
     } catch (error) {
-      print("Error fetching prompts: $error");
+      debugPrint('Fetch prompts error: $error');
       emit(state.copyWith(
         status: PromptStatus.failure,
         errorMessage: error.toString(),
@@ -73,169 +79,107 @@ class PromptBloc extends Bloc<PromptEvent, PromptState> {
     }
   }
 
-  void _onLoadMorePrompts(
-    LoadMorePrompts event,
-    Emitter<PromptState> emit,
-  ) async {
-    if (state.status == PromptStatus.loading ||
-        state.status == PromptStatus.loadingMore) {
-      return;
-    }
-
-    emit(state.copyWith(status: PromptStatus.loadingMore));
-
-    try {
-      final result = await getPromptsUsecase(
-        accessToken: event.accessToken,
-        query: event.query ?? state.currentQuery,
-        offset: event.offset,
-        limit: event.limit,
-        category: event.category ?? state.selectedCategory,
-        isFavorite: event.isFavorite ?? state.isFavoriteFilter,
-        isPublic: event.isPublic,
-      );
-
-      // Đã được sửa: result đã là PromptListResponseModel, không cần fromJson nữa
-      // Kết hợp danh sách hiện tại với các item mới
-      final updatedPrompts = [...state.prompts, ...result.items];
-
-      emit(state.copyWith(
-        status: PromptStatus.success,
-        prompts: updatedPrompts,
-        promptListResponse: result,
-      ));
-    } catch (error) {
-      emit(state.copyWith(
-        status: PromptStatus.failure,
-        errorMessage: error.toString(),
-      ));
-    }
-  }
-
-  void _onSearchQueryChanged(
-    SearchQueryChanged event,
-    Emitter<PromptState> emit,
-  ) {
-    emit(state.copyWith(
-      currentQuery: event.query,
-      searchQuery: event.query,
-    ));
-  }
-
-  void _onCategorySelected(
-    CategorySelected event,
-    Emitter<PromptState> emit,
-  ) {
-    emit(state.copyWith(
-      selectedCategory: event.category,
-      selectedCategories: event.category != null ? [event.category!] : ['All'],
-    ));
-  }
-
-  void _onCategorySelectionChanged(
-    CategorySelectionChanged event,
-    Emitter<PromptState> emit,
-  ) {
-    List<String> updatedCategories = [...state.selectedCategories];
-
-    if (event.isSelected) {
-      if (event.category == 'All') {
-        updatedCategories = ['All'];
-      } else {
-        if (updatedCategories.contains('All')) {
-          updatedCategories.remove('All');
-        }
-        if (!updatedCategories.contains(event.category)) {
-          updatedCategories.add(event.category);
-        }
-      }
-    } else {
-      if (event.category != 'All') {
-        updatedCategories.remove(event.category);
-        if (updatedCategories.isEmpty) {
-          updatedCategories = ['All'];
-        }
-      }
-    }
-
-    emit(state.copyWith(
-      selectedCategories: updatedCategories,
-      selectedCategory: updatedCategories.contains('All')
-          ? null
-          : updatedCategories.isNotEmpty
-              ? updatedCategories[0]
-              : null,
-    ));
-  }
-
-  void _onSortMethodChanged(
-    SortMethodChanged event,
-    Emitter<PromptState> emit,
-  ) {
-    emit(state.copyWith(sortBy: event.sortBy));
-
-    // Trong triển khai thực tế, bạn có thể muốn sắp xếp lại danh sách prompts
-    // dựa trên thuộc tính sortBy
-    if (state.prompts.isNotEmpty) {
-      List<PromptModel> sortedPrompts = [...state.prompts];
-      switch (event.sortBy) {
-        case 'popular':
-          sortedPrompts.sort((a, b) => b.useCount.compareTo(a.useCount));
-          break;
-        case 'recent':
-          sortedPrompts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          break;
-        case 'alphabetical':
-          sortedPrompts.sort((a, b) => a.title.compareTo(b.title));
-          break;
-      }
-      emit(state.copyWith(prompts: sortedPrompts));
-    }
-  }
-
-  void _onToggleShowFavorites(
-    ToggleShowFavorites event,
-    Emitter<PromptState> emit,
-  ) {
-    emit(state.copyWith(
-      showOnlyFavorites: event.showOnlyFavorites,
-      isFavoriteFilter: event.showOnlyFavorites,
-    ));
-  }
-
-  void _onToggleViewMode(
-    ToggleViewMode event,
-    Emitter<PromptState> emit,
-  ) {
-    emit(state.copyWith(isGridView: event.isGridView));
-  }
-
-  void _onToggleFavoriteRequested(
-    ToggleFavoriteRequested event,
-    Emitter<PromptState> emit,
-  ) async {
-    // Trong triển khai thực tế, bạn sẽ gọi API để thay đổi trạng thái yêu thích
-    // và sau đó cập nhật state với kết quả từ API
-
-    // Triển khai tạm thời: Cập nhật trạng thái yêu thích cục bộ
-    final updatedPrompts = state.prompts.map((prompt) {
-      if (prompt.id == event.promptId) {
-        return prompt.copyWith(isFavorite: !prompt.isFavorite);
-      }
-      return prompt;
-    }).toList();
-
-    emit(state.copyWith(prompts: updatedPrompts));
-  }
-
-  void _onCreatePrompt(
-    CreatePrompt event,
-    Emitter<PromptState> emit,
-  ) async {
+  Future<void> _onUpdatePrompt(
+      UpdatePrompt event, Emitter<PromptState> emit) async {
     emit(state.copyWith(status: PromptStatus.loading));
 
     try {
-      final prompt = await createPromptUsecase(
+      final updatedPrompt = await updatePromptUsecase(
+        accessToken: event.accessToken,
+        promptId: event.promptId,
+        title: event.title,
+        description: event.description,
+        content: event.content,
+        category: event.category,
+        isPublic: event.isPublic,
+      );
+
+      debugPrint(
+          'PromptBloc: Successfully updated prompt: ${updatedPrompt.id}');
+
+      // Cập nhật trong danh sách hiện tại nếu có
+      List<PromptModel> updatedPrompts = List.from(state.prompts ?? []);
+      final index = updatedPrompts.indexWhere((p) => p.id == event.promptId);
+      if (index >= 0) {
+        updatedPrompts[index] = updatedPrompt;
+      }
+
+      // LUÔN CẬP NHẬT updatedPrompt TRONG STATE
+      emit(state.copyWith(
+        status: PromptStatus.success,
+        prompts: updatedPrompts,
+        updatedPrompt: updatedPrompt, // Đảm bảo thiết lập này
+      ));
+
+      debugPrint(
+          'PromptBloc: Emitted success state with updatedPrompt: ${updatedPrompt.id}');
+    } catch (error) {
+      debugPrint('PromptBloc: Update error: $error');
+      emit(state.copyWith(
+        status: PromptStatus.failure,
+        errorMessage: error.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onDeletePrompt(
+    DeletePrompt event,
+    Emitter<PromptState> emit,
+  ) async {
+    try {
+      // Cập nhật state loading
+      emit(state.copyWith(status: PromptStatus.loading));
+
+      // Gọi usecase delete prompt
+      final result = await deletePromptUsecase(
+        accessToken: event.accessToken,
+        promptId: event.promptId,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      if (result) {
+        // Xóa prompt khỏi state.prompts nếu có
+        if (state.prompts != null) {
+          final updatedPrompts = List<PromptModel>.from(state.prompts!)
+            ..removeWhere((p) => p.id == event.promptId);
+
+          emit(state.copyWith(
+            status: PromptStatus.success,
+            prompts: updatedPrompts,
+            deletedPromptId: event.promptId,
+          ));
+        } else {
+          emit(state.copyWith(
+            status: PromptStatus.success,
+            deletedPromptId: event.promptId,
+          ));
+        }
+      } else {
+        emit(state.copyWith(
+          status: PromptStatus.failure,
+          errorMessage: 'Failed to delete prompt',
+        ));
+      }
+    } catch (error) {
+      debugPrint('Delete prompt error: $error');
+      emit(state.copyWith(
+        status: PromptStatus.failure,
+        errorMessage: error.toString(),
+      ));
+    }
+  }
+
+  // Thêm handler cho CreatePrompt
+  Future<void> _onCreatePrompt(
+    CreatePrompt event,
+    Emitter<PromptState> emit,
+  ) async {
+    try {
+      // Đánh dấu trạng thái đang tải
+      emit(state.copyWith(status: PromptStatus.loading));
+
+      // Gọi usecase create prompt
+      final result = await createPromptUsecase(
         accessToken: event.accessToken,
         title: event.title,
         content: event.content,
@@ -246,31 +190,139 @@ class PromptBloc extends Bloc<PromptEvent, PromptState> {
         xJarvisGuid: event.xJarvisGuid,
       );
 
-      // Thêm prompt mới vào đầu danh sách
-      final updatedPrompts = [prompt, ...state.prompts];
+      // Cập nhật state với prompt mới
+      if (state.prompts != null) {
+        // Thêm prompt mới vào đầu danh sách
+        final updatedPrompts = [result, ...state.prompts!];
 
-      // Cập nhật danh sách prompt và trạng thái
-      emit(state.copyWith(
-        status: PromptStatus.success,
-        prompts: updatedPrompts,
-        // Giữ lại promptListResponse hiện tại để duy trì thông tin phân trang
-        newPrompt: prompt,
-      ));
-    } on AuthFailure catch (failure) {
-      emit(state.copyWith(
-        status: PromptStatus.failure,
-        errorMessage: failure.message,
-      ));
-    } on ServerFailure catch (failure) {
-      emit(state.copyWith(
-        status: PromptStatus.failure,
-        errorMessage: failure.message,
-      ));
+        emit(state.copyWith(
+          status: PromptStatus.success,
+          newPrompt: result,
+          prompts: updatedPrompts,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: PromptStatus.success,
+          newPrompt: result,
+          prompts: [result],
+        ));
+      }
+
+      debugPrint('Prompt created successfully with ID: ${result.id}');
     } catch (error) {
+      debugPrint('Create prompt error: $error');
+      // Cập nhật state lỗi
       emit(state.copyWith(
         status: PromptStatus.failure,
         errorMessage: error.toString(),
       ));
     }
+  }
+
+  // Thêm handler cho ToggleFavoriteRequested
+  Future<void> _onToggleFavoriteRequested(
+    ToggleFavoriteRequested event,
+    Emitter<PromptState> emit,
+  ) async {
+    try {
+      // Optimistic update - cập nhật UI ngay lập tức
+      final promptList = List<PromptModel>.from(state.prompts ?? []);
+      final index = promptList.indexWhere((p) => p.id == event.promptId);
+
+      if (index != -1) {
+        // Tạo bản sao của prompt với trạng thái yêu thích đảo ngược
+        final updatedPrompt = promptList[index].copyWith(
+          isFavorite: !promptList[index].isFavorite,
+        );
+
+        // Cập nhật danh sách prompts
+        promptList[index] = updatedPrompt;
+
+        // Cập nhật state với danh sách đã thay đổi - không kích hoạt thông báo thành công ngay
+        emit(state.copyWith(
+          prompts: promptList,
+          status: PromptStatus.loading, // Set loading để chờ kết quả API
+        ));
+
+        bool success;
+        try {
+          // Gọi API phù hợp dựa trên trạng thái hiện tại
+          if (event.currentFavoriteStatus) {
+            // Nếu đang là yêu thích, gọi API xóa khỏi yêu thích
+            success = await removeFavoriteUsecase(
+              accessToken: event.accessToken,
+              promptId: event.promptId,
+              xJarvisGuid: event.xJarvisGuid,
+            );
+          } else {
+            // Nếu chưa yêu thích, gọi API thêm vào yêu thích
+            success = await addFavoriteUsecase(
+              accessToken: event.accessToken,
+              promptId: event.promptId,
+              xJarvisGuid: event.xJarvisGuid,
+            );
+          }
+
+          if (success) {
+            // Nếu API thành công, cập nhật state với trạng thái thành công
+            emit(state.copyWith(
+              status: PromptStatus.success,
+              favoriteToggleSuccess: true,
+              lastToggledPrompt: promptList[index],
+            ));
+          } else {
+            // Nếu API không thành công, hoàn tác lại thay đổi UI
+            _revertFavoriteChangeInUI(
+              promptList: promptList,
+              index: index,
+              emit: emit,
+            );
+          }
+        } catch (apiError) {
+          debugPrint('Toggle favorite API error: $apiError');
+          // Nếu có lỗi xảy ra, hoàn tác lại thay đổi UI
+          _revertFavoriteChangeInUI(
+            promptList: promptList,
+            index: index,
+            emit: emit,
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint('Toggle favorite error: $error');
+      emit(state.copyWith(
+        status: PromptStatus.failure,
+        errorMessage: error.toString(),
+      ));
+    }
+  }
+
+  void _revertFavoriteChangeInUI({
+    required List<PromptModel> promptList,
+    required int index,
+    required Emitter<PromptState> emit,
+  }) {
+    // Hoàn tác lại thay đổi UI bằng cách đảo ngược trạng thái yêu thích
+    final revertedPrompt = promptList[index].copyWith(
+      isFavorite: !promptList[index].isFavorite,
+    );
+    promptList[index] = revertedPrompt;
+
+    // Cập nhật lại state với danh sách prompts đã hoàn tác
+    emit(state.copyWith(
+      prompts: promptList,
+      status: PromptStatus
+          .success, // Có thể cần thay đổi trạng thái này tùy theo logic của bạn
+    ));
+  }
+
+  void _onResetPromptState(ResetPromptState event, Emitter<PromptState> emit) {
+    debugPrint('PromptBloc: Resetting prompt state');
+    // Giữ lại danh sách prompts nhưng reset các trạng thái khác
+    emit(state.copyWith(
+      status: PromptStatus.initial,
+      errorMessage: null,
+      updatedPrompt: null,
+    ));
   }
 }

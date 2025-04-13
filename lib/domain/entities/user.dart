@@ -5,6 +5,7 @@ class User {
   final String? directNavigationPath;
   final String? accessToken;
   final String? refreshToken;
+  //final String? userId;
 
   User({
     required this.id,
@@ -13,5 +14,6 @@ class User {
     this.directNavigationPath,
     this.accessToken,
     this.refreshToken,
+    //this.userId,
   });
 }

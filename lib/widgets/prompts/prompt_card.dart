@@ -84,10 +84,10 @@ class PromptCard extends StatelessWidget {
       height: 32,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: prompt.categories.length,
+        itemCount: prompt.category.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final category = prompt.categories[index];
+          final category = prompt.category[index];
           final color = Prompt.getCategoryColor(category);
           return Chip(
             label: Text(

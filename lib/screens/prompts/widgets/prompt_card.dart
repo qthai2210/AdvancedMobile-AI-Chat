@@ -81,8 +81,8 @@ class PromptCard extends StatelessWidget {
               Row(
                 children: [
                   // Category chip
-                  if (prompt.categories.isNotEmpty)
-                    _buildCategoryChip(prompt.categories.first),
+                  if (prompt.category?.isNotEmpty ?? false)
+                    _buildCategoryChip(prompt.category!),
                   const Spacer(),
                   // Created date
                   if (prompt.createdAt != null)
@@ -169,8 +169,8 @@ class PromptCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (prompt.categories.isNotEmpty)
-                    _buildCategoryChip(prompt.categories.first),
+                  if (prompt.category?.isNotEmpty ?? false)
+                    _buildCategoryChip(prompt.category!),
                   const SizedBox(height: 4),
                   if (prompt.createdAt != null)
                     Text(
@@ -224,6 +224,11 @@ class PromptCard extends StatelessWidget {
   }
 
   Color _getCategoryColor(String category) {
+    // Handle null or empty
+    if (category.isEmpty) {
+      return Colors.blueGrey;
+    }
+
     // Map categories to colors
     final lowercaseCategory = category.toLowerCase();
 

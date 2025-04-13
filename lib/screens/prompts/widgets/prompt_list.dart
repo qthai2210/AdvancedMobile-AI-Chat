@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/screens/prompts/widgets/prompt_card.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class PromptList extends StatefulWidget {
   final ScrollController? scrollController;
@@ -59,7 +61,7 @@ class _PromptListState extends State<PromptList> {
       if (authState.user?.accessToken == null) return;
 
       // Calculate the next offset based on the current items count
-      final nextOffset = state.prompts.length;
+      final nextOffset = state.prompts?.length ?? 0;
 
       context.read<PromptBloc>().add(
             LoadMorePrompts(
@@ -98,14 +100,15 @@ class _PromptListState extends State<PromptList> {
       builder: (context, state) {
         // Log state for debugging
         debugPrint(
-            'PromptList: Status = ${state.status}, Prompts count = ${state.prompts.length}');
+            'PromptList: Status = ${state.status}, Prompts count = ${state.prompts?.length ?? 0}');
 
         if (state.status == PromptStatus.initial ||
-            (state.status == PromptStatus.loading && state.prompts.isEmpty)) {
+            (state.status == PromptStatus.loading &&
+                (state.prompts?.isEmpty ?? true))) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (state.prompts.isEmpty) {
+        if (state.prompts?.isEmpty ?? true) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -133,22 +136,24 @@ class _PromptListState extends State<PromptList> {
         // Choose between ListView and GridView based on isGridView prop
         return widget.isGridView
             ? _buildGridView(
-                state.prompts, state.promptListResponse?.hasNext == true)
+                state.prompts ?? [], state.promptListResponse?.hasNext == true)
             : _buildListView(
-                state.prompts, state.promptListResponse?.hasNext == true);
+                state.prompts ?? [], state.promptListResponse?.hasNext == true);
       },
     );
   }
 
-  Widget _buildListView(List<PromptModel> prompts, bool hasMore) {
+  Widget _buildListView(List<PromptModel>? prompts, bool hasMore) {
+    final promptsList = prompts ?? [];
+
     return RefreshIndicator(
       onRefresh: () async => _refreshPrompts(),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(8),
-        itemCount: prompts.length + (hasMore ? 1 : 0),
+        itemCount: promptsList.length + (hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index >= prompts.length) {
+          if (index >= promptsList.length) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
@@ -157,7 +162,7 @@ class _PromptListState extends State<PromptList> {
             );
           }
 
-          final prompt = prompts[index];
+          final prompt = promptsList[index];
           return PromptCard(
             prompt: prompt,
             onTap: () => _handlePromptTap(prompt),
@@ -168,7 +173,9 @@ class _PromptListState extends State<PromptList> {
     );
   }
 
-  Widget _buildGridView(List<PromptModel> prompts, bool hasMore) {
+  Widget _buildGridView(List<PromptModel>? prompts, bool hasMore) {
+    final promptsList = prompts ?? [];
+
     return RefreshIndicator(
       onRefresh: () async => _refreshPrompts(),
       child: GridView.builder(
@@ -180,9 +187,9 @@ class _PromptListState extends State<PromptList> {
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
         ),
-        itemCount: prompts.length + (hasMore ? 1 : 0),
+        itemCount: promptsList.length + (hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index >= prompts.length) {
+          if (index >= promptsList.length) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
@@ -191,7 +198,7 @@ class _PromptListState extends State<PromptList> {
             );
           }
 
-          final prompt = prompts[index];
+          final prompt = promptsList[index];
           return PromptCard(
             prompt: prompt,
             isGrid: true,
@@ -228,19 +235,34 @@ class _PromptListState extends State<PromptList> {
 
   void _toggleFavorite(PromptModel prompt) {
     final authState = context.read<AuthBloc>().state;
+
     if (authState.user?.accessToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You need to be logged in to favorite prompts')),
+      // Hiển thị thông báo yêu cầu đăng nhập
+      context.showAuthErrorNotification(
+        'Bạn cần đăng nhập để sử dụng tính năng này',
+        actionLabel: 'Đăng nhập',
+        onAction: () {
+          context.go('/login');
+        },
       );
       return;
     }
 
+    // Gọi event để thực hiện toggle favorite
     context.read<PromptBloc>().add(
           ToggleFavoriteRequested(
             promptId: prompt.id,
             accessToken: authState.user!.accessToken!,
+            currentFavoriteStatus: prompt.isFavorite,
+            // xJarvisGuid: authState.user!.xJarvisGuid, // Nếu có
           ),
         );
+
+    // Hiển thị thông báo phản hồi ngay lập tức (optimistic UI)
+    final message = prompt.isFavorite
+        ? 'Đã xóa khỏi danh sách yêu thích'
+        : 'Đã thêm vào danh sách yêu thích';
+
+    context.showSuccessNotification(message);
   }
 }

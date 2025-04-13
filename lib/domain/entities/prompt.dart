@@ -1,3 +1,4 @@
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:flutter/material.dart';
 
 class Prompt {
@@ -5,13 +6,13 @@ class Prompt {
   final String title;
   final String content;
   final String description;
-  final List<String> categories;
+  final String category;
   final int useCount;
   final bool isFavorite;
   final DateTime createdAt;
   final String? authorName;
   final String? authorId;
-  final bool isPrivate;
+  final bool isPublic;
   final String? ownerId;
 
   const Prompt({
@@ -19,13 +20,13 @@ class Prompt {
     required this.title,
     required this.content,
     required this.description,
-    required this.categories,
+    required this.category,
     this.useCount = 0,
     this.isFavorite = false,
     required this.createdAt,
     this.authorName,
     this.authorId,
-    this.isPrivate = false,
+    this.isPublic = false,
     this.ownerId,
   });
 
@@ -59,5 +60,42 @@ class Prompt {
       default:
         return Colors.grey;
     }
+  }
+
+  // Thêm helper method để hiển thị category name thân thiện
+  static String getDisplayCategoryName(String category) {
+    final displayNames = {
+      'business': 'Business',
+      'career': 'Career',
+      'chatbot': 'Chatbot',
+      'coding': 'Coding',
+      'education': 'Education',
+      'fun': 'Fun',
+      'marketing': 'Marketing',
+      'productivity': 'Productivity',
+      'seo': 'SEO',
+      'writing': 'Writing',
+      'other': 'Other'
+    };
+
+    return displayNames[category] ?? category;
+  }
+
+  // Thêm factory constructor để chuyển đổi từ PromptModel sang Prompt
+  factory Prompt.fromPromptModel(PromptModel model) {
+    return Prompt(
+      id: model.id,
+      title: model.title,
+      description: model.description,
+      content: model.content,
+      isFavorite: model.isFavorite,
+      category:
+          model.category ?? 'other', // Sử dụng 'OTHER' nếu không có category
+      authorName: model.userName, // Đảm bảo lấy userName từ PromptModel
+      useCount: model.useCount,
+      createdAt: model.createdAt,
+      authorId: model.userId,
+      // Các thuộc tính khác nếu cần
+    );
   }
 }

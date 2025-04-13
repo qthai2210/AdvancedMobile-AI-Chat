@@ -19,26 +19,39 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
-  String _selectedCategory = 'other';
+  String _selectedCategory = 'other'; // Đổi thành 'OTHER' thay vì 'other'
   bool _isPublic = false;
   bool _isSubmitting = false;
 
-  // Danh sách các category
-  final List<String> _categories = [
-    'writing',
-    'coding',
+  // Cập nhật danh sách categories
+  final List<String> categories = [
     'business',
-    'marketing',
-    'education',
-    'creative',
-    'personal',
     'career',
     'chatbot',
+    'coding',
+    'education',
     'fun',
+    'marketing',
     'productivity',
     'seo',
-    'other'
+    'writing',
+    'other',
   ];
+
+  // Nếu bạn muốn giữ trường hợp chữ thường/hoa đẹp hơn trong UI nhưng vẫn map đúng khi gửi API:
+  final Map<String, String> categoryDisplayNames = {
+    'business': 'Business',
+    'career': 'Career',
+    'chatbot': 'Chatbot',
+    'coding': 'Coding',
+    'education': 'Education',
+    'fun': 'Fun',
+    'marketing': 'Marketing',
+    'productivity': 'Productivity',
+    'seo': 'SEO',
+    'writing': 'Writing',
+    'other': 'Other'
+  };
 
   @override
   void initState() {
@@ -117,23 +130,21 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  value: _selectedCategory,
                   decoration: const InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedCategory,
-                  items: _categories.map((String category) {
+                  items: categories.map((category) {
                     return DropdownMenuItem<String>(
                       value: category,
-                      child: Text(category.capitalize()),
+                      child: Text(categoryDisplayNames[category] ?? category),
                     );
                   }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _selectedCategory = newValue;
-                      });
-                    }
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value.toString();
+                    });
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -223,17 +234,10 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
               description: _descriptionController.text,
               category: _selectedCategory,
               isPublic: _isPublic,
-              language: 'English', // Default language
+              language: 'en', // Hoặc cho người dùng chọn
+              xJarvisGuid: null, // Nếu cần
             ),
           );
     }
-  }
-}
-
-// Extension to capitalize first letter of string
-extension StringExtension on String {
-  String capitalize() {
-    if (isEmpty) return this;
-    return '${this[0].toUpperCase()}${substring(1)}';
   }
 }
