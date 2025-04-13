@@ -1,3 +1,5 @@
+import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
+import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,6 +29,12 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<PromptBloc>(
           create: (context) => di.sl<PromptBloc>(),
+        ),
+        BlocProvider<ConversationBloc>(
+          create: (context) => di.sl<ConversationBloc>(),
+        ),
+        BlocProvider<ChatBloc>(
+          create: (context) => di.sl<ChatBloc>(),
         ),
       ],
       child: MaterialApp.router(

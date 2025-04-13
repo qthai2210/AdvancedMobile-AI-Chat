@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
+
 class MessageRequestModel {
   final String content;
   final List<dynamic> files;
@@ -44,9 +46,10 @@ class MessageMetadata {
 
 class Conversation {
   final List<ChatMessage> messages;
-
+  final String id;
   Conversation({
     required this.messages,
+    required this.id,
   });
 
   Map<String, dynamic> toJson() {
@@ -87,10 +90,10 @@ class ChatMessage {
 class AssistantModel {
   final String model;
   final String name;
-  final String id;
+  final AssistantId id;
 
   AssistantModel({
-    required this.model,
+    this.model = 'dify',
     required this.name,
     required this.id,
   });
@@ -99,7 +102,7 @@ class AssistantModel {
     return {
       'model': model,
       'name': name,
-      'id': id,
+      'id': id.toString(), // Convert enum to its string representation
     };
   }
 }

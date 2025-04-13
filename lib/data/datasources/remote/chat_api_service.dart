@@ -18,7 +18,7 @@ class ChatApiService {
   Future<MessageResponseModel> sendMessage({
     required MessageRequestModel request,
   }) async {
-    const endpoint = '/ai-chat/messages';
+    const endpoint = '/messages';
 
     try {
       // Get the access token from secure storage
@@ -39,7 +39,7 @@ class ChatApiService {
               true, // Accept all status codes to handle errors manually
         ),
       );
-
+      print('Response123: ${response.data}');
       return _apiService.handleResponse<MessageResponseModel>(
         response,
         (data) => MessageResponseModel.fromJson(data),

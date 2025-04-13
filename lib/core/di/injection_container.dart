@@ -47,17 +47,13 @@ Future<void> init() async {
       getConversationsUsecase: sl(),
     ),
   );
-
-  sl.registerLazySingleton(
+  // Registering ChatBloc as a factory instead of a singleton
+  // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc
+  sl.registerFactory(
     () => ChatBloc(
       sendMessageUseCase: sl(),
     ),
   );
-  // sl.registerLazySingleton(
-  //   () => ChatBloc(
-  //     sendMessageUseCase: sl(),
-  //   ),
-  // );
 
   // Use cases
   sl.registerLazySingleton(() => LoginUsecase(sl()));
