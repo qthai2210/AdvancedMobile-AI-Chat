@@ -1,3 +1,4 @@
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
@@ -11,7 +12,7 @@ import 'package:aichatbot/utils/build_context_extensions.dart'; // Đầu tiên,
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 class EditPromptScreen extends StatefulWidget {
-  final Prompt prompt;
+  final PromptModel prompt;
 
   const EditPromptScreen({Key? key, required this.prompt}) : super(key: key);
 
@@ -51,7 +52,8 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
     _descriptionController =
         TextEditingController(text: widget.prompt.description);
     _contentController = TextEditingController(text: widget.prompt.content);
-    _selectedCategory = widget.prompt.category; // Use the single category
+    _selectedCategory =
+        widget.prompt.category ?? 'Other'; // Use the single category
     _isPublic = widget.prompt.isPublic;
   }
 
@@ -90,8 +92,8 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
           content: _contentController.text.trim(),
           category: _selectedCategory,
           isPublic: _isPublic,
-          authorId: widget.prompt.authorId,
-          authorName: widget.prompt.authorName,
+          authorId: widget.prompt.userId,
+          authorName: widget.prompt.userName,
           isFavorite: widget.prompt.isFavorite,
           useCount: widget.prompt.useCount,
           createdAt: widget.prompt.createdAt,

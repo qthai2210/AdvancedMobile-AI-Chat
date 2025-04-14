@@ -1,8 +1,11 @@
+import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/domain/entities/prompt.dart';
+import 'package:aichatbot/domain/repositories/prompt_repository.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/remove_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
@@ -34,44 +37,88 @@ class PromptBloc extends Bloc<PromptEvent, PromptState> {
     on<DeletePrompt>(_onDeletePrompt);
     on<ToggleFavoriteRequested>(_onToggleFavoriteRequested);
     on<ResetPromptState>(_onResetPromptState);
+    on<SearchQueryChanged>(_onSearchQueryChanged);
+    on<CategorySelectionChanged>(_onCategorySelectionChanged);
+    on<ToggleShowFavorites>(_onToggleShowFavorites);
     // Các events khác...
   }
 
   // Các handlers hiện tại...
+  void _onCategorySelectionChanged(
+      CategorySelectionChanged event, Emitter<PromptState> emit) {
+    Set<String> updatedCategories = {...state.selectedCategories};
+
+    if (event.isSelected) {
+      if (event.category == 'all') {
+        // Nếu "all" được chọn, bỏ tất cả các category khác
+        updatedCategories = {'all'};
+      } else {
+        // Nếu một category khác được chọn, bỏ "all" và thêm category đó
+        updatedCategories.remove('all');
+        updatedCategories.add(event.category);
+      }
+    } else {
+      // Nếu bỏ chọn một category
+      updatedCategories.remove(event.category);
+      // Nếu không còn category nào được chọn, chọn "all"
+      if (updatedCategories.isEmpty) {
+        updatedCategories.add('all');
+      }
+    }
+
+    // Cập nhật state với danh sách categories đã được cập nhật
+    emit(state.copyWith(
+      selectedCategories: updatedCategories,
+      selectedCategory: event.category,
+    ));
+
+    // Tải lại danh sách prompt với category mới
+    if (state.status != PromptStatus.loading) {
+      // Tìm kiếm lại với category mới
+      final authState = di.sl<AuthBloc>().state;
+      if (authState.user?.accessToken != null) {
+        add(FetchPrompts(
+          accessToken: authState.user!.accessToken!,
+          limit: 20,
+          offset: 0,
+          category: event.category == 'all' ? null : event.category,
+          isFavorite: state.isFavoriteFilter,
+          query: state.searchQuery.isNotEmpty ? state.searchQuery : null,
+        ));
+      }
+    }
+  }
 
   Future<void> _onFetchPrompts(
-    FetchPrompts event,
-    Emitter<PromptState> emit,
-  ) async {
-    try {
-      // Đánh dấu trạng thái đang tải
-      emit(state.copyWith(
-        status: PromptStatus.loading,
-        currentQuery: event.query,
-        isFavoriteFilter: event.isFavorite,
-        selectedCategory: event.category,
-      ));
+      FetchPrompts event, Emitter<PromptState> emit) async {
+    emit(state.copyWith(
+      status: PromptStatus.loading,
+      currentQuery: event.query,
+    ));
 
-      // Gọi use case để lấy danh sách prompts
-      final result = await getPromptsUsecase(
+    try {
+      final promptsResponse = await getPromptsUsecase(
         accessToken: event.accessToken,
-        limit: event.limit,
-        offset: event.offset,
+        limit: event.limit ?? 20,
+        offset: event.offset ?? 0,
         category: event.category,
         isFavorite: event.isFavorite,
         query: event.query,
+        isPublic: event.isPublic, // Truyền tham số isPublic
       );
 
-      // Cập nhật state với kết quả
+      // Log kiểu dữ liệu thực tế
+      debugPrint('PromptBloc: Response type: ${promptsResponse.runtimeType}');
+
       emit(state.copyWith(
         status: PromptStatus.success,
-        prompts: result.items,
-        promptListResponse: result,
+        prompts: promptsResponse.items,
+        promptListResponse: promptsResponse as dynamic,
+        errorMessage: null,
+        isFavoriteFilter: event.isFavorite, // Lưu trạng thái filter
       ));
-
-      debugPrint('Prompts fetched successfully: ${result.items.length} items');
     } catch (error) {
-      debugPrint('Fetch prompts error: $error');
+      debugPrint('PromptBloc: Error fetching prompts: $error');
       emit(state.copyWith(
         status: PromptStatus.failure,
         errorMessage: error.toString(),
@@ -324,5 +371,35 @@ class PromptBloc extends Bloc<PromptEvent, PromptState> {
       errorMessage: null,
       updatedPrompt: null,
     ));
+  }
+
+  void _onSearchQueryChanged(
+      SearchQueryChanged event, Emitter<PromptState> emit) {
+    // Cập nhật searchQuery trong state
+    emit(state.copyWith(
+      searchQuery: event.query,
+    ));
+  }
+
+  void _onToggleShowFavorites(
+      ToggleShowFavorites event, Emitter<PromptState> emit) {
+    emit(state.copyWith(
+      showOnlyFavorites: event.showOnlyFavorites,
+      isFavoriteFilter: event.showOnlyFavorites,
+    ));
+
+    // Tải lại danh sách với filter mới
+    final authState = di.sl<AuthBloc>().state;
+    if (authState.user?.accessToken != null) {
+      add(FetchPrompts(
+        accessToken: authState.user!.accessToken!,
+        limit: 20,
+        offset: 0,
+        category:
+            state.selectedCategory == 'all' ? null : state.selectedCategory,
+        isFavorite: event.showOnlyFavorites,
+        query: state.searchQuery.isNotEmpty ? state.searchQuery : null,
+      ));
+    }
   }
 }
