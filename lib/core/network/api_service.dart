@@ -18,8 +18,9 @@ class ApiService {
   /// Creates a configured Dio instance with proper interceptors
   static Dio _createDioInstance() {
     final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 180),
+      receiveTimeout: const Duration(seconds: 180),
+      sendTimeout: const Duration(seconds: 180),
       headers: ApiConfig.defaultHeaders,
     ));
 

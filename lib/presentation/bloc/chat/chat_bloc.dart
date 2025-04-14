@@ -3,6 +3,8 @@ import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
 import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/core/errors/failures.dart';
+import 'package:aichatbot/utils/token_management_service.dart';
+import 'dart:convert';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessageUseCase sendMessageUseCase;

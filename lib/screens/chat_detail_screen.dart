@@ -23,6 +23,7 @@ import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
+import 'package:aichatbot/utils/guid_generator.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
@@ -77,37 +78,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _showHistory = false;
   final bool _isLoadingHistory = false;
 
-  // Sample history for demo purposes
-  final List<ChatThread> _chatThreads = [
-    ChatThread(
-      id: '1',
-      title: 'Tìm hiểu về Machine Learning',
-      lastMessage: 'Machine Learning là một phần của...',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-      agentType: 'GPT-4',
-    ),
-    ChatThread(
-      id: '2',
-      title: 'Giải bài toán phức tạp',
-      lastMessage: 'Để giải bài toán này, ta cần áp dụng...',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      agentType: 'Claude',
-    ),
-    ChatThread(
-      id: '3',
-      title: 'Lập trình Flutter',
-      lastMessage: 'Flutter là framework phát triển ứng dụng...',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      agentType: 'GPT-3.5',
-    ),
-    ChatThread(
-      id: '4',
-      title: 'Tư vấn dự án',
-      lastMessage: 'Để quản lý dự án hiệu quả, bạn nên...',
-      timestamp: DateTime.now().subtract(const Duration(days: 3)),
-      agentType: 'GPT-4',
-    ),
-  ];
+  // Conversation history will be fetched from the API
+  List<ChatThread> _chatThreads = [];
+
   @override
   void initState() {
     super.initState();
@@ -141,8 +114,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           );
         } catch (e) {
           print('Error loading conversation: $e');
-          // Fallback to mock data if the bloc operation fails
-          _mockLoadExistingThread();
+          // Fallback to empty conversation with welcome message if the bloc operation fails
+          _loadExistingConversation();
         }
       }
     } catch (e) {
@@ -171,33 +144,49 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       );
     } else {
-      _mockLoadExistingThread();
+      // Load existing conversation from API
+      _loadExistingConversation();
     }
   }
 
-  void _mockLoadExistingThread() {
-    _currentThreadTitle = 'Tìm hiểu về Machine Learning';
+  void _loadExistingConversation() {
+    // This will be replaced with actual API call implementation
+    _currentThreadTitle = widget.threadId ?? 'Conversation';
 
-    _messages = [
-      Message(
-        text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-        isUser: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
-        agent: _selectedAgent,
-      ),
-      Message(
-        text: "Machine Learning là gì?",
-        isUser: true,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 29)),
-      ),
-      Message(
-        text:
-            "Machine Learning (học máy) là một nhánh của trí tuệ nhân tạo (AI) tập trung vào việc phát triển các thuật toán và mô hình cho phép máy tính học từ dữ liệu và đưa ra dự đoán hoặc quyết định mà không cần lập trình cụ thể.\n\nCác phương pháp học máy được chia thành nhiều loại:\n1. Học có giám sát (Supervised Learning)\n2. Học không giám sát (Unsupervised Learning)\n3. Học bán giám sát (Semi-supervised Learning)\n4. Học tăng cường (Reinforcement Learning)",
-        isUser: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 28)),
-        agent: _selectedAgent,
-      ),
-    ];
+    // Show loading state initially
+    setState(() {
+      _messages = [];
+      _isTyping = true;
+    });
+
+    // Try to load conversation data using the ConversationBloc
+    try {
+      if (widget.threadId != null) {
+        final bloc = context.read<ConversationBloc>();
+        bloc.add(
+          FetchConversations(
+            //threadId: widget.threadId,
+            cursor: _nextCursor,
+            limit: 100,
+            xJarvisGuid: '',
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error loading conversation data: $e');
+      // Add a fallback welcome message if conversation loading fails
+      setState(() {
+        _isTyping = false;
+        _messages.add(
+          Message(
+            text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
+            isUser: false,
+            timestamp: DateTime.now(),
+            agent: _selectedAgent,
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _pickImageFromGallery() async {
@@ -280,31 +269,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
 
         // Create conversation history for the API request
-        List<msg_model.ChatMessage> conversationHistory = _messages.map((msg) {
-          return msg_model.ChatMessage(
-              role: msg.isUser ? 'user' : 'model',
-              content: msg.text,
-              files: [],
-              assistant: msg.isUser
-                  ? null
-                  : msg_model.AssistantModel(
-                      model: "knowledge-base",
-                      name: _selectedAgent.name,
-                      id: _selectedAgent.id ??
-                          "29178123-34d4-4e52-94fb-8e580face2d5"));
-        }).toList();
+        // create conversationHIstory empty
+        List<msg_model.ChatMessage> conversationHistory = [];
+        // List<msg_model.ChatMessage> conversationHistory = _messages.map((msg) {
+        //   return msg_model.ChatMessage(
+        //       role: msg.isUser ? 'user' : 'model',
+        //       content: msg.text,
+        //       files: [],
+        //       assistant: msg.isUser
+        //           ? null
+        //           : msg_model.AssistantModel(
+        //               model: "dify",
+        //               name: _selectedAgent.name,
+        //               id: _selectedAgent.id,
+        //             ));
+        // }).toList();
 
         // Create API request
         final requestModel = msg_model.MessageRequestModel(
           content: message,
           files: [],
           metadata: msg_model.MessageMetadata(
-            conversation: msg_model.Conversation(messages: conversationHistory),
+            conversation:
+                msg_model.Conversation(messages: conversationHistory, id: ''),
           ),
           assistant: msg_model.AssistantModel(
-              model: "knowledge-base",
-              name: _selectedAgent.name,
-              id: _selectedAgent.id),
+              model: "dify", name: _selectedAgent.name, id: _selectedAgent.id),
         );
 
         // Use ChatBloc to send the message
@@ -341,18 +331,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       _showImageOptions = !_showImageOptions;
     });
   }
-
-  String _generateAIResponse(String userMessage) {
-    if (userMessage.toLowerCase().contains('flutter')) {
-      return "Flutter là một framework UI mã nguồn mở được phát triển bởi Google. Nó cho phép bạn xây dựng ứng dụng đẹp, nhanh chóng cho mobile, web, và desktop từ một codebase duy nhất. Flutter sử dụng ngôn ngữ Dart và có một hệ sinh thái package phong phú.";
-    } else if (userMessage.toLowerCase().contains('ai')) {
-      return "Trí tuệ nhân tạo (AI) là lĩnh vực nghiên cứu về việc làm cho máy tính thể hiện hành vi thông minh. AI hiện đại tập trung vào machine learning, deep learning, và các kỹ thuật cho phép máy tính học từ dữ liệu.";
-    } else if (userMessage.contains('?')) {
-      return "Đó là một câu hỏi thú vị. Để trả lời chính xác, tôi cần thêm thông tin. Bạn có thể nêu rõ hơn hoặc cung cấp thêm ngữ cảnh được không?";
-    } else {
-      return "Cảm ơn thông tin của bạn. Tôi có thể giúp gì thêm cho bạn? Bạn có thể hỏi tôi về bất kỳ chủ đề nào và tôi sẽ cố gắng hỗ trợ bạn tốt nhất có thể.";
-    }
-  }
+  // We're no longer using mock AI responses since we're using the ChatBloc for real API responses
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -394,8 +373,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() {
       _showHistory = false;
       _currentThreadTitle = thread.title;
-      _mockLoadExistingThread();
     });
+
+    // Navigate to the thread using its ID
+    // Load the conversation using the thread ID
+    context.read<ConversationBloc>().add(
+          const FetchConversations(
+            // threadId: thread.id,
+            cursor: null,
+            limit: 100,
+            xJarvisGuid: '',
+          ),
+        );
   }
 
   // Start a new chat conversation
@@ -591,6 +580,118 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  void _handleConversationState(ConversationState state) {
+    if (state is ConversationLoading) {
+      setState(() {
+        _isTyping = true;
+      });
+    } else if (state is ConversationLoaded) {
+      setState(() {
+        _isTyping = false;
+
+        // Update chat threads for history panel if available
+        if (state.conversations.isNotEmpty) {
+          _chatThreads = state.conversations
+              .map((conv) => ChatThread(
+                    id: conv.id,
+                    // id: conv.id,
+                    // title: conv.title ?? 'Untitled Conversation',
+                    title: 'Untitled Conversation',
+                    lastMessage: conv.messages.isNotEmpty == true
+                        ? (conv.messages.first.content ?? 'No content')
+                        : 'No messages',
+                    timestamp: DateTime.now(),
+                    agentType: 'AI Assistant',
+                  ))
+              .toList();
+
+          // If there's a specific conversation to display
+          if (widget.threadId != null && state.conversations.isNotEmpty) {
+            final conversation = state.conversations.firstWhere(
+              (conv) => conv.id == widget.threadId,
+              orElse: () => state.conversations.first,
+            );
+
+            //_currentThreadTitle = conversation.title ?? 'Conversation';
+            _currentThreadTitle = 'Conversation';
+
+            // Convert conversation messages to UI Message model
+            _messages = [];
+
+            for (var msg in conversation.messages) {
+              _messages.add(
+                Message(
+                  text: msg.content ?? '',
+                  isUser: msg.role == 'user',
+                  //   timestamp: msg.createdAt ?? DateTime.now(),
+                  timestamp: DateTime.now(),
+
+                  agent: msg.role == 'user' ? null : _selectedAgent,
+                ),
+              );
+            }
+
+            // Scroll to bottom after loading messages
+            _scrollToBottom();
+          }
+
+          // Store cursor for pagination if available
+          _nextCursor = state.nextCursor;
+        }
+      });
+    } else if (state is ConversationError) {
+      setState(() {
+        _isTyping = false;
+
+        // Add an error message if there's no content to display
+        if (_messages.isEmpty) {
+          _messages.add(
+            Message(
+              text:
+                  "Sorry, there was an error loading this conversation: ${state.message}",
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        }
+      });
+
+      // Show error in snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${state.message}')),
+      );
+    } else if (state is MessageSent) {
+      // Handle when a message is sent and response received
+      setState(() {
+        _isTyping = false;
+
+        // Add AI response to chat if it's not already added by ChatBloc
+        // This is a safeguard in case both blocs handle the same message
+        final responseExists = _messages
+            .any((msg) => !msg.isUser && msg.text == state.responseMessage);
+
+        if (!responseExists) {
+          _messages.add(
+            Message(
+              text: state.responseMessage,
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        }
+      });
+
+      _scrollToBottom();
+    } else if (state is MessageGenerating) {
+      // Handle when AI is generating a message
+      setState(() {
+        _isTyping = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -606,7 +707,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         listeners: [
           BlocListener<ConversationBloc, ConversationState>(
             listener: (context, state) {
-              // _handleConversationState(state);
+              _handleConversationState(state);
             },
           ),
           BlocListener<ChatBloc, ChatState>(

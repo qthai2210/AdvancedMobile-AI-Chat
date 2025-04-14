@@ -49,8 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Future.delayed(const Duration(milliseconds: 500), () {
             // Sử dụng Go Router nếu ứng dụng của bạn đang dùng
             try {
-              context.go(
-                  '/chat'); // hoặc '/prompts' tùy theo cấu trúc route của bạn
+              // move to chat detail screen
+              context.go('/chat/detail/${state.user?.id}');
+              // context.go(
+              //     '/chat'); // hoặc '/prompts' tùy theo cấu trúc route của bạn
             } catch (_) {
               // Fallback cho Navigation 1.0 nếu Go Router không khả dụng
               Navigator.of(context)

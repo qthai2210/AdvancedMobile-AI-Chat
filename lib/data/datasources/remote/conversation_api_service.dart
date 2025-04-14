@@ -42,7 +42,7 @@ class ConversationApiService {
         queryParameters: queryParams,
         options: Options(
           headers: {
-            // 'Authorization': 'Bearer $accessToken',
+            'Authorization': 'Bearer $accessToken',
             // 'x-jarvis-guid': xJarvisGuid,
           },
         ),
