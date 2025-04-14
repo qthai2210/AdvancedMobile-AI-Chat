@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/screens/create_bot_screen.dart';
 import 'package:aichatbot/widgets/bots/bot_list_item.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
@@ -26,295 +32,118 @@ class _BotListScreenState extends State<BotListScreen> {
   /// Controller for the search input field
   final TextEditingController _searchController = TextEditingController();
 
+  /// Controller for list scrolling
+  final ScrollController _scrollController = ScrollController();
+
   /// Current search query entered by the user
   String _searchQuery = '';
 
-  /// Mock data representing the list of AI bots
-  final List<AIBot> _bots = [
-    AIBot(
-      id: '1',
-      name: 'Customer Support Bot',
-      description:
-          'Handles customer inquiries and common questions about our products and services',
-      iconData: Icons.support_agent,
-      color: Colors.blue,
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    AIBot(
-      id: '2',
-      name: 'HR Assistant',
-      description:
-          'Answers questions about company policies, benefits, and procedures',
-      iconData: Icons.people,
-      color: Colors.green,
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-    AIBot(
-      id: '3',
-      name: 'Product Recommendation',
-      description: 'Suggests products based on customer preferences and needs',
-      iconData: Icons.shopping_cart,
-      color: Colors.orange,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
-
-  /// Returns a filtered list of bots based on the current search query.
-  ///
-  /// If [_searchQuery] is empty, returns all bots.
-  /// Otherwise, returns bots whose name or description contain the search query.
-  List<AIBot> get _filteredBots {
-    if (_searchQuery.isEmpty) return _bots;
-    return _bots
-        .where(
-          (bot) =>
-              bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              bot.description.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ),
-        )
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// Navigates to the bot creation screen and handles the result.
-  ///
-  /// If a new bot is created, adds it to the [_bots] list.
-  Future<void> _navigateToCreateBot() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreateBotScreen()),
-    );
+  /// Converts an AssistantModel to an AIBot model
+  AIBot _convertToAIBot(AssistantModel assistant) {
+    // Create a consistent color and icon based on the assistant ID
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.indigo
+    ];
 
-    if (result != null && result is AIBot) {
-      setState(() {
-        _bots.add(result);
-      });
-    }
+    final icons = [
+      Icons.smart_toy,
+      Icons.support_agent,
+      Icons.people,
+      Icons.shopping_cart,
+      Icons.school,
+      Icons.code,
+      Icons.medical_services
+    ];
+
+    // Use a hash of the ID to determine the color and icon
+    final colorIndex = assistant.id.hashCode.abs() % colors.length;
+    final iconIndex = assistant.id.hashCode.abs() % icons.length;
+
+    return AIBot(
+      id: assistant.id,
+      name: assistant.assistantName,
+      description: assistant.description ?? 'No description available',
+      iconData: icons[iconIndex],
+      color: colors[colorIndex],
+      createdAt: assistant.createdAt ?? DateTime.now(),
+    );
   }
 
-  /// Opens the edit screen for an existing bot.
-  ///
-  /// Handles both editing and deletion results from the edit screen.
-  /// [bot] The AI bot to be edited.
-  Future<void> _editBot(AIBot bot) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => CreateBotScreen(editBot: bot)),
-    );
+  void _onScroll() {
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
 
-    if (result != null) {
-      if (result == 'delete') {
-        setState(() {
-          _bots.removeWhere((b) => b.id == bot.id);
-        });
-      } else if (result is AIBot) {
-        setState(() {
-          final index = _bots.indexWhere((b) => b.id == bot.id);
-          if (index != -1) {
-            _bots[index] = result;
-          }
-        });
+    // Load more when 80% scrolled
+    if (currentScroll >= maxScroll * 0.8) {
+      final botState = context.read<BotBloc>().state;
+
+      if (botState is BotsLoaded && botState.hasMore) {
+        context.read<BotBloc>().add(
+              FetchMoreBotsEvent(
+                offset: botState.offset + botState.bots.length,
+                searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+              ),
+            );
       }
     }
   }
 
-  /// Initiates a chat session with the selected bot.
-  ///
-  /// [bot] The AI bot to chat with.
-  void _chatWithBot(AIBot bot) {
-    // Navigate to chat with this bot
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Chatting with ${bot.name}')));
-  }
-
-  /// Shows a confirmation dialog and handles bot deletion.
-  ///
-  /// [bot] The AI bot to be deleted.
-  void _deleteBot(AIBot bot) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xóa Bot'),
-        content: Text('Bạn có chắc muốn xóa bot "${bot.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _bots.removeWhere((b) => b.id == bot.id);
-              });
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Bots'),
-        actions: [
-          // Add share dropdown menu
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.share),
-            tooltip: 'Share AI Chat',
-            onSelected: _handleShare,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'slack',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.workspaces_outlined,
-                      color: Color(0xFF4A154B),
-                    ),
-                    SizedBox(width: 12),
-                    Text('Publish to Slack'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'telegram',
-                child: Row(
-                  children: [
-                    Icon(Icons.send, color: Color(0xFF0088CC)),
-                    SizedBox(width: 12),
-                    Text('Share to Telegram'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'messenger',
-                child: Row(
-                  children: [
-                    Icon(Icons.message, color: Color(0xFF0084FF)),
-                    SizedBox(width: 12),
-                    Text('Send to Messenger'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      drawer: MainAppDrawer(
-        currentIndex: 1, // Index 1 corresponds to the AI Bots tab in the drawer
-        onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
-          context,
-          index,
-          currentIndex: 1,
-        ),
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: _filteredBots.isEmpty ? _buildEmptyState() : _buildBotList(),
-          ),
-          _buildCreateButton(),
-        ],
-      ),
-    );
-  }
-
-  /// Handles sharing the AI chat to different platforms.
-  ///
-  /// [platform] The platform to share to ('slack', 'telegram', or 'messenger').
-  void _handleShare(String platform) {
-    String message = '';
-
-    switch (platform) {
-      case 'slack':
-        message = 'Publishing to Slack...';
-        break;
-      case 'telegram':
-        message = 'Sharing to Telegram...';
-        break;
-      case 'messenger':
-        message = 'Sending to Messenger...';
-        break;
-    }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  /// Builds the search bar widget with clear functionality.
-  ///
-  /// Returns a [TextField] wrapped in padding for searching bots.
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Tìm kiếm AI BOT...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-      ),
-    );
-  }
-
-  /// Builds the empty state widget shown when no bots exist or no search results found.
-  ///
-  /// Returns a centered [Column] with appropriate messaging and actions.
+  /// Builds an empty state widget shown when no bots are available
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _searchQuery.isEmpty ? Icons.smart_toy_outlined : Icons.search_off,
+            Icons.smart_toy_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
             _searchQuery.isEmpty
-                ? 'Chưa có AI BOT nào'
-                : 'Không tìm thấy AI BOT nào phù hợp với "$_searchQuery"',
+                ? 'No assistants available yet'
+                : 'No assistants match your search',
             style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
-          if (_searchQuery.isEmpty) const SizedBox(height: 24),
-          if (_searchQuery.isEmpty)
+          const SizedBox(height: 24),
+          if (_searchQuery.isNotEmpty)
+            ElevatedButton(
+              onPressed: _clearSearch,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text('Clear Search'),
+            )
+          else
             ElevatedButton.icon(
               onPressed: _navigateToCreateBot,
               icon: const Icon(Icons.add),
-              label: const Text('Tạo AI BOT đầu tiên'),
+              label: const Text('Create Assistant'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
@@ -327,41 +156,271 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
-  /// Builds the scrollable list of AI bots.
+  /// This method is no longer needed as filtering is handled by the API
+  /// through the BotBloc. Keeping this as a comment for reference.
   ///
-  /// Returns a [ListView.builder] containing [BotListItem] widgets.
-  Widget _buildBotList() {
-    return ListView.builder(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 80),
-      itemCount: _filteredBots.length,
-      itemBuilder: (context, index) {
-        final bot = _filteredBots[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: BotListItem(
-            bot: bot,
-            onEdit: () => _editBot(bot),
-            onChat: () => _chatWithBot(bot),
-            onDelete: () => _deleteBot(bot),
+  /// List<AIBot> get _filteredBots {
+  ///   if (_searchQuery.isEmpty) return _bots;
+  ///   return _bots
+  ///       .where(
+  ///         (bot) =>
+  ///             bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+  ///             bot.description.toLowerCase().contains(
+  ///                  _searchQuery.toLowerCase(),
+  ///                ),
+  ///       )
+  ///       .toList();
+  /// }
+
+  /// Navigates to the bot creation screen and handles the result.
+  ///
+  /// If a new bot is created, refreshes the bot list.
+  Future<void> _navigateToCreateBot() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreateBotScreen()),
+    );
+
+    if (result != null && result is AIBot) {
+      // Refresh the list to include the new bot
+      context.read<BotBloc>().add(const RefreshBotsEvent());
+    }
+  }
+
+  /// Navigates to the bot detail screen for editing.
+  ///
+  /// If the bot is updated, refreshes the bot list.
+  void _editBot(AIBot bot) async {
+    // final result = await Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => CreateBotScreen(
+    //       editMode: true,
+    //       bot: bot,
+    //     ),
+    //   ),
+    // );
+
+    // if (result != null && result is AIBot) {
+    //   // Refresh the list to reflect the updated bot
+    //   context.read<BotBloc>().add(const RefreshBotsEvent());
+    // }
+  }
+
+  /// Handles deleting a bot after confirmation.
+  void _deleteBot(AIBot bot) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Bot'),
+        content: Text('Are you sure you want to delete "${bot.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
           ),
-        );
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // In a real app, call the delete API here
+              // For now we just refresh the list
+              context.read<BotBloc>().add(const RefreshBotsEvent());
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${bot.name} deleted')),
+              );
+            },
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Navigates to the chat screen to chat with the selected bot.
+  void _chatWithBot(AIBot bot) {
+    // In a real app, navigate to chat screen with this bot
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Chat with ${bot.name}')),
+    );
+  }
+
+  /// Updates the search query and triggers a search.
+  void _updateSearchQuery(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+
+    // Trigger a search with the new query
+    context.read<BotBloc>().add(FetchBotsEvent(
+          searchQuery: query.isNotEmpty ? query : null,
+        ));
+  }
+
+  /// Clears the search input and resets the search results.
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+    });
+
+    // Reset search by fetching all bots
+    context.read<BotBloc>().add(const FetchBotsEvent());
+  }
+
+  /// Builds the scrollable list of AI bots using data from BotBloc.
+  ///
+  /// Returns a BlocBuilder that handles different states of the bot list.
+  Widget _buildBotList() {
+    return BlocBuilder<BotBloc, BotState>(
+      builder: (context, state) {
+        if (state is BotInitial) {
+          // Trigger initial load if not already done
+          context.read<BotBloc>().add(FetchBotsEvent(
+              searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null));
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is BotsLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is BotsLoaded || state is BotsLoadingMore) {
+          // Get the list of assistants to display
+          final assistants = state is BotsLoaded
+              ? state.bots
+              : (state as BotsLoadingMore).bots;
+
+          if (assistants.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          // Convert API assistant models to AIBot models for UI
+          final bots = assistants.map(_convertToAIBot).toList();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<BotBloc>().add(RefreshBotsEvent(
+                    searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+                  ));
+            },
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 80),
+              itemCount: bots.length + (state is BotsLoadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == bots.length) {
+                  // Show loading indicator at the end while loading more
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final bot = bots[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: BotListItem(
+                    bot: bot,
+                    onEdit: () => _editBot(bot),
+                    onChat: () => _chatWithBot(bot),
+                    onDelete: () => _deleteBot(bot),
+                  ),
+                );
+              },
+            ),
+          );
+        } else if (state is BotsError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 80,
+                  color: Colors.red[300],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading assistants: ${state.message}',
+                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<BotBloc>().add(const FetchBotsEvent());
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        } else {
+          return const Center(child: Text('Unknown state'));
+        }
       },
     );
   }
 
-  /// Builds the "Create AI BOT" button fixed at the bottom of the screen.
-  ///
-  /// Returns a padded [FloatingActionButton.extended] widget.
-  Widget _buildCreateButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SizedBox(
-        width: double.infinity,
-        child: FloatingActionButton.extended(
-          onPressed: _navigateToCreateBot,
-          label: const Text('Tạo AI BOT mới'),
-          icon: const Icon(Icons.add),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => di.sl<BotBloc>()..add(const FetchBotsEvent()),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('AI Assistants'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _navigateToCreateBot,
+                ),
+              ],
+            ),
+            drawer: MainAppDrawer(
+              currentIndex: 1, // Index for "Bots" tab
+              onTabSelected: (index) => navigation_utils
+                  .handleDrawerNavigation(context, index, currentIndex: 1),
+            ),
+            body: Column(
+              children: [
+                // Search input
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search assistants...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: _clearSearch,
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onChanged: _updateSearchQuery,
+                  ),
+                ),
+                // Bot list
+                Expanded(
+                  child: _buildBotList(),
+                ),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: _navigateToCreateBot,
+              child: const Icon(Icons.add),
+            ),
+          );
+        },
       ),
     );
   }

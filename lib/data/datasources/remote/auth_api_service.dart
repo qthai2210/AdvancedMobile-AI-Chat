@@ -111,7 +111,7 @@ class AuthApiService {
   }) async {
     try {
       final response = await _apiService.dio.post(
-        ApiConfig.authBaseUrl + '/auth/password/sign-up',
+        '${ApiConfig.authBaseUrl}/auth/password/sign-up',
         data: {
           'email': email,
           'password': password,
@@ -201,7 +201,7 @@ class AuthApiService {
     const endpoint = '/auth/sessions/current';
 
     // Create options with custom headers for this request
-    final headers = _apiService.createAuthHeader(accessToken);
+    final headers = await _apiService.createAuthHeader();
 
     if (refreshToken != null) {
       headers['X-Stack-Refresh-Token'] = refreshToken;

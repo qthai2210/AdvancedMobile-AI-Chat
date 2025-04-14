@@ -27,7 +27,7 @@ class ChatApiService {
       if (accessToken == null) {
         throw UnauthorizedException('Access token is null');
       }
-      final headers = _apiService.createAuthHeader(accessToken);
+      final headers = await _apiService.createAuthHeader();
       headers['Content-Type'] = 'application/json';
       print('Headers123: $headers');
       final response = await _apiService.dio.post(

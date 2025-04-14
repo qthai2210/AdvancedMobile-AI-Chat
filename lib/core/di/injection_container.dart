@@ -1,9 +1,14 @@
+import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
+import 'package:aichatbot/data/repositories/assistant_repository_impl.dart';
 import 'package:aichatbot/data/repositories/conversation_repository_impl.dart';
+import 'package:aichatbot/domain/repositories/assistant_repository.dart';
 import 'package:aichatbot/domain/repositories/conversation_repository.dart';
+import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -56,10 +61,16 @@ Future<void> init() async {
     ),
   );
   // Registering ChatBloc as a factory instead of a singleton
-  // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc
-  sl.registerFactory(
+  // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc  sl.registerFactory(
+  sl.registerLazySingleton(
     () => ChatBloc(
       sendMessageUseCase: sl(),
+    ),
+  );
+  // Register BotBloc as a factory to ensure fresh instance each time
+  sl.registerFactory(
+    () => BotBloc(
+      getAssistantsUseCase: sl(),
     ),
   );
 
@@ -75,6 +86,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
   sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
   sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
+  sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),
@@ -88,6 +100,9 @@ Future<void> init() async {
   sl.registerLazySingleton<ConversationRepository>(
     () => ConversationRepositoryImpl(conversationApiService: sl()),
   );
+  sl.registerLazySingleton<AssistantRepository>(
+    () => AssistantRepositoryImpl(assistantApiService: sl()),
+  );
   // Core
   sl.registerLazySingleton(() => ApiService());
 
@@ -97,6 +112,9 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(
     () => PromptApiService(),
+  );
+  sl.registerLazySingleton(
+    () => AssistantApiService(),
   );
   sl.registerLazySingleton(
     () => ChatApiService(),

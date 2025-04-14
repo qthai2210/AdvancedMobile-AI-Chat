@@ -1,8 +1,12 @@
+import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/utils/logger.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
 import 'package:aichatbot/core/network/dio_interceptors.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// Base API service that handles common functionality for API requests
 ///
@@ -37,10 +41,23 @@ class ApiService {
   }
 
   /// Creates authorization header with bearer token
-  Map<String, String> createAuthHeader(String accessToken) {
+  Future<Map<String, String>> createAuthHeader() async {
+    // get accesstoken from local storage
+    final accessToken = await SecureStorageUtil().getAccessToken();
+
+    if (accessToken == null) {
+      throw UnauthorizedException('Access token is null');
+    }
     return {
-      'Authorization': '$accessToken',
+      'Authorization': 'Bearer $accessToken',
     };
+  }
+
+  // add auth header to dio instance
+  Future<void> addAuthHeader() async {
+    final authHeader = await createAuthHeader();
+    dio.options.headers.addAll(authHeader);
+    AppLogger.i('Dio headers: ${dio.options.headers}');
   }
 
   /// Handles API response and converts errors to appropriate exceptions
