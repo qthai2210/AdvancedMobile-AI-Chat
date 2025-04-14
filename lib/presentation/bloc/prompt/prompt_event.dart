@@ -6,22 +6,26 @@ abstract class PromptEvent {
 
 class FetchPrompts extends PromptEvent {
   final String accessToken;
-  final String? query;
-  final int? offset;
   final int? limit;
+  final int? offset;
   final String? category;
   final bool? isFavorite;
-  final bool? isPublic;
+  final String? query;
+  final bool? isPublic; // Thêm trường isPublic
 
-  FetchPrompts({
+  const FetchPrompts({
     required this.accessToken,
-    this.query,
-    this.offset,
     this.limit,
+    this.offset,
     this.category,
     this.isFavorite,
-    this.isPublic,
+    this.query,
+    this.isPublic, // Mặc định null để lấy cả public và private
   });
+
+  @override
+  List<Object?> get props =>
+      [accessToken, limit, offset, category, isFavorite, query, isPublic];
 }
 
 class LoadMorePrompts extends PromptEvent {
@@ -113,7 +117,7 @@ class ToggleFavoriteRequested extends PromptEvent {
 class SearchQueryChanged extends PromptEvent {
   final String query;
 
-  const SearchQueryChanged(this.query);
+  SearchQueryChanged(this.query);
 }
 
 class CategorySelected extends PromptEvent {

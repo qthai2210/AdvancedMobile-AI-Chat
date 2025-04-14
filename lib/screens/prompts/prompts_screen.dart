@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/screens/prompts/edit_prompt_screen.dart';
+import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,22 +24,6 @@ import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/widgets/app_notification.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:aichatbot/utils/build_context_extensions.dart';
-
-class PrivatePromptsScreen extends StatelessWidget {
-  const PrivatePromptsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Private Prompts'),
-      ),
-      body: const Center(
-        child: Text('Private prompts will be implemented soon'),
-      ),
-    );
-  }
-}
 
 class PromptsScreen extends StatefulWidget {
   const PromptsScreen({Key? key}) : super(key: key);
@@ -88,29 +76,33 @@ class _PromptsScreenState extends State<PromptsScreen> {
     _loadPrompts();
   }
 
+  // 1. Đầu tiên, cập nhật _onSearchChanged để sử dụng debounce và gọi API search
+  void _onSearchChanged() {
+    // Đã có SearchQueryChanged event, giữ lại để cập nhật state searchQuery
+    final promptBloc = context.read<PromptBloc>();
+    promptBloc.add(SearchQueryChanged(_searchController.text));
+
+    // Sử dụng debounce để tránh gọi API quá nhiều lần
+    _debounceSearch?.cancel();
+    _debounceSearch = Timer(const Duration(milliseconds: 500), () {
+      if (_searchController.text == promptBloc.state.searchQuery) {
+        // Gọi API tìm kiếm
+        _searchPrompts(_searchController.text);
+      }
+    });
+  }
+
+  // 2. Thêm biến Timer để xử lý debounce
+  Timer? _debounceSearch;
+
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _debounceSearch?.cancel(); // Thêm dòng này
     super.dispose();
-  }
-
-  void _onSearchChanged() {
-    final promptBloc = context.read<PromptBloc>();
-    promptBloc.add(SearchQueryChanged(_searchController.text));
-
-    // Debounce search
-    if (_searchController.text.isNotEmpty) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (_searchController.text == promptBloc.state.searchQuery) {
-          _loadPrompts();
-        }
-      });
-    } else {
-      _loadPrompts();
-    }
   }
 
   void _onScroll() {
@@ -157,48 +149,12 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   /// Loads prompts from the API
   void _loadPrompts() {
-    final authState = context.read<AuthBloc>().state;
-    if (authState.user?.accessToken != null) {
-      debugPrint(
-          "Loading prompts with token: ${authState.user!.accessToken!.substring(0, 10)}...");
-
-      final selectedCategory =
-          context.read<PromptBloc>().state.selectedCategory;
-
-      // Chỉ gửi category nếu không phải 'All'
-      final apiCategory =
-          (selectedCategory != 'All' && selectedCategory != null)
-              ? selectedCategory
-              : null;
-
-      context.read<PromptBloc>().add(
-            FetchPrompts(
-              accessToken: authState.user!.accessToken!,
-              limit: 20,
-              offset: 0,
-              category: apiCategory, // Đã kiểm tra trường hợp 'All'
-              isFavorite: context.read<PromptBloc>().state.isFavoriteFilter,
-              query: _searchController.text.isEmpty
-                  ? null
-                  : _searchController.text,
-            ),
-          );
-    } else {
-      debugPrint("Cannot load prompts: user not authenticated");
-      AppNotification.showWarning(
-        context,
-        'Bạn cần đăng nhập để xem prompts',
-        actionLabel: 'Đăng nhập',
-        onAction: () {
-          // Chuyển đến trang đăng nhập
-          Navigator.of(context).pushReplacementNamed('/login');
-        },
-      );
-    }
+    // Sử dụng lại phương thức _searchPrompts với query hiện tại
+    _searchPrompts(_searchController.text);
   }
 
   /// Toggles favorite status for a prompt
-  void _toggleFavorite(Prompt prompt) async {
+  void _toggleFavorite(PromptModel prompt) async {
     final authState = context.read<AuthBloc>().state;
     final accessToken = authState.user?.accessToken;
 
@@ -232,7 +188,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   /// Saves a public prompt as a private prompt
-  void _saveAsPrivate(Prompt prompt) async {
+  void _saveAsPrivate(PromptModel prompt) async {
     // Implementation would dispatch an event to save as private
     AppNotification.showSuccess(
       context,
@@ -241,7 +197,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   /// Uses the selected prompt in a new chat conversation
-  void _usePrompt(Prompt prompt) {
+  void _usePrompt(PromptModel prompt) {
     try {
       context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
       context.showInfoNotification('Đã chuyển sang trò chuyện mới');
@@ -268,7 +224,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   /// Shows a bottom sheet with detailed prompt information
-  void _viewPromptDetails(Prompt prompt) {
+  void _viewPromptDetails(PromptModel prompt) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -276,7 +232,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     );
   }
 
-  Widget _buildPromptDetailSheet(Prompt prompt) {
+  Widget _buildPromptDetailSheet(PromptModel prompt) {
     return DraggableScrollableSheet(
       builder: (context, scrollController) {
         return Container(
@@ -301,11 +257,11 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (prompt.authorName != null)
+              if (prompt.userName != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
-                    'By: ${prompt.authorName}',
+                    'By: ${prompt.userName}',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ),
@@ -315,11 +271,13 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 spacing: 8,
                 children: [
                   Chip(
-                    label: Text(prompt.category),
-                    backgroundColor: Prompt.getCategoryColor(prompt.category)
-                        .withOpacity(0.2),
+                    label: Text(prompt.category ?? 'Other'),
+                    backgroundColor:
+                        Prompt.getCategoryColor(prompt.category ?? 'Other')
+                            .withOpacity(0.2),
                     labelStyle: TextStyle(
-                        color: Prompt.getCategoryColor(prompt.category)),
+                        color: Prompt.getCategoryColor(
+                            prompt.category ?? 'Other')),
                   )
                 ],
               ),
@@ -402,10 +360,33 @@ class _PromptsScreenState extends State<PromptsScreen> {
     final promptBloc = context.read<PromptBloc>();
     final isCurrentlySelected =
         promptBloc.state.selectedCategories.contains(category);
+
+    // Thêm category mới và lưu lại state
     promptBloc.add(CategorySelectionChanged(
       category: category,
       isSelected: !isCurrentlySelected,
     ));
+
+    // Gọi API để lấy danh sách prompts theo category đã chọn
+    final authState = context.read<AuthBloc>().state;
+    if (authState.user?.accessToken != null) {
+      // Xác định category để gửi lên API
+      final apiCategory = category == 'all' ? null : category;
+
+      // Gọi API với category mới
+      promptBloc.add(FetchPrompts(
+        accessToken: authState.user!.accessToken!,
+        limit: 20,
+        offset: 0,
+        category: !isCurrentlySelected
+            ? apiCategory
+            : null, // Nếu đang select thì gửi null (all)
+        isFavorite: promptBloc.state.showOnlyFavorites,
+        query: promptBloc.state.searchQuery.isNotEmpty
+            ? promptBloc.state.searchQuery
+            : null,
+      ));
+    }
   }
 
   void _changeSortMethod(String sortBy) {
@@ -414,9 +395,31 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   void _toggleFavoritesView() {
     final currentState = context.read<PromptBloc>().state;
+    final newFavoriteState = !currentState.showOnlyFavorites;
+
+    // Cập nhật UI state
     context.read<PromptBloc>().add(
-          ToggleShowFavorites(!currentState.showOnlyFavorites),
+          ToggleShowFavorites(newFavoriteState),
         );
+
+    // Gọi API để lấy danh sách prompts yêu thích
+    final authState = context.read<AuthBloc>().state;
+    if (authState.user?.accessToken != null) {
+      context.read<PromptBloc>().add(
+            FetchPrompts(
+              accessToken: authState.user!.accessToken!,
+              limit: 20,
+              offset: 0,
+              category: currentState.selectedCategory == 'all'
+                  ? null
+                  : currentState.selectedCategory,
+              isFavorite: newFavoriteState, // Truyền trạng thái mới
+              query: currentState.searchQuery.isNotEmpty
+                  ? currentState.searchQuery
+                  : null,
+            ),
+          );
+    }
   }
 
   void _toggleViewMode() {
@@ -595,12 +598,19 @@ class _PromptsScreenState extends State<PromptsScreen> {
                           return const Center(
                               child: CircularProgressIndicator());
                         } else {
-                          final sortedPrompts = state.sortedPrompts();
+                          // Sử dụng danh sách prompts từ state và sắp xếp theo thời gian (mới nhất trước)
+                          final prompts = [...?state.prompts];
+
+                          // Sắp xếp từ mới nhất đến cũ nhất bằng createdAt
+                          prompts.sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt));
+
                           debugPrint(
-                              'Sorted prompts count: ${sortedPrompts.length}');
+                              'Prompts count (sorted by date): ${prompts.length}');
+
                           return (state.isGridView ?? false)
-                              ? _buildPromptGrid(sortedPrompts)
-                              : _buildPromptList(sortedPrompts);
+                              ? _buildPromptGrid(prompts)
+                              : _buildPromptList(prompts);
                         }
                       },
                     ),
@@ -638,10 +648,23 @@ class _PromptsScreenState extends State<PromptsScreen> {
     return BlocBuilder<PromptBloc, PromptState>(
       builder: (context, state) {
         // Get the most recent state to ensure we're displaying the latest data
-        final currentPrompts = state.sortedPrompts();
+        List<PromptModel> currentPrompts = [];
+        if (state.prompts != null && state.prompts!.isNotEmpty) {
+          // Convert PromptModel list to Prompt list
+          currentPrompts =
+              state.prompts!.map((model) => model as PromptModel).toList();
+
+          if (state.sortBy == 'alphabetical') {
+            currentPrompts.sort((a, b) => a.title.compareTo(b.title));
+          } else if (state.sortBy == 'recent') {
+            currentPrompts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          } else if (state.sortBy == 'popular') {
+            currentPrompts.sort((a, b) => b.useCount.compareTo(a.useCount));
+          }
+        }
 
         // Use debugPrint instead of print for more reliable output
-        debugPrint('Current prompts count: ${currentPrompts?.length ?? 0}');
+        debugPrint('Current prompts count: ${currentPrompts.length}');
         if (currentPrompts.isNotEmpty) {
           debugPrint('First prompt title: ${currentPrompts.first.title}');
         }
@@ -750,19 +773,20 @@ class _PromptsScreenState extends State<PromptsScreen> {
     );
   }
 
-  Widget _buildPromptGrid(List<Prompt> prompts) {
+  Widget _buildPromptGrid(List<PromptModel> prompts) {
     return GridView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+        crossAxisCount: 1,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.75,
+        childAspectRatio: 1.5,
       ),
       itemCount: prompts.length,
       itemBuilder: (context, index) {
         final prompt = prompts[index];
+        final isOwner = _isPromptOwner(prompt);
         return Card(
           elevation: 3,
           shape: RoundedRectangleBorder(
@@ -809,7 +833,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (prompt.category.isNotEmpty)
+                  if (prompt.category != null)
                     Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
@@ -817,18 +841,21 @@ class _PromptsScreenState extends State<PromptsScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Prompt.getCategoryColor(prompt.category)
-                            .withOpacity(0.1),
+                        color:
+                            Prompt.getCategoryColor(prompt.category ?? 'Other')
+                                .withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: Prompt.getCategoryColor(prompt.category)
+                            color: Prompt.getCategoryColor(
+                                    prompt.category ?? 'Other')
                                 .withOpacity(0.3)),
                       ),
                       child: Text(
-                        prompt.category,
+                        prompt.category ?? 'Other',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Prompt.getCategoryColor(prompt.category),
+                          color: Prompt.getCategoryColor(
+                              prompt.category ?? 'Other'),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -849,31 +876,38 @@ class _PromptsScreenState extends State<PromptsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Row(
-                          children: [
-                            Icon(Icons.person_outline,
-                                size: 14, color: Colors.grey[600]),
-                            const SizedBox(width: 4),
-                            Text(
-                              prompt.authorName ?? 'Unknown',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
+                      Text(
+                        'Uses: ${prompt.useCount}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.chat, size: 18),
+                      if (isOwner)
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text('Edit'),
+                          onPressed: () => _editPrompt(prompt),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                          ),
+                        ),
+                      if (isOwner)
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: const Text('Delete'),
+                          onPressed: () => _confirmDeletePrompt(prompt),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                          ),
+                        ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.chat, size: 16),
+                        label: const Text('Use'),
                         onPressed: () => _usePrompt(prompt),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                        ),
                       ),
                     ],
                   ),
@@ -886,13 +920,17 @@ class _PromptsScreenState extends State<PromptsScreen> {
     );
   }
 
-  Widget _buildPromptList(List<Prompt> prompts) {
+  Widget _buildPromptList(List<PromptModel> prompts) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.only(bottom: 80), // Space for FAB
       itemCount: prompts.length,
       itemBuilder: (context, index) {
         final prompt = prompts[index];
+        final isOwner = _isPromptOwner(prompt);
+
+        print('Building prompt item: ${prompt.title}, isOwner: $isOwner');
+
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           elevation: 2,
@@ -923,7 +961,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'By: ${prompt.authorName ?? 'Unknown'}',
+                              'By: ${prompt.userName ?? 'Unknown'}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -967,18 +1005,21 @@ class _PromptsScreenState extends State<PromptsScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Prompt.getCategoryColor(prompt.category)
+                            color: Prompt.getCategoryColor(
+                                    prompt.category ?? 'Other')
                                 .withOpacity(0.1),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                                color: Prompt.getCategoryColor(prompt.category)
+                                color: Prompt.getCategoryColor(
+                                        prompt.category ?? 'Other')
                                     .withOpacity(0.3)),
                           ),
                           child: Text(
-                            prompt.category,
+                            prompt.category ?? 'Other',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Prompt.getCategoryColor(prompt.category),
+                              color: Prompt.getCategoryColor(
+                                  prompt.category ?? 'Other'),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -999,9 +1040,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
                       ),
                       Row(
                         children: [
-                          // Sửa lỗi: Kiểm tra quyền sở hữu dựa vào authorId hoặc userId
-                          // Đổi từ prompt.isOwner thành điều kiện kiểm tra phù hợp với Prompt
-                          if (_isPromptOwner(prompt))
+                          // Edit button
+                          if (isOwner)
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: ElevatedButton.icon(
@@ -1017,8 +1057,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
                               ),
                             ),
 
-                          // Sửa lỗi tương tự với nút Delete
-                          if (_isPromptOwner(prompt))
+                          // Delete button
+                          if (isOwner)
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: ElevatedButton.icon(
@@ -1035,7 +1075,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                               ),
                             ),
 
-                          // Nút Use - giữ nguyên
+                          // Use button
                           ElevatedButton.icon(
                             icon: const Icon(Icons.chat, size: 16),
                             label: const Text('Use'),
@@ -1061,7 +1101,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   // Thêm phương thức xử lý sự kiện chỉnh sửa prompt
-  void _editPrompt(Prompt prompt) {
+  void _editPrompt(PromptModel prompt) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1083,7 +1123,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   // Thêm phương thức xác nhận trước khi xóa prompt
-  void _confirmDeletePrompt(Prompt prompt) {
+  void _confirmDeletePrompt(PromptModel prompt) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1150,17 +1190,51 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   // Thêm phương thức để kiểm tra quyền sở hữu prompt
-  bool _isPromptOwner(Prompt prompt) {
+  bool _isPromptOwner(PromptModel prompt) {
     final authState = context.read<AuthBloc>().state;
-    // Kiểm tra dựa trên id (hoặc thuộc tính khác của Prompt)
     final currentUserId = authState.user?.id;
-    print('currentuser ${authState.user?.id}');
-    // Kiểm tra xem prompt có thuộc tính authorId không
-    if (prompt.authorId != null && currentUserId != null) {
-      return prompt.authorId == currentUserId;
+
+    // Thêm logs để debug
+    print('==== PROMPT OWNERSHIP CHECK ====');
+    print('Checking ownership: prompt.userId = ${prompt.userId}');
+    print('Checking ownership: currentUserId = $currentUserId');
+    print('Is owner? ${prompt.userId == currentUserId}');
+
+    if (prompt.userId != null && currentUserId != null) {
+      return prompt.userId == currentUserId;
+    }
+    return false;
+  }
+
+  // 4. Tạo phương thức _searchPrompts để gọi API tìm kiếm
+  void _searchPrompts(String query) {
+    debugPrint('Searching prompts with query: "$query"');
+
+    final authState = context.read<AuthBloc>().state;
+    if (authState.user?.accessToken == null) {
+      context.showWarningNotification(
+        'Bạn cần đăng nhập để tìm kiếm prompts',
+        actionLabel: 'Đăng nhập',
+        onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+      );
+      return;
     }
 
-    // Trường hợp không xác định được, không hiển thị các nút sửa/xóa
-    return false;
+    final selectedCategory = context.read<PromptBloc>().state.selectedCategory;
+    final apiCategory = (selectedCategory != 'All' && selectedCategory != null)
+        ? selectedCategory
+        : null;
+
+    // Gọi API getPrompts với tham số query
+    context.read<PromptBloc>().add(
+          FetchPrompts(
+            accessToken: authState.user!.accessToken!,
+            limit: 20,
+            offset: 0,
+            category: apiCategory,
+            isFavorite: context.read<PromptBloc>().state.isFavoriteFilter,
+            query: query.isEmpty ? null : query, // Chỉ gửi query khi có giá trị
+          ),
+        );
   }
 }
