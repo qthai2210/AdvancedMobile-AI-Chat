@@ -9,6 +9,8 @@ import 'package:aichatbot/domain/repositories/conversation_repository.dart';
 import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
@@ -82,6 +84,8 @@ Future<void> init() async {
   sl.registerCachedFactory(
     () => KnowledgeBloc(
       getKnowledgesUseCase: sl(),
+      createKnowledgeUseCase: sl(),
+      deleteKnowledgeUseCase: sl(),
     ),
   );
 
@@ -99,6 +103,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
   sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
   sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
+  sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),

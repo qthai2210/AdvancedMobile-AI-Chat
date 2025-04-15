@@ -65,3 +65,33 @@ class RefreshKnowledgesEvent extends KnowledgeEvent {
   @override
   List<Object?> get props => [searchQuery, order, orderField, limit];
 }
+
+/// Event to create a new knowledge base
+class CreateKnowledgeEvent extends KnowledgeEvent {
+  final String knowledgeName;
+  final String? description;
+  final String? xJarvisGuid;
+
+  const CreateKnowledgeEvent({
+    required this.knowledgeName,
+    this.description,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [knowledgeName, description, xJarvisGuid];
+}
+
+/// Event to delete a knowledge base
+class DeleteKnowledgeEvent extends KnowledgeEvent {
+  final String id;
+  final String? xJarvisGuid;
+
+  const DeleteKnowledgeEvent({
+    required this.id,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [id, xJarvisGuid];
+}

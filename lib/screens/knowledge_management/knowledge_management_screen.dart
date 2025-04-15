@@ -49,6 +49,9 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   late AnimationController _animationController;
   late Animation<Offset> _animation;
 
+  /// Flag to track if we just deleted a knowledge base
+  bool _justDeletedKnowledge = false;
+
   @override
   void initState() {
     super.initState();
@@ -136,26 +139,17 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     setState(() {
       _isLoading = true;
     });
-
     try {
-      // Create new knowledge base with KnowledgeModel
-      final newKnowledge = KnowledgeModel(
-        knowledgeName: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-      );
+      // Create new knowledge base via bloc
+      context.read<KnowledgeBloc>().add(
+            CreateKnowledgeEvent(
+              knowledgeName: _nameController.text.trim(),
+              description: _descriptionController.text.trim(),
+            ),
+          );
 
-      // TODO: Add the knowledge base via bloc
-      // context.read<KnowledgeBloc>().add(AddKnowledgeEvent(knowledge: newKnowledge));
-
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã thêm bộ dữ liệu tri thức mới')),
-        );
-      }
-
-      _toggleAddForm(); // Hide form after adding
-      _refreshKnowledgeBases(); // Refresh list after adding
+      // Hide the form - success message will be shown by the bloc listener
+      _toggleAddForm();
     } catch (e) {
       // Show error message
       if (mounted) {
@@ -172,6 +166,52 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     }
   }
 
+  /// Shows a confirmation dialog before deleting a knowledge base
+  void _showDeleteConfirmation(KnowledgeModel knowledge) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Knowledge Base'),
+        content: Text(
+          'Are you sure you want to delete "${knowledge.knowledgeName}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // Close the dialog
+              Navigator.of(context).pop();
+              // Delete the knowledge base
+              _deleteKnowledgeBase(knowledge.id!);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Deletes a knowledge base with the given ID
+  void _deleteKnowledgeBase(String id) {
+    // Set the flag to indicate we've just deleted a knowledge base
+    setState(() {
+      _justDeletedKnowledge = true;
+    });
+
+    context.read<KnowledgeBloc>().add(
+          DeleteKnowledgeEvent(id: id),
+        );
+
+    // Show a temporary snackbar indicating deletion is in progress
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Deleting knowledge base...')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,40 +224,74 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
           currentIndex: 5,
         ),
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildSearchBar(),
-              Expanded(
-                child: BlocBuilder<KnowledgeBloc, KnowledgeState>(
-                  builder: (context, state) {
-                    if (state is KnowledgeLoading) {
-                      return _buildLoadingState();
-                    } else if (state is KnowledgeLoaded) {
-                      if (state.knowledges.isEmpty) {
-                        return _buildEmptyState();
+      body: BlocListener<KnowledgeBloc, KnowledgeState>(
+        listener: (context, state) {
+          if (state is KnowledgeError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Lỗi: ${state.message}')),
+            );
+          } // When a knowledge base is created or refreshed, update the UI
+          if (state is KnowledgeLoaded) {
+            setState(() {
+              _isLoading = false;
+            });
+            // Show success message if we just added a knowledge base
+            if (_showAddForm) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Đã thêm bộ dữ liệu tri thức mới')),
+              );
+              _toggleAddForm(); // Hide form after adding
+            }
+
+            // Show success message if we just deleted a knowledge base
+            if (_justDeletedKnowledge) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content:
+                        Text('Bộ dữ liệu tri thức đã được xóa thành công')),
+              );
+              setState(() {
+                _justDeletedKnowledge = false;
+              });
+            }
+          }
+        },
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(
+                  child: BlocBuilder<KnowledgeBloc, KnowledgeState>(
+                    builder: (context, state) {
+                      if (state is KnowledgeLoading) {
+                        return _buildLoadingState();
+                      } else if (state is KnowledgeLoaded) {
+                        if (state.knowledges.isEmpty) {
+                          return _buildEmptyState();
+                        } else {
+                          return _buildKnowledgeBaseList(state.knowledges);
+                        }
                       } else {
-                        return _buildKnowledgeBaseList(state.knowledges);
+                        return const Center(child: Text('Đã xảy ra lỗi'));
                       }
-                    } else {
-                      return const Center(child: Text('Đã xảy ra lỗi'));
-                    }
-                  },
+                    },
+                  ),
                 ),
+              ],
+            ), // Slide-up form for adding new knowledge base
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SlideTransition(
+                position: _animation,
+                child: _buildAddForm(),
               ),
-            ],
-          ), // Slide-up form for adding new knowledge base
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SlideTransition(
-              position: _animation,
-              child: _buildAddForm(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: _buildFloatingActionButton(),
     );
@@ -225,12 +299,32 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: const Text('Bộ dữ liệu tri thức'),
+      elevation: 0,
+      backgroundColor: Theme.of(context).primaryColor,
+      title: const Text(
+        'Bộ dữ liệu tri thức',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          tooltip: 'Refresh',
           onPressed: _refreshKnowledgeBases,
         ),
+        IconButton(
+          icon: const Icon(Icons.tune, color: Colors.white),
+          tooltip: 'Filter',
+          onPressed: () {
+            // TODO: Implement filtering options
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Filtering will be available soon')),
+            );
+          },
+        ),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -247,26 +341,48 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Container(
+      margin: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Tìm kiếm bộ dữ liệu...',
-          prefixIcon: const Icon(Icons.search),
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: const Icon(Icons.clear, size: 20),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
+                    _refreshKnowledgeBases();
                   },
                 )
               : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         onChanged: (value) {
           setState(() => _searchQuery = value);
+          if (value.isEmpty) {
+            _refreshKnowledgeBases();
+          }
+        },
+        onSubmitted: (_) {
+          _refreshKnowledgeBases();
         },
       ),
     );
@@ -322,27 +438,45 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   Widget _buildKnowledgeBaseCard(KnowledgeModel knowledge) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
         onTap: () => _navigateToKnowledgeDetail(knowledge),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildKnowledgeBaseHeader(knowledge),
-              const SizedBox(height: 8),
-              _buildKnowledgeBaseDescription(knowledge),
-              const SizedBox(height: 16),
-              knowledge.updatedAt != null
-                  ? _buildKnowledgeLastUpdated(knowledge)
-                  : const SizedBox(),
-            ],
-          ),
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            // Main content
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildKnowledgeBaseHeader(knowledge),
+                  const SizedBox(height: 12),
+                  _buildKnowledgeBaseDescription(knowledge),
+                  const SizedBox(height: 16),
+                  knowledge.updatedAt != null
+                      ? _buildKnowledgeLastUpdated(knowledge)
+                      : const SizedBox(),
+                ],
+              ),
+            ),
+            // Status indicator ribbon
+            Positioned(
+              top: 0,
+              right: 16,
+              child: Container(
+                width: 4,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -350,7 +484,24 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
 
   Widget _buildKnowledgeBaseHeader(KnowledgeModel knowledge) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Icon indicating knowledge type
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.auto_awesome,
+            color: Theme.of(context).primaryColor,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Title
         Expanded(
           child: Text(
             knowledge.knowledgeName,
@@ -359,6 +510,12 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
+        ),
+        // Delete button
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: () => _showDeleteConfirmation(knowledge),
+          tooltip: 'Delete knowledge base',
         ),
       ],
     );
@@ -377,13 +534,22 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   }
 
   Widget _buildKnowledgeBaseDescription(KnowledgeModel knowledge) {
-    return Text(
-      knowledge.description ?? 'Chưa có mô tả',
-      style: const TextStyle(
-        color: Colors.black87,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
       ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
+      child: Text(
+        knowledge.description ?? 'Chưa có mô tả',
+        style: TextStyle(
+          color: Colors.grey[800],
+          height: 1.4,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -506,11 +672,16 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     //   ),
     // );
   }
-
   Widget _buildKnowledgeLastUpdated(KnowledgeModel knowledge) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        Icon(
+          Icons.update,
+          size: 14,
+          color: Colors.grey[500],
+        ),
+        const SizedBox(width: 4),
         Text(
           'Cập nhật: ${_formatDate(knowledge.updatedAt ?? DateTime.now())}',
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
