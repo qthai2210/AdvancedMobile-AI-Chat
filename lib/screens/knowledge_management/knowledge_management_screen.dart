@@ -1,4 +1,3 @@
-import 'package:aichatbot/screens/knowledge_management/knowledge_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';

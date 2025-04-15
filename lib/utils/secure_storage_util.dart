@@ -45,6 +45,11 @@ class SecureStorageUtil {
     }
   }
 
+  Future<void> saveAccessToken(String accessToken) async {
+    await _initPrefs();
+    await _prefs.setString(_accessTokenKey, accessToken);
+  }
+
   /// Retrieves the access token from storage
   ///
   /// Returns null if the token doesn't exist

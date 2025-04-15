@@ -1,7 +1,8 @@
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/utils/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
-import 'package:aichatbot/core/errors/exceptions.dart';
+
 import 'package:aichatbot/data/models/auth/user_model.dart';
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:flutter/foundation.dart';
@@ -220,6 +221,47 @@ class AuthApiService {
       );
     } catch (e) {
       throw _apiService.handleError(e);
+    }
+  }
+
+  /// Refreshes the access token using the refresh token
+  ///
+  /// Returns the new access token if successful
+  Future<String?> refreshToken(String refreshToken) async {
+    try {
+      AppLogger.i('Attempting to refresh token');
+
+      // Create a separate Dio instance for token refresh to avoid infinite loop
+      // final refreshDio = Dio(BaseOptions(
+      //   baseUrl: _apiService.dio.options.baseUrl,
+      //   connectTimeout: const Duration(seconds: 10),
+      //   receiveTimeout: const Duration(seconds: 10),
+      // ));
+
+      final response = await _apiService.dio.post(
+        '/auth/sessions/current/refresh',
+        options: Options(
+          headers: {
+            'X-Stack-Refresh-Token': refreshToken,
+            // Add other optional headers if needed
+            // 'X-Stack-Access-Type': 'client',
+            // 'X-Stack-Project-Id': 'your-project-id',
+            // 'X-Stack-Publishable-Client-Key': 'your-client-key',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final newAccessToken = response.data['access_token'];
+        AppLogger.i('Token refresh successful, obtained new access token');
+        return newAccessToken;
+      } else {
+        debugPrint('Token refresh failed with status: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error refreshing token: $e');
+      return null;
     }
   }
 }

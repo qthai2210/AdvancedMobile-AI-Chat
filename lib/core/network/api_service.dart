@@ -1,10 +1,11 @@
-import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
+
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
-import 'package:aichatbot/core/network/dio_interceptors.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +23,7 @@ class ApiService {
   /// Creates a configured Dio instance with proper interceptors
   static Dio _createDioInstance() {
     final dio = Dio(BaseOptions(
+      //baseUrl: ApiConfig.baseUrl,
       connectTimeout: const Duration(seconds: 180),
       receiveTimeout: const Duration(seconds: 180),
       sendTimeout: const Duration(seconds: 180),
@@ -37,6 +39,7 @@ class ApiService {
         error: true,
       ),
     );
+
     return dio;
   }
 
@@ -138,5 +141,10 @@ class ApiService {
       'code': 'UNEXPECTED_ERROR',
       'error': 'Đã xảy ra lỗi không mong đợi: $error'
     };
+  }
+
+  /// Adds a token refresh interceptor to the Dio instance
+  void addTokenRefreshInterceptor(TokenRefreshInterceptor interceptor) {
+    dio.interceptors.add(interceptor);
   }
 }

@@ -1,3 +1,5 @@
+import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/knowledge_api_service.dart';
@@ -126,31 +128,33 @@ Future<void> init() async {
   );
 
   // Core
+  sl.registerLazySingleton(() => SecureStorageUtil());
   sl.registerLazySingleton(() => ApiService());
 
   // Data sources
-  sl.registerLazySingleton(
-    () => AuthApiService(),
-  );
-  sl.registerLazySingleton(
-    () => PromptApiService(),
-  );
-  sl.registerLazySingleton(
-    () => AssistantApiService(),
-  );
-  sl.registerLazySingleton(
-    () => ChatApiService(),
-  );
-  sl.registerLazySingleton(
-    () => ConversationApiService(),
-  );
-  sl.registerLazySingleton(
-    () => KnowledgeApiService(),
-  );
+  sl.registerLazySingleton(() => AuthApiService());
+  sl.registerLazySingleton(() => PromptApiService());
+  sl.registerLazySingleton(() => AssistantApiService());
+  sl.registerLazySingleton(() => ChatApiService());
+  sl.registerLazySingleton(() => ConversationApiService());
+  sl.registerLazySingleton(() => KnowledgeApiService());
 
   // External
   sl.registerLazySingleton(() => Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       )));
+
+  // After all services are registered, manually add the TokenRefreshInterceptor to avoid circular dependency
+  final apiService = sl<ApiService>();
+  final authApiService = sl<AuthApiService>();
+  final secureStorage = sl<SecureStorageUtil>();
+
+  final interceptor = TokenRefreshInterceptor(
+    dio: apiService.dio,
+    authApiService: authApiService,
+    secureStorage: secureStorage,
+  );
+
+  apiService.addTokenRefreshInterceptor(interceptor);
 }

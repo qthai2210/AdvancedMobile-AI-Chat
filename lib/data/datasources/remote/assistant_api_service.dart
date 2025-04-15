@@ -37,9 +37,9 @@ class AssistantApiService {
       }
       AppLogger.i("dio headers ${_apiService.dio.options.headers}");
       AppLogger.i(
-          "dio endpoint ${_apiService.dio.options.baseUrl}/kb-core/v1/ai-assistants");
+          "dio endpoint ${_apiService.dio.options.baseUrl}/kb-core/v1/ai-assistant");
       final response = await _apiService.dio.get(
-        '/kb-core/v1/ai-assistants',
+        '/kb-core/v1/ai-assistant',
         queryParameters: params.toQueryParameters(),
         // options: Options(headers: headers),
       );

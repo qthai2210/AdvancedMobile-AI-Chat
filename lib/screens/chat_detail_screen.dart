@@ -13,9 +13,9 @@ import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart'
     as msg_model;
-import 'package:aichatbot/data/models/chat/message_response_model.dart';
+
 import 'package:aichatbot/data/models/chat/conversation_model.dart';
-import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
+
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_event.dart';
@@ -23,7 +23,7 @@ import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
-import 'package:aichatbot/utils/guid_generator.dart';
+
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
