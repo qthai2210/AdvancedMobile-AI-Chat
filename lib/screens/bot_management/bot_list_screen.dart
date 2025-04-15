@@ -382,9 +382,9 @@ class _BotListScreenState extends State<BotListScreen> {
               ],
             ),
             drawer: MainAppDrawer(
-              currentIndex: 1, // Index for "Bots" tab
+              currentIndex: 4, // Index for "Bots" tab
               onTabSelected: (index) => navigation_utils
-                  .handleDrawerNavigation(context, index, currentIndex: 1),
+                  .handleDrawerNavigation(context, index, currentIndex: 4),
             ),
             body: Column(
               children: [

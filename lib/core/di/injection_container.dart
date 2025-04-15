@@ -1,16 +1,22 @@
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
+import 'package:aichatbot/data/datasources/remote/knowledge_api_service.dart';
 import 'package:aichatbot/data/repositories/assistant_repository_impl.dart';
 import 'package:aichatbot/data/repositories/conversation_repository_impl.dart';
+import 'package:aichatbot/data/repositories/knowledge_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/assistant_repository.dart';
 import 'package:aichatbot/domain/repositories/conversation_repository.dart';
+import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/network/api_service.dart';
@@ -73,6 +79,11 @@ Future<void> init() async {
       getAssistantsUseCase: sl(),
     ),
   );
+  sl.registerCachedFactory(
+    () => KnowledgeBloc(
+      getKnowledgesUseCase: sl(),
+    ),
+  );
 
   // Use cases
   sl.registerLazySingleton(() => LoginUsecase(sl()));
@@ -87,6 +98,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
   sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
   sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
+  sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),
@@ -103,6 +115,10 @@ Future<void> init() async {
   sl.registerLazySingleton<AssistantRepository>(
     () => AssistantRepositoryImpl(assistantApiService: sl()),
   );
+  sl.registerLazySingleton<KnowledgeRepository>(
+    () => KnowledgeRepositoryImpl(knowledgeApiService: sl()),
+  );
+
   // Core
   sl.registerLazySingleton(() => ApiService());
 
@@ -121,6 +137,9 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(
     () => ConversationApiService(),
+  );
+  sl.registerLazySingleton(
+    () => KnowledgeApiService(),
   );
 
   // External

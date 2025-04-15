@@ -1,6 +1,7 @@
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
         BlocProvider<BotBloc>(
           create: (context) => di.sl<BotBloc>(),
         ),
+        BlocProvider(create: (context) => di.sl<KnowledgeBloc>()),
       ],
       child: MaterialApp.router(
         title: 'AI Chat Bot',

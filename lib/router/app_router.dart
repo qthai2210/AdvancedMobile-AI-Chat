@@ -1,5 +1,6 @@
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
+import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 import 'package:aichatbot/screens/splash_screen.dart';
@@ -72,6 +73,13 @@ class AppRouter {
         name: 'createPrompt',
         builder: (context, state) => const CreatePromptScreen(),
       ),
+      // add knowledge route
+      GoRoute(
+          path: '/knowledge_management',
+          name: 'knowledge_management',
+          builder: (context, state) {
+            return const KnowledgeManagementScreen();
+          }),
       // Updated route for chat detail to handle deep linking
       GoRoute(
         path: '/chat/detail/:threadId',

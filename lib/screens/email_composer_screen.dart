@@ -47,11 +47,11 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
         ],
       ),
       drawer: MainAppDrawer(
-        currentIndex: 4, // Replace History with Email Composer (index 4)
+        currentIndex: 1, // Replace History with Email Composer (index 4)
         onTabSelected: (index) => navigation_utils.handleDrawerNavigation(
           context,
           index,
-          currentIndex: 4,
+          currentIndex: 1,
         ),
       ),
       body: _buildBody(),
