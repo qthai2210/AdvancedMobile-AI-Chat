@@ -1,3 +1,6 @@
+import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
+import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
+import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
@@ -52,6 +55,11 @@ class AppRouter {
         path: '/bot_management',
         name: 'bot_management',
         builder: (context, state) => const BotListScreen(),
+      ),
+      GoRoute(
+        path: '/bot_management/create',
+        name: 'createAssistant',
+        builder: (context, state) => const CreateAssistantScreen(),
       ),
       GoRoute(
         path: '/email',

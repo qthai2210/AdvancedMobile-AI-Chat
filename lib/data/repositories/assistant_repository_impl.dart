@@ -60,4 +60,52 @@ class AssistantRepositoryImpl implements AssistantRepository {
       throw ServerFailure(e.toString());
     }
   }
+
+  @override
+  Future<AssistantModel> createAssistant({
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? guidId,
+  }) async {
+    try {
+      return await assistantApiService.createAssistant(
+        assistantName: assistantName,
+        instructions: instructions,
+        description: description,
+        guidId: guidId,
+      );
+    } on DioException catch (e) {
+      throw ServerFailure(
+        e.response?.statusMessage ?? 'Server error: ${e.response?.statusCode}',
+      );
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
+
+  @override
+  Future<AssistantModel> updateAssistant({
+    required String assistantId,
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      return await assistantApiService.updateAssistant(
+        assistantId: assistantId,
+        assistantName: assistantName,
+        instructions: instructions,
+        description: description,
+        xJarvisGuid: xJarvisGuid,
+      );
+    } on DioException catch (e) {
+      throw ServerFailure(
+        e.response?.statusMessage ?? 'Server error: ${e.response?.statusCode}',
+      );
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
 }

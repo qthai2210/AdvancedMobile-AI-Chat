@@ -1,3 +1,4 @@
+import 'package:aichatbot/core/network/dio_app_logger.dart';
 import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
 
 import 'package:aichatbot/utils/logger.dart';
@@ -32,7 +33,7 @@ class ApiService {
 
     // Add logging interceptor
     dio.interceptors.add(
-      LogInterceptor(
+      DioAppLogger(
         request: true,
         responseBody: true,
         requestBody: true,

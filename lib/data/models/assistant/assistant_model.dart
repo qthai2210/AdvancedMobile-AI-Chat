@@ -1,42 +1,35 @@
-class AssistantModel {
-  final String id;
-  final String assistantName;
-  final String? openAiAssistantId;
-  final String? instructions;
-  final String? description;
-  final String? openAiThreadIdPlay;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-  final String? createdBy;
-  final String? updatedBy;
+import 'package:aichatbot/domain/entities/assistant.dart';
 
-  AssistantModel({
-    required this.id,
-    required this.assistantName,
-    this.openAiAssistantId,
-    this.instructions,
-    this.description,
-    this.openAiThreadIdPlay,
-    this.createdAt,
-    this.updatedAt,
-    this.createdBy,
-    this.updatedBy,
+class AssistantModel extends Assistant {
+  const AssistantModel({
+    required super.id,
+    required super.assistantName,
+    required super.openAiAssistantId,
+    super.instructions,
+    super.description,
+    super.openAiThreadIdPlay,
+    super.createdAt,
+    super.updatedAt,
+    super.createdBy,
+    super.updatedBy,
   });
 
   factory AssistantModel.fromJson(Map<String, dynamic> json) {
     return AssistantModel(
-      id: json['id'] ?? '',
-      assistantName: json['assistantName'] ?? '',
-      openAiAssistantId: json['openAiAssistantId'],
-      instructions: json['instructions'],
-      description: json['description'],
-      openAiThreadIdPlay: json['openAiThreadIdPlay'],
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
-      createdBy: json['createdBy'],
-      updatedBy: json['updatedBy'],
+      id: json['id'] as String,
+      assistantName: json['assistantName'] as String,
+      openAiAssistantId: json['openAiAssistantId'] as String,
+      instructions: json['instructions'] as String?,
+      description: json['description'] as String?,
+      openAiThreadIdPlay: json['openAiThreadIdPlay'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
     );
   }
 
@@ -45,13 +38,28 @@ class AssistantModel {
       'id': id,
       'assistantName': assistantName,
       'openAiAssistantId': openAiAssistantId,
-      'instructions': instructions,
-      'description': description,
-      'openAiThreadIdPlay': openAiThreadIdPlay,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
-      'createdBy': createdBy,
-      'updatedBy': updatedBy,
+      if (instructions != null) 'instructions': instructions,
+      if (description != null) 'description': description,
+      if (openAiThreadIdPlay != null) 'openAiThreadIdPlay': openAiThreadIdPlay,
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+      if (createdBy != null) 'createdBy': createdBy,
+      if (updatedBy != null) 'updatedBy': updatedBy,
     };
+  }
+
+  factory AssistantModel.fromEntity(Assistant assistant) {
+    return AssistantModel(
+      id: assistant.id,
+      assistantName: assistant.assistantName,
+      openAiAssistantId: assistant.openAiAssistantId,
+      instructions: assistant.instructions,
+      description: assistant.description,
+      openAiThreadIdPlay: assistant.openAiThreadIdPlay,
+      createdAt: assistant.createdAt,
+      updatedAt: assistant.updatedAt,
+      createdBy: assistant.createdBy,
+      updatedBy: assistant.updatedBy,
+    );
   }
 }

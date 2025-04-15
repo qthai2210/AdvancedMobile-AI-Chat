@@ -248,7 +248,10 @@ class AuthApiService {
             // 'X-Stack-Project-Id': 'your-project-id',
             // 'X-Stack-Publishable-Client-Key': 'your-client-key',
           },
+          contentType: 'application/json',
         ),
+        // Add an empty JSON object as the request body
+        data: {},
       );
 
       if (response.statusCode == 200 && response.data != null) {

@@ -1,4 +1,6 @@
 import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
+import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
@@ -76,14 +78,15 @@ Future<void> init() async {
     () => ChatBloc(
       sendMessageUseCase: sl(),
     ),
-  );
-  // Register BotBloc as a factory to ensure fresh instance each time
-  sl.registerFactory(
+  ); // Register BotBloc as a factory to ensure fresh instance each time  sl.registerLazySingleton(
+  sl.registerLazySingleton(
     () => BotBloc(
       getAssistantsUseCase: sl(),
+      createAssistantUseCase: sl(),
+      updateAssistantUseCase: sl(),
     ),
   );
-  sl.registerCachedFactory(
+  sl.registerLazySingleton(
     () => KnowledgeBloc(
       getKnowledgesUseCase: sl(),
       createKnowledgeUseCase: sl(),
@@ -107,6 +110,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
   sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
   sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(() => CreateAssistantUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),

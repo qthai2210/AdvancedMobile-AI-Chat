@@ -57,3 +57,42 @@ class RefreshBotsEvent extends BotEvent {
   @override
   List<Object?> get props => [searchQuery, isFavorite];
 }
+
+/// Event to create a new assistant
+class CreateAssistantEvent extends BotEvent {
+  final String assistantName;
+  final String? instructions;
+  final String? description;
+  final String? guidId;
+
+  const CreateAssistantEvent({
+    required this.assistantName,
+    this.instructions,
+    this.description,
+    this.guidId,
+  });
+
+  @override
+  List<Object?> get props => [assistantName, instructions, description, guidId];
+}
+
+/// Event to update an existing assistant
+class UpdateAssistantEvent extends BotEvent {
+  final String assistantId;
+  final String assistantName;
+  final String? instructions;
+  final String? description;
+  final String? xJarvisGuid;
+
+  const UpdateAssistantEvent({
+    required this.assistantId,
+    required this.assistantName,
+    this.instructions,
+    this.description,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props =>
+      [assistantId, assistantName, instructions, description, xJarvisGuid];
+}

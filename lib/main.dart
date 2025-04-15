@@ -45,6 +45,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp.router(
         title: 'AI Chat Bot',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
