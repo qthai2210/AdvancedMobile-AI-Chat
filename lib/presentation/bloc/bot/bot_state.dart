@@ -102,3 +102,26 @@ class AssistantUpdateFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when an assistant is being deleted
+class AssistantDeleting extends BotState {}
+
+/// State when an assistant has been successfully deleted
+class AssistantDeleted extends BotState {
+  final String assistantId;
+
+  const AssistantDeleted({required this.assistantId});
+
+  @override
+  List<Object?> get props => [assistantId];
+}
+
+/// State when there was an error deleting an assistant
+class AssistantDeleteFailed extends BotState {
+  final String message;
+
+  const AssistantDeleteFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

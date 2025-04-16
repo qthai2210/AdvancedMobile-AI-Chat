@@ -96,3 +96,17 @@ class UpdateAssistantEvent extends BotEvent {
   List<Object?> get props =>
       [assistantId, assistantName, instructions, description, xJarvisGuid];
 }
+
+/// Event to delete an existing assistant
+class DeleteAssistantEvent extends BotEvent {
+  final String assistantId;
+  final String? xJarvisGuid;
+
+  const DeleteAssistantEvent({
+    required this.assistantId,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [assistantId, xJarvisGuid];
+}

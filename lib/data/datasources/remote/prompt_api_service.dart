@@ -39,7 +39,7 @@ class PromptApiService {
         queryParameters: queryParams,
         options: Options(
           headers: {
-            'Authorization': '$accessToken',
+            'Authorization': accessToken,
             'Accept': 'application/json',
           },
         ),
@@ -111,7 +111,7 @@ class PromptApiService {
 
       // Cấu hình headers
       final headers = {
-        'Authorization': '$accessToken',
+        'Authorization': accessToken,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,
@@ -237,7 +237,7 @@ class PromptApiService {
 
       // Cấu hình headers
       final headers = {
-        'Authorization': '$accessToken',
+        'Authorization': accessToken,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,
@@ -430,7 +430,7 @@ class PromptApiService {
 
       // Cấu hình headers
       final headers = {
-        'Authorization': '$accessToken',
+        'Authorization': accessToken,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,
@@ -599,7 +599,7 @@ class PromptApiService {
 
       // Cấu hình headers theo yêu cầu API
       final headers = {
-        'Authorization': '$accessToken',
+        'Authorization': accessToken,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,
@@ -665,7 +665,7 @@ class PromptApiService {
 
       // Cấu hình headers theo yêu cầu API
       final headers = {
-        'Authorization': '$accessToken',
+        'Authorization': accessToken,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,

@@ -1,5 +1,6 @@
 import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
 import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
@@ -84,6 +85,7 @@ Future<void> init() async {
       getAssistantsUseCase: sl(),
       createAssistantUseCase: sl(),
       updateAssistantUseCase: sl(),
+      deleteAssistantUseCase: sl(),
     ),
   );
   sl.registerLazySingleton(
@@ -112,6 +114,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
   sl.registerLazySingleton(() => CreateAssistantUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),
@@ -137,12 +140,12 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ApiService());
 
   // Data sources
-  sl.registerLazySingleton(() => AuthApiService());
-  sl.registerLazySingleton(() => PromptApiService());
-  sl.registerLazySingleton(() => AssistantApiService());
-  sl.registerLazySingleton(() => ChatApiService());
-  sl.registerLazySingleton(() => ConversationApiService());
-  sl.registerLazySingleton(() => KnowledgeApiService());
+  sl.registerFactory(() => AuthApiService());
+  sl.registerFactory(() => PromptApiService());
+  sl.registerFactory(() => AssistantApiService());
+  sl.registerFactory(() => ChatApiService());
+  sl.registerFactory(() => ConversationApiService());
+  sl.registerFactory(() => KnowledgeApiService());
 
   // External
   sl.registerLazySingleton(() => Dio(BaseOptions(

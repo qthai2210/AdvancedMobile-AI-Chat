@@ -466,11 +466,11 @@ class _PromptsScreenState extends State<PromptsScreen> {
               if (state.status == PromptStatus.success &&
                   state.deletedPromptId != null) {
                 // Hiển thị thông báo xóa thành công
-                context
-                    .showSuccessNotification('Prompt đã được xóa thành công');
+                // context
+                //     .showSuccessNotification('Prompt đã được xóa thành công');
 
                 // Nếu đang ở màn hình chi tiết, quay lại màn hình danh sách
-                Navigator.popUntil(context, ModalRoute.withName('/prompts'));
+                //Navigator.popUntil(context, ModalRoute.withName('/prompts'));
               }
             },
             child: Scaffold(
@@ -651,8 +651,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
         List<PromptModel> currentPrompts = [];
         if (state.prompts != null && state.prompts!.isNotEmpty) {
           // Convert PromptModel list to Prompt list
-          currentPrompts =
-              state.prompts!.map((model) => model as PromptModel).toList();
+          currentPrompts = state.prompts!.map((model) => model).toList();
 
           if (state.sortBy == 'alphabetical') {
             currentPrompts.sort((a, b) => a.title.compareTo(b.title));
@@ -717,7 +716,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 final category = _categories[index];
                 final displayName = _categoryDisplayNames[category] ?? category;
                 final isSelected =
-                    state.selectedCategories?.contains(category) ?? false;
+                    state.selectedCategories.contains(category) ?? false;
                 final color = Prompt.getCategoryColor(category);
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),

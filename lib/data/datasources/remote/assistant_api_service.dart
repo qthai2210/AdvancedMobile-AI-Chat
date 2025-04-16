@@ -208,4 +208,43 @@ class AssistantApiService {
       throw Exception('Failed to update assistant: $e');
     }
   }
+
+  /// Deletes an existing assistant
+  ///
+  /// Makes a DELETE request to the delete assistant endpoint
+  ///
+  /// [assistantId] is required to identify which assistant to delete
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns true on successful deletion
+  Future<bool> deleteAssistant({
+    required String assistantId,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional GUID
+      final headers = <String, dynamic>{};
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Make the API call
+      final response = await _apiService.dio.delete(
+        '/kb-core/v1/ai-assistant/$assistantId',
+        options: Options(headers: headers),
+      );
+
+      AppLogger.i('Delete assistant response: ${response.statusCode}');
+
+      // If status code is 200, the deletion was successful
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      AppLogger.e('Error deleting assistant: ${e.message}');
+      AppLogger.e('Error response: ${e.response?.data}');
+      throw Exception('Failed to delete assistant: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error deleting assistant: $e');
+      throw Exception('Failed to delete assistant: $e');
+    }
+  }
 }

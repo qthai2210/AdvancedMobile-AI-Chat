@@ -55,4 +55,13 @@ abstract class AssistantRepository {
     String? description,
     String? xJarvisGuid,
   });
+
+  /// Deletes an existing AI assistant
+  ///
+  /// [assistantId] is required to identify which assistant to delete
+  /// [xJarvisGuid] is an optional tracking GUID
+  Future<bool> deleteAssistant({
+    required String assistantId,
+    String? xJarvisGuid,
+  });
 }

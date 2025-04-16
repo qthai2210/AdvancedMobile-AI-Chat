@@ -1,7 +1,9 @@
+import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/data/models/assistant/get_assistants_params.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
@@ -11,20 +13,24 @@ class BotBloc extends Bloc<BotEvent, BotState> {
   final GetAssistantsUseCase _getAssistantsUseCase;
   final CreateAssistantUseCase _createAssistantUseCase;
   final UpdateAssistantUseCase _updateAssistantUseCase;
+  final DeleteAssistantUseCase _deleteAssistantUseCase;
 
   BotBloc({
     required GetAssistantsUseCase getAssistantsUseCase,
     required CreateAssistantUseCase createAssistantUseCase,
     required UpdateAssistantUseCase updateAssistantUseCase,
+    required DeleteAssistantUseCase deleteAssistantUseCase,
   })  : _getAssistantsUseCase = getAssistantsUseCase,
         _createAssistantUseCase = createAssistantUseCase,
         _updateAssistantUseCase = updateAssistantUseCase,
+        _deleteAssistantUseCase = deleteAssistantUseCase,
         super(BotInitial()) {
     on<FetchBotsEvent>(_onFetchBots);
     on<FetchMoreBotsEvent>(_onFetchMoreBots);
     on<RefreshBotsEvent>(_onRefreshBots);
     on<CreateAssistantEvent>(_onCreateAssistant);
     on<UpdateAssistantEvent>(_onUpdateAssistant);
+    on<DeleteAssistantEvent>(_onDeleteAssistant);
   }
 
   /// Handler for FetchBotsEvent
@@ -98,12 +104,34 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     Emitter<BotState> emit,
   ) async {
     // Reuse the fetch bots logic but always start from offset 0
-    add(FetchBotsEvent(
-      searchQuery: event.searchQuery,
-      offset: 0,
-      limit: 20,
-      isFavorite: event.isFavorite,
-    ));
+    // add(FetchBotsEvent(
+    //   searchQuery: event.searchQuery,
+    //   offset: 0,
+    //   limit: 20,
+    //   isFavorite: event.isFavorite,
+    // ));
+    AppLogger.i('Refreshing bots with query: ${event.searchQuery}');
+    emit(BotsLoading());
+    try {
+      final result = await _getAssistantsUseCase.call(
+        query: event.searchQuery,
+        order: SortOrder.DESC,
+        orderField: 'updatedAt',
+        offset: 0,
+        limit: 20,
+        isFavorite: event.isFavorite,
+      );
+      emit(BotsLoaded(
+        bots: result.data,
+        hasMore: result.meta.hasNext,
+        offset: result.meta.offset,
+        total: result.meta.total,
+      ));
+      AppLogger.i(
+          'Bots refreshed successfully: ${result.data.length} bots loaded.');
+    } catch (e) {
+      emit(BotsError(message: e.toString()));
+    }
   }
 
   /// Handler for CreateAssistantEvent
@@ -122,6 +150,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       );
 
       emit(AssistantCreated(assistant: result));
+      // add current assistant to bots list
     } catch (e) {
       emit(AssistantCreationFailed(message: e.toString()));
     }
@@ -146,6 +175,34 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       emit(AssistantUpdated(assistant: result));
     } catch (e) {
       emit(AssistantUpdateFailed(message: e.toString()));
+    }
+  }
+
+  /// Handler for DeleteAssistantEvent
+  Future<void> _onDeleteAssistant(
+    DeleteAssistantEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(AssistantDeleting());
+
+    try {
+      final success = await _deleteAssistantUseCase.call(
+        assistantId: event.assistantId,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      if (success) {
+        emit(AssistantDeleted(assistantId: event.assistantId));
+
+        // Refresh the list after successful deletion
+        add(const RefreshBotsEvent());
+      } else {
+        emit(const AssistantDeleteFailed(
+          message: 'Failed to delete assistant. Please try again.',
+        ));
+      }
+    } catch (e) {
+      emit(AssistantDeleteFailed(message: e.toString()));
     }
   }
 }
