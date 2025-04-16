@@ -43,6 +43,9 @@ class _BotListScreenState extends State<BotListScreen> {
   /// Track if we're currently creating an assistant
   bool _isCreatingAssistant = false;
 
+  /// Track if we're currently deleting an assistant
+  bool _isDeletingAssistant = false;
+
   @override
   void initState() {
     super.initState();
@@ -750,6 +753,10 @@ class _BotListScreenState extends State<BotListScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
+              // Set deleting flag to true
+              setState(() {
+                _isDeletingAssistant = true;
+              });
               // Dispatch the DeleteAssistantEvent to delete the assistant
               context.read<BotBloc>().add(DeleteAssistantEvent(
                     assistantId: bot.id,
@@ -900,14 +907,39 @@ class _BotListScreenState extends State<BotListScreen> {
         // Handle assistant deletion states
         if (state is AssistantDeleting) {
           // Show loading indicator for deletion
-          // show an overlay loading indicator, do not use snackbar
-          //AppBarLoadingOverlay.show(context, 'Deleting assistant...');
+          // We're already using _isDeletingAssistant flag in the UI
+          setState(() {
+            _isDeletingAssistant = true;
+          });
         } else if (state is AssistantDeleted) {
-          // Show success message
+          // Reset deleting flag
+          setState(() {
+            _isDeletingAssistant = false;
+          });
 
-          // Refresh the assistants list after deletion
-          //context.read<BotBloc>().add(const RefreshBotsEvent());
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text('Assistant deleted successfully'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+            ),
+          );
+
+          // Refresh the assistants list after deletion - already handled in BotBloc
         } else if (state is AssistantDeleteFailed) {
+          // Reset deleting flag
+          setState(() {
+            _isDeletingAssistant = false;
+          });
+
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

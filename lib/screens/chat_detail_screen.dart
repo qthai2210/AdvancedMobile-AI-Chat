@@ -1,4 +1,5 @@
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
+import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/chat/ai_agent_selector.dart';
 import 'package:aichatbot/widgets/chat/chat_dialogs.dart';
 import 'package:aichatbot/widgets/chat/chat_message_list.dart';
@@ -290,8 +291,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           content: message,
           files: [],
           metadata: msg_model.MessageMetadata(
-            conversation:
-                msg_model.Conversation(messages: conversationHistory, id: ''),
+            conversation: msg_model.Conversation(
+              id: widget.threadId ?? 'new_conversation',
+              title: _currentThreadTitle,
+              createdAt: DateTime.now(),
+            ),
           ),
           assistant: msg_model.AssistantModel(
               model: "dify", name: _selectedAgent.name, id: _selectedAgent.id),
@@ -545,7 +549,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           _isTyping = false;
           _messages.add(
             Message(
-              text: state.response!.content,
+              text: state.response!.message,
               isUser: false,
               timestamp: DateTime.now(),
               agent: _selectedAgent,
@@ -588,6 +592,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     } else if (state is ConversationLoaded) {
       setState(() {
         _isTyping = false;
+        AppLogger.e("Conversation loaded: ${state.conversations}");
+        AppLogger.e("Conversations length: ${state.conversations.length}");
 
         // Update chat threads for history panel if available
         if (state.conversations.isNotEmpty) {
@@ -596,11 +602,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     id: conv.id,
                     // id: conv.id,
                     // title: conv.title ?? 'Untitled Conversation',
-                    title: 'Untitled Conversation',
-                    lastMessage: conv.messages.isNotEmpty == true
-                        ? (conv.messages.first.content ?? 'No content')
-                        : 'No messages',
-                    timestamp: DateTime.now(),
+                    title: conv.title,
+                    lastMessage: 'No messages',
+                    timestamp: conv.createdAt,
                     agentType: 'AI Assistant',
                   ))
               .toList();
@@ -611,6 +615,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               (conv) => conv.id == widget.threadId,
               orElse: () => state.conversations.first,
             );
+            // final conversation = state.conversations.firstWhere(
+            //   (conv) => conv.id == widget.threadId,
+            //   orElse: () => state.conversations.first,
+            // );
 
             //_currentThreadTitle = conversation.title ?? 'Conversation';
             _currentThreadTitle = 'Conversation';
@@ -618,18 +626,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             // Convert conversation messages to UI Message model
             _messages = [];
 
-            for (var msg in conversation.messages) {
-              _messages.add(
-                Message(
-                  text: msg.content ?? '',
-                  isUser: msg.role == 'user',
-                  //   timestamp: msg.createdAt ?? DateTime.now(),
-                  timestamp: DateTime.now(),
+            // for (var msg in conversation.messages) {
+            //   _messages.add(
+            //     Message(
+            //       text: msg.content ?? '',
+            //       isUser: msg.role == 'user',
+            //       //   timestamp: msg.createdAt ?? DateTime.now(),
+            //       timestamp: DateTime.now(),
 
-                  agent: msg.role == 'user' ? null : _selectedAgent,
-                ),
-              );
-            }
+            //       agent: msg.role == 'user' ? null : _selectedAgent,
+            //     ),
+            //   );
+            // }
 
             // Scroll to bottom after loading messages
             _scrollToBottom();
@@ -923,11 +931,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                subtitle: Text(
-                                  thread.lastMessage,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                // subtitle: Text(
+                                //   thread.lastMessage,
+                                //   maxLines: 1,
+                                //   overflow: TextOverflow.ellipsis,
+                                // ),
                                 trailing: Text(
                                   _formatDate(thread.timestamp),
                                   style: const TextStyle(

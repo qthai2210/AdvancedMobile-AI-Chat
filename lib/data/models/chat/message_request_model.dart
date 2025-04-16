@@ -45,16 +45,21 @@ class MessageMetadata {
 }
 
 class Conversation {
-  final List<ChatMessage> messages;
+  //final List<ChatMessage> messages;
   final String id;
+  final String title;
+  final DateTime createdAt;
   Conversation({
-    required this.messages,
+    //required this.messages,
     required this.id,
+    required this.title,
+    required this.createdAt,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'messages': messages.map((message) => message.toJson()).toList(),
+      //'messages': messages.map((message) => message.toJson()).toList(),
+      'title': title,
     };
   }
 }

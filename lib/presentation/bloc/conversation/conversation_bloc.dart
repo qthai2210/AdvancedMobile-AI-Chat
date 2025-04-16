@@ -1,6 +1,7 @@
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart'
     as message;
+import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_event.dart';
@@ -36,17 +37,44 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
         limit: event.limit,
         xJarvisGuid: event.xJarvisGuid,
       );
-      print("results: ${result.items}");
-      // convert results.items to List<Conversation>
-      // final conversations =
-      //     result.items.map((item) => Conversation.fromJson(item)).toList();
+      AppLogger.i("response from getConversations: $result");
+      try {
+        // Create list of conversations from the result
+        final List<message.Conversation> conversations = [];
+        for (var item in result.items) {
+          try {
+            // Now we know item is a ConversationModel, not a Map
+            // Access its properties directly
+            // let add 7 hours into createAt
+            final conversation = message.Conversation(
+                id: item.id,
+                title: item.title,
+                createdAt: DateTime.parse(item.createdAt)
+                    .add(const Duration(hours: 7)));
 
-      // emit(ConversationLoaded(
-      //   conversations: conversations,
-      //   hasMore: result.hasMore,
-      //   //nextCursor: result.nextCursor,
-      // ));
+            // Add the conversation to the list
+            conversations.add(conversation);
+          } catch (itemError) {
+            // Log the error but continue processing other items
+            AppLogger.e("Error processing conversation item: $itemError");
+          }
+        } // Emit loaded state with conversations and pagination info
+
+        AppLogger.i("Conversations: $conversations");
+        emit(ConversationLoaded(
+          conversations: conversations,
+          hasMore: result.hasMore, // Use has_more from API response
+          nextCursor: result.cursor,
+        ));
+        AppLogger.e(
+            "first conversation: ${conversations.first.title} - ${conversations.first.createdAt}");
+      } catch (parseError) {
+        AppLogger.e("Error parsing conversation data: $parseError");
+        emit(ConversationError(
+            message: "Failed to parse conversation data: $parseError"));
+      }
     } catch (e) {
+      AppLogger.e("Error fetching conversations: $e");
       emit(ConversationError(message: e.toString()));
     }
   }
