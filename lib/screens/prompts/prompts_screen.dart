@@ -444,33 +444,22 @@ class _PromptsScreenState extends State<PromptsScreen> {
           debugPrint('PromptBloc instance: $promptBloc');
 
           return BlocListener<PromptBloc, PromptState>(
-            bloc: promptBloc, // Explicitly provide the bloc instance
             listener: (context, state) {
-              debugPrint('BlocListener received state: ${state.status}');
-              // Xử lý các trạng thái và hiển thị thông báo
+              // Log tất cả trạng thái nhận được để debug
+              debugPrint(
+                  'PromptScreen: BlocListener received state: ${state.status}');
+
               if (state.status == PromptStatus.failure) {
-                AppNotification.showError(
-                  context,
+                context.showApiErrorNotification(
                   ErrorFormatter.formatPromptError(state.errorMessage),
                 );
-              }
-
-              // Hiển thị thông báo khi tạo prompt thành công
-              if (state.newPrompt != null) {
-                AppNotification.showSuccess(
-                  context,
-                  'Đã tạo prompt mới thành công',
-                );
-              }
-
-              if (state.status == PromptStatus.success &&
-                  state.deletedPromptId != null) {
-                // Hiển thị thông báo xóa thành công
-                context
-                    .showSuccessNotification('Prompt đã được xóa thành công');
-
-                // Nếu đang ở màn hình chi tiết, quay lại màn hình danh sách
-                Navigator.popUntil(context, ModalRoute.withName('/prompts'));
+              } else if (state.status == PromptStatus.success) {
+                // Nếu xóa thành công
+                if (state.deletedPromptId != null) {
+                  // Đóng dialog và hiển thị thông báo thành công
+                  Navigator.of(context).pop(); // Đóng dialog nếu đang mở
+                  context.showSuccessNotification('Đã xóa prompt thành công');
+                }
               }
             },
             child: Scaffold(
@@ -894,7 +883,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
                         ElevatedButton.icon(
                           icon: const Icon(Icons.delete_outline, size: 16),
                           label: const Text('Delete'),
-                          onPressed: () => _confirmDeletePrompt(prompt),
+                          onPressed: () =>
+                              _showDeleteConfirmation(context, prompt),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
@@ -1065,7 +1055,8 @@ class _PromptsScreenState extends State<PromptsScreen> {
                                 icon:
                                     const Icon(Icons.delete_outline, size: 16),
                                 label: const Text('Delete'),
-                                onPressed: () => _confirmDeletePrompt(prompt),
+                                onPressed: () =>
+                                    _showDeleteConfirmation(context, prompt),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -1123,69 +1114,75 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   // Thêm phương thức xác nhận trước khi xóa prompt
-  void _confirmDeletePrompt(PromptModel prompt) {
+  void _showDeleteConfirmation(BuildContext context, PromptModel prompt) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content:
-            Text('Bạn có chắc chắn muốn xóa prompt "${prompt.title}" không?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deletePrompt(prompt.id);
-            },
-            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Xác nhận xóa'),
+          content: Text('Bạn có chắc chắn muốn xóa prompt "${prompt.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext); // Đóng dialog
+              },
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Dispatch event xóa
+                context.read<PromptBloc>().add(DeletePrompt(
+                      accessToken:
+                          context.read<AuthBloc>().state.user!.accessToken!,
+                      promptId: prompt.id,
+                    ));
 
-  // Thêm phương thức xóa prompt
-  void _deletePrompt(String promptId) {
-    // Get access token from AuthBloc
-    final authState = context.read<AuthBloc>().state;
-    final accessToken = authState.user?.accessToken;
+                // Đóng dialog ngay lập tức
+                Navigator.pop(dialogContext);
 
-    // Check if user is authenticated
-    if (accessToken == null) {
-      context.showWarningNotification(
-        'Bạn cần đăng nhập để thực hiện thao tác này',
-        actionLabel: 'Đăng nhập',
-        onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
-      );
-      return;
-    }
-
-    // Show confirmation dialog
-    context.showConfirmationDialog(
-      title: 'Xác nhận xóa',
-      content: 'Bạn có chắc chắn muốn xóa prompt này?',
-      confirmText: 'Xóa',
-      cancelText: 'Hủy',
-      onConfirm: () {
-        // Xử lý xóa prompt
-        context.read<PromptBloc>().add(
-              DeletePrompt(
-                accessToken: accessToken, // Now using the retrieved accessToken
-                promptId: promptId,
-              ),
-            );
-
-        // Hiển thị thông báo thành công sau khi xóa
-        context.showSuccessNotification('Đã xóa prompt');
+                // Hiển thị loading indicator trong khi chờ xóa
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (loadingContext) {
+                    return BlocListener<PromptBloc, PromptState>(
+                      listener: (context, state) {
+                        if (state.status == PromptStatus.success &&
+                            state.deletedPromptId == prompt.id) {
+                          // Đóng loading dialog
+                          Navigator.pop(loadingContext);
+                          // Hiển thị thông báo thành công
+                          context.showSuccessNotification(
+                              'Đã xóa prompt thành công');
+                        } else if (state.status == PromptStatus.failure) {
+                          // Đóng loading dialog
+                          Navigator.pop(loadingContext);
+                          // Hiển thị lỗi
+                          context.showApiErrorNotification(
+                            ErrorFormatter.formatPromptError(
+                                state.errorMessage),
+                          );
+                        }
+                      },
+                      child: const AlertDialog(
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Đang xóa...'),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
       },
-      onCancel: () {
-        // Tùy chọn: xử lý khi người dùng hủy hành động
-        context.showInfoNotification('Đã hủy xóa prompt');
-      },
-      barrierDismissible: false, // Bắt buộc người dùng phải chọn một nút
     );
   }
 
