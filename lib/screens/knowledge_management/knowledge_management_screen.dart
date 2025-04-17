@@ -1,3 +1,5 @@
+import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/screens/knowledge_management/knowledge_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
@@ -663,14 +665,27 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   }
 
   void _navigateToKnowledgeDetail(KnowledgeModel knowledge) {
+    // Tạo một đối tượng KnowledgeBase từ KnowledgeModel
+    final KnowledgeBase knowledgeBase = KnowledgeBase(
+      // Các tham số bắt buộc
+      id: knowledge.id ?? '', // Chuyển đổi String? thành String
+      name: knowledge.knowledgeName, // Tham số 'name' được yêu cầu
+      createdAt: knowledge.createdAt ?? DateTime.now(), // Tham số bắt buộc
+      lastUpdatedAt: knowledge.updatedAt ?? DateTime.now(), // Tham số bắt buộc
+      // Các tham số tùy chọn
+      description: knowledge.description ?? '', // Chuyển String? thành String
+      // Không sử dụng knowledgeName và updatedAt vì không có trong constructor
+    );
     // Navigate to detail screen
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => KnowledgeDetailScreen(knowledge: knowledge),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            KnowledgeDetailScreen(knowledgeBase: knowledgeBase),
+      ),
+    );
   }
+
   Widget _buildKnowledgeLastUpdated(KnowledgeModel knowledge) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,

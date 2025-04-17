@@ -11,14 +11,32 @@ extension BuildContextExtensions on BuildContext {
     String? actionLabel,
     Duration duration = const Duration(seconds: 3),
   }) {
+    // Kiểm tra xem BuildContext có còn hợp lệ không
+    if (!mounted) return; // Đảm bảo context còn hợp lệ
+
+    final VoidCallback defaultAction = () {
+      if (Navigator.canPop(this)) {
+        Navigator.of(this).pop();
+      }
+    };
+
     // Using the new SuccessDialog instead of SnackBar
-    SuccessDialog.show(
-      this,
-      title: 'Success',
-      message: message,
-      buttonText: actionLabel ?? 'OK',
-      onButtonPressed: onAction ?? () => Navigator.of(this).pop(),
-    );
+    try {
+      SuccessDialog.show(
+        this,
+        title: 'Success',
+        message: message,
+        buttonText: actionLabel ?? 'OK',
+        onButtonPressed: onAction ?? defaultAction,
+      );
+    } catch (e) {
+      // Log lỗi để debug và xử lý tốt hơn
+      debugPrint('Error showing success dialog: $e');
+      // Sử dụng notification khác không phụ thuộc vào context
+      ScaffoldMessenger.of(this).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   void showErrorNotification(
@@ -27,14 +45,31 @@ extension BuildContextExtensions on BuildContext {
     String? actionLabel,
     Duration duration = const Duration(seconds: 4),
   }) {
-    // Using the new ErrorDialog instead of SnackBar
-    ErrorDialog.show(
-      this,
-      title: 'Error',
-      message: message,
-      buttonText: actionLabel ?? 'OK',
-      onButtonPressed: onAction ?? () => Navigator.of(this).pop(),
-    );
+    if (!mounted) return; // Đảm bảo context còn hợp lệ
+
+    final VoidCallback defaultAction = () {
+      if (Navigator.canPop(this)) {
+        Navigator.of(this).pop();
+      }
+    };
+
+    try {
+      ErrorDialog.show(
+        this,
+        title: 'Error',
+        message: message,
+        buttonText: actionLabel ?? 'OK',
+        onButtonPressed: onAction ?? defaultAction,
+      );
+    } catch (e) {
+      debugPrint('Error showing error dialog: $e');
+      ScaffoldMessenger.of(this).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void showWarningNotification(

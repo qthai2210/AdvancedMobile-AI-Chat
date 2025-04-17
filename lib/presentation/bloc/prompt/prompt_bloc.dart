@@ -182,27 +182,36 @@ class PromptBloc extends Bloc<PromptEvent, PromptState> {
         xJarvisGuid: event.xJarvisGuid,
       );
 
+      // Để tránh bất kỳ lỗi nào, bảo vệ tốt hơn:
       if (result) {
-        // Xóa prompt khỏi state.prompts nếu có
-        if (state.prompts != null) {
-          final updatedPrompts = List<PromptModel>.from(state.prompts!)
-            ..removeWhere((p) => p.id == event.promptId);
+        try {
+          List<PromptModel>? updatedPrompts;
+          if (state.prompts != null && state.prompts!.isNotEmpty) {
+            updatedPrompts = List<PromptModel>.from(state.prompts!)
+              ..removeWhere((p) => p.id == event.promptId);
+          }
 
           emit(state.copyWith(
             status: PromptStatus.success,
             prompts: updatedPrompts,
             deletedPromptId: event.promptId,
           ));
-        } else {
+
+          // Log để debug
+          debugPrint('PromptBloc: Successfully emitted state after deletion');
+        } catch (listError) {
+          debugPrint('PromptBloc: Error updating list: $listError');
+          // Vẫn emit thành công nhưng với thông báo lỗi
           emit(state.copyWith(
             status: PromptStatus.success,
             deletedPromptId: event.promptId,
+            errorMessage: 'Đã xóa thành công, vui lòng làm mới lại trang',
           ));
         }
       } else {
         emit(state.copyWith(
           status: PromptStatus.failure,
-          errorMessage: 'Failed to delete prompt',
+          errorMessage: 'Không thể xóa prompt',
         ));
       }
     } catch (error) {

@@ -1,3 +1,4 @@
+import 'package:aichatbot/core/errors/auth_exception.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
@@ -65,26 +66,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     try {
       final user = await loginUsecase(
-        email: _email,
-        password: _password,
+        email: event.email,
+        password: event.password,
       );
 
       emit(state.copyWith(
         status: AuthStatus.success,
         user: user,
       ));
-      // save access token, refresh token and user id to secure storage
-      await _secureStorage.writeSecureData(
-        accessToken: user.accessToken,
-        refreshToken: user.refreshToken,
-        // userId: user.userId,
-      );
     } catch (error) {
-      debugPrint('Login error in bloc: $error (${error.runtimeType})');
+      debugPrint('Auth bloc login error: $error');
 
+      // Truyền nguyên error object để ErrorFormatter có thể xử lý
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: error,
+        errorMessage: error, // Không cần ép kiểu hoặc format ở đây
       ));
     }
   }
@@ -147,9 +143,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (error) {
       debugPrint('Register error in bloc: $error (${error.runtimeType})');
 
+      String errorMessage = 'Đã xảy ra lỗi, vui lòng thử lại sau';
+
+      // Kiểm tra nếu lỗi là AuthException
+      if (error is AuthException) {
+        errorMessage = error.message;
+      } else {
+        // Log lỗi khác
+        debugPrint('Unexpected error: $error');
+      }
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: error,
+        errorMessage: errorMessage,
       ));
     }
   }

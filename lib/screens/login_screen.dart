@@ -1,3 +1,4 @@
+import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -16,9 +17,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: '2test@gmail.com');
-  final _passwordController = TextEditingController(text: '22102003T');
+  final _emailController = TextEditingController(text: '');
+  final _passwordController = TextEditingController(text: '');
   bool _obscurePassword = true;
+
+  // Thêm biến để lưu trạng thái lỗi password
+  String? _passwordError;
 
   @override
   void initState() {
@@ -27,11 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthBloc>().add(EmailChanged(_emailController.text));
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  // Thêm phương thức kiểm tra mật khẩu
+  void _validatePassword(String password) {
+    setState(() {
+      if (password.isEmpty) {
+        _passwordError = null;
+      } else if (password.length < 8) {
+        _passwordError = 'Mật khẩu phải có ít nhất 8 ký tự';
+      } else {
+        _passwordError = null;
+      }
+    });
+
+    context.read<AuthBloc>().add(PasswordChanged(password));
   }
 
   @override
@@ -39,24 +51,18 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          context.showAuthErrorNotification(
-              state.errorMessage ?? 'Đăng nhập thất bại');
-        }
-        if (state.status == AuthStatus.success) {
-          //context.showSuccessNotification('Đăng nhập thành công');
-
-          // Thêm đoạn code này để tự động chuyển trang
+          // Make sure this code runs when login fails
+          debugPrint('Login failure detected: ${state.errorMessage}');
+          context.showAuthErrorNotification(state.errorMessage is String
+              ? state.errorMessage
+              : ErrorFormatter.formatAuthError(state.errorMessage));
+        } else if (state.status == AuthStatus.success && state.user != null) {
+          // Only navigate to chat if login succeeded AND we have a user
           Future.delayed(const Duration(milliseconds: 500), () {
-            // Sử dụng Go Router nếu ứng dụng của bạn đang dùng
             try {
-              // move to chat detail screen
               context.go('/chat/detail/${state.user?.id}');
-              // context.go(
-              //     '/chat'); // hoặc '/prompts' tùy theo cấu trúc route của bạn
             } catch (_) {
-              // Fallback cho Navigation 1.0 nếu Go Router không khả dụng
-              Navigator.of(context)
-                  .pushReplacementNamed('/chat'); // hoặc route khác
+              Navigator.of(context).pushReplacementNamed('/chat');
             }
           });
         }
@@ -170,6 +176,52 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginForm() {
     return Column(
       children: [
+        // Thêm BlocBuilder để hiển thị lỗi đăng nhập
+        BlocBuilder<AuthBloc, AuthState>(
+          buildWhen: (previous, current) =>
+              previous.status != current.status ||
+              previous.errorMessage != current.errorMessage,
+          builder: (context, state) {
+            if (state.status == AuthStatus.failure &&
+                state.errorMessage != null) {
+              String errorMessage = '';
+              if (state.errorMessage is String) {
+                errorMessage = state.errorMessage;
+              } else {
+                errorMessage =
+                    ErrorFormatter.formatAuthError(state.errorMessage);
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline,
+                          color: Colors.red.shade700, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          errorMessage,
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+
         // Email Field
         TextField(
           controller: _emailController,
@@ -184,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Password Field
+        // Password Field - thêm hiển thị lỗi
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
@@ -201,9 +253,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
               },
             ),
+            // Thêm hiển thị lỗi nếu password quá ngắn
+            errorText: _passwordError,
+            // Điều chỉnh thêm space nếu có errorText
+            contentPadding: EdgeInsets.only(
+              top: 12,
+              bottom: _passwordError != null ? 12 : 16,
+            ),
           ),
           onChanged: (password) {
-            context.read<AuthBloc>().add(PasswordChanged(password));
+            // Gọi hàm validate để kiểm tra độ dài
+            _validatePassword(password);
           },
         ),
 
@@ -285,6 +345,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (!emailRegExp.hasMatch(_emailController.text)) {
                     context.showWarningNotification(
                       'Email không đúng định dạng, vui lòng kiểm tra lại',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra độ dài mật khẩu
+                  if (_passwordController.text.length < 8) {
+                    context.showWarningNotification(
+                      'Mật khẩu phải có ít nhất 8 ký tự',
                     );
                     return;
                   }
