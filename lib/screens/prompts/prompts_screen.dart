@@ -3,7 +3,15 @@ import 'dart:async';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/screens/prompts/edit_prompt_screen.dart';
 import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
+import 'package:aichatbot/screens/prompts/widgets/empty_state.dart';
+import 'package:aichatbot/screens/prompts/widgets/initial_state_view.dart';
+import 'package:aichatbot/screens/prompts/widgets/loading_state_view.dart';
+import 'package:aichatbot/screens/prompts/widgets/prompt_detail_sheet.dart';
+import 'package:aichatbot/screens/prompts/widgets/prompt_grid_item.dart';
+import 'package:aichatbot/screens/prompts/widgets/prompt_list_item.dart';
+import 'package:aichatbot/screens/prompts/widgets/search_filter_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
@@ -76,7 +84,6 @@ class _PromptsScreenState extends State<PromptsScreen> {
     _loadPrompts();
   }
 
-  // 1. Đầu tiên, cập nhật _onSearchChanged để sử dụng debounce và gọi API search
   void _onSearchChanged() {
     // Đã có SearchQueryChanged event, giữ lại để cập nhật state searchQuery
     final promptBloc = context.read<PromptBloc>();
@@ -92,7 +99,6 @@ class _PromptsScreenState extends State<PromptsScreen> {
     });
   }
 
-  // 2. Thêm biến Timer để xử lý debounce
   Timer? _debounceSearch;
 
   @override
@@ -101,7 +107,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _debounceSearch?.cancel(); // Thêm dòng này
+    _debounceSearch?.cancel();
     super.dispose();
   }
 
@@ -228,123 +234,17 @@ class _PromptsScreenState extends State<PromptsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _buildPromptDetailSheet(prompt),
-    );
-  }
-
-  Widget _buildPromptDetailSheet(PromptModel prompt) {
-    return DraggableScrollableSheet(
-      builder: (context, scrollController) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    prompt.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (prompt.userName != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    'By: ${prompt.userName}',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ),
-              Text(prompt.description),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  Chip(
-                    label: Text(prompt.category ?? 'Other'),
-                    backgroundColor:
-                        Prompt.getCategoryColor(prompt.category ?? 'Other')
-                            .withOpacity(0.2),
-                    labelStyle: TextStyle(
-                        color: Prompt.getCategoryColor(
-                            prompt.category ?? 'Other')),
-                  )
-                ],
-              ),
-              const Divider(height: 32),
-              const Text(
-                'Prompt Content:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Text(prompt.content),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    icon: Icons.favorite,
-                    label: prompt.isFavorite
-                        ? 'Remove from Favorites'
-                        : 'Add to Favorites',
-                    onPressed: () {
-                      _toggleFavorite(prompt);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _buildActionButton(
-                    icon: Icons.save_alt,
-                    label: 'Save as Private',
-                    onPressed: () {
-                      _saveAsPrivate(prompt);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _buildActionButton(
-                    icon: Icons.chat,
-                    label: 'Use in Chat',
-                    onPressed: () {
-                      _usePrompt(prompt);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16),
-      label: Text(label),
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => PromptDetailSheet(
+        prompt: prompt,
+        isOwner: _isPromptOwner(prompt),
+        onToggleFavorite: _toggleFavorite,
+        onEdit: _editPrompt,
+        onSaveAsPrivate: _saveAsPrivate,
+        onUse: _usePrompt,
+        onDelete: _showDeleteConfirmation,
       ),
     );
   }
@@ -439,102 +339,23 @@ class _PromptsScreenState extends State<PromptsScreen> {
       ],
       child: Builder(
         builder: (context) {
-          // This will ensure the bloc is accessible in the current context
-          final promptBloc = context.read<PromptBloc>();
-          debugPrint('PromptBloc instance: $promptBloc');
-
           return BlocListener<PromptBloc, PromptState>(
             listener: (context, state) {
-              // Log tất cả trạng thái nhận được để debug
-              debugPrint(
-                  'PromptScreen: BlocListener received state: ${state.status}');
+              debugPrint('BlocListener received state: ${state.status}');
 
               if (state.status == PromptStatus.failure) {
                 context.showApiErrorNotification(
                   ErrorFormatter.formatPromptError(state.errorMessage),
                 );
-              } else if (state.status == PromptStatus.success) {
-                // Nếu xóa thành công
-                if (state.deletedPromptId != null) {
-                  // Đóng dialog và hiển thị thông báo thành công
-                  Navigator.of(context).pop(); // Đóng dialog nếu đang mở
-                  context.showSuccessNotification('Đã xóa prompt thành công');
-                }
+              } else if (state.status == PromptStatus.success &&
+                  state.deletedPromptId != null) {
+                Navigator.of(context).pop();
+                context.showSuccessNotification('Đã xóa prompt thành công');
               }
             },
             child: Scaffold(
-              appBar: AppBar(
-                title: const Text('Prompts'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.person),
-                    tooltip: 'My Private Prompts',
-                    onPressed: _navigateToPrivatePrompts,
-                  ),
-                  BlocBuilder<PromptBloc, PromptState>(
-                    builder: (context, state) {
-                      return IconButton(
-                        icon: Icon(
-                          state.showOnlyFavorites
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                        ),
-                        color: state.showOnlyFavorites ? Colors.red : null,
-                        onPressed: _toggleFavoritesView,
-                        tooltip: state.showOnlyFavorites
-                            ? 'Show all prompts'
-                            : 'Show favorites',
-                      );
-                    },
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.sort),
-                    onSelected: _changeSortMethod,
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'popular',
-                        child: Text('Sort by Popularity'),
-                      ),
-                      const PopupMenuItem(
-                        value: 'recent',
-                        child: Text('Sort by Recent'),
-                      ),
-                      const PopupMenuItem(
-                        value: 'alphabetical',
-                        child: Text('Sort Alphabetically'),
-                      ),
-                    ],
-                  ),
-                  BlocBuilder<PromptBloc, PromptState>(
-                    builder: (context, state) {
-                      return IconButton(
-                        icon: Icon((state.isGridView ?? false)
-                            ? Icons.list
-                            : Icons.grid_view),
-                        onPressed: _toggleViewMode,
-                        tooltip: (state.isGridView ?? false)
-                            ? 'List view'
-                            : 'Grid view',
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () async {
-                      // Navigate to create prompt screen
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const CreatePromptScreen(),
-                        ),
-                      );
-                      // Nếu quay lại với result = true (đã tạo prompt mới), load lại danh sách
-                      if (result == true) {
-                        _loadPrompts();
-                      }
-                    },
-                  ),
-                ],
-              ),
+              backgroundColor: Colors.grey[50],
+              appBar: _buildAppBar(),
               drawer: MainAppDrawer(
                 currentIndex: 3,
                 onTabSelected: (index) =>
@@ -546,24 +367,16 @@ class _PromptsScreenState extends State<PromptsScreen> {
               ),
               body: Column(
                 children: [
-                  _buildSearchBar(),
-                  _buildCategoryFilter(),
+                  // Sử dụng widget Modern Search Filter Bar mới
+                  SearchFilterBar(
+                    searchController: _searchController,
+                    categories: _categories,
+                    categoryDisplayNames: _categoryDisplayNames,
+                    onToggleCategory: _toggleCategorySelection,
+                  ),
                   Expanded(
-                    child: BlocConsumer<PromptBloc, PromptState>(
-                      bloc: promptBloc, // Explicitly provide the bloc instance
-                      listenWhen: (previous, current) =>
-                          previous.status != current.status ||
-                          previous.prompts?.length != current.prompts?.length,
-                      listener: (context, state) {
-                        debugPrint('PromptBloc state updated: ${state.status}');
-                        debugPrint(
-                            'Prompts count: ${state.prompts?.length ?? 0}');
-                      },
+                    child: BlocBuilder<PromptBloc, PromptState>(
                       buildWhen: (previous, current) {
-                        debugPrint(
-                            'Checking if UI needs rebuild: ${previous.status} -> ${current.status}');
-                        debugPrint(
-                            'Previous prompts: ${previous.prompts?.length ?? 0}, Current prompts: ${current.prompts?.length ?? 0}');
                         return previous.status != current.status ||
                             previous.prompts != current.prompts ||
                             previous.isGridView != current.isGridView ||
@@ -575,27 +388,32 @@ class _PromptsScreenState extends State<PromptsScreen> {
                             previous.sortBy != current.sortBy;
                       },
                       builder: (context, state) {
-                        debugPrint('Building UI with state: ${state.status}');
-                        debugPrint(
-                            'Prompts count: ${state.prompts?.length ?? 0}');
-
                         if (state.status == PromptStatus.initial) {
-                          return const Center(
-                              child: Text('Hãy tìm kiếm prompt'));
+                          return const InitialStateView();
                         } else if (state.status == PromptStatus.loading &&
                             (state.prompts?.isEmpty ?? true)) {
-                          return const Center(
-                              child: CircularProgressIndicator());
+                          return const LoadingStateView();
+                        } else if (state.prompts?.isEmpty ?? true) {
+                          return EmptyStateView(
+                            isFavoritesView: state.showOnlyFavorites,
+                          );
                         } else {
-                          // Sử dụng danh sách prompts từ state và sắp xếp theo thời gian (mới nhất trước)
                           final prompts = [...?state.prompts];
 
-                          // Sắp xếp từ mới nhất đến cũ nhất bằng createdAt
-                          prompts.sort(
-                              (a, b) => b.createdAt.compareTo(a.createdAt));
-
-                          debugPrint(
-                              'Prompts count (sorted by date): ${prompts.length}');
+                          // Áp dụng sắp xếp theo tham số sortBy
+                          if (state.sortBy == 'alphabetical') {
+                            prompts.sort((a, b) => a.title.compareTo(b.title));
+                          } else if (state.sortBy == 'recent') {
+                            prompts.sort(
+                                (a, b) => b.createdAt.compareTo(a.createdAt));
+                          } else if (state.sortBy == 'popular') {
+                            prompts.sort(
+                                (a, b) => b.useCount.compareTo(a.useCount));
+                          } else {
+                            // Mặc định sắp xếp theo thời gian tạo (mới nhất trước)
+                            prompts.sort(
+                                (a, b) => b.createdAt.compareTo(a.createdAt));
+                          }
 
                           return (state.isGridView ?? false)
                               ? _buildPromptGrid(prompts)
@@ -606,25 +424,11 @@ class _PromptsScreenState extends State<PromptsScreen> {
                   ),
                 ],
               ),
-              floatingActionButton: FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const CreatePromptScreen()),
-                  ).then((result) {
-                    if (result != null) {
-                      // Refresh the list if a prompt was created
-                      _loadPrompts();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Prompt created successfully')),
-                      );
-                    }
-                  });
-                },
-                tooltip: 'Tạo Prompt Mới',
-                child: const Icon(Icons.add),
+              floatingActionButton: FloatingActionButton.extended(
+                onPressed: () => _navigateToCreatePrompt(),
+                icon: const Icon(Icons.add),
+                label: const Text('Tạo Prompt'),
+                backgroundColor: Theme.of(context).primaryColor,
               ),
             ),
           );
@@ -633,131 +437,133 @@ class _PromptsScreenState extends State<PromptsScreen> {
     );
   }
 
-  Widget _buildPromptContentView(List<Prompt> prompts, bool isGridView) {
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text(
+        'Prompt Collections',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      actions: [
+        // Nút yêu thích với hiệu ứng
+        BlocBuilder<PromptBloc, PromptState>(
+          builder: (context, state) {
+            return IconButton(
+              icon: Icon(
+                state.showOnlyFavorites
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+              ),
+              color: state.showOnlyFavorites ? Colors.red : null,
+              onPressed: _toggleFavoritesView,
+              tooltip: state.showOnlyFavorites
+                  ? 'Show all prompts'
+                  : 'Show favorites',
+            );
+          },
+        ),
+        // Nút truy cập prompts riêng tư
+        IconButton(
+          icon: const Icon(Icons.person_outline),
+          tooltip: 'My Private Prompts',
+          onPressed: _navigateToPrivatePrompts,
+        ),
+        // Menu sắp xếp và đổi chế độ xem
+        _buildSortAndViewMenu(),
+      ],
+      elevation: 0,
+      backgroundColor: Colors.white,
+    );
+  }
+
+  // Widget cho menu sắp xếp và thay đổi chế độ xem
+  Widget _buildSortAndViewMenu() {
     return BlocBuilder<PromptBloc, PromptState>(
       builder: (context, state) {
-        // Get the most recent state to ensure we're displaying the latest data
-        List<PromptModel> currentPrompts = [];
-        if (state.prompts != null && state.prompts!.isNotEmpty) {
-          // Convert PromptModel list to Prompt list
-          currentPrompts = state.prompts!.map((model) => model).toList();
-
-          if (state.sortBy == 'alphabetical') {
-            currentPrompts.sort((a, b) => a.title.compareTo(b.title));
-          } else if (state.sortBy == 'recent') {
-            currentPrompts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          } else if (state.sortBy == 'popular') {
-            currentPrompts.sort((a, b) => b.useCount.compareTo(a.useCount));
-          }
-        }
-
-        // Use debugPrint instead of print for more reliable output
-        debugPrint('Current prompts count: ${currentPrompts.length}');
-        if (currentPrompts.isNotEmpty) {
-          debugPrint('First prompt title: ${currentPrompts.first.title}');
-        }
-
-        if (currentPrompts.isEmpty) {
-          return _buildEmptyState(state.showOnlyFavorites);
-        }
-        return isGridView
-            ? _buildPromptGrid(currentPrompts)
-            : _buildPromptList(currentPrompts);
+        return PopupMenuButton(
+          icon: const Icon(Icons.more_vert),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              child: Row(
+                children: [
+                  Icon(
+                      (state.isGridView ?? false)
+                          ? Icons.list
+                          : Icons.grid_view,
+                      size: 20),
+                  const SizedBox(width: 8),
+                  Text((state.isGridView ?? false) ? 'List view' : 'Grid view'),
+                ],
+              ),
+              onTap: _toggleViewMode,
+            ),
+            const PopupMenuItem(
+              value: 'divider',
+              enabled: false,
+              height: 10,
+              child: Divider(),
+            ),
+            const PopupMenuItem(
+              value: 'popular',
+              child: Row(
+                children: [
+                  Icon(Icons.trending_up, size: 20),
+                  SizedBox(width: 8),
+                  Text('Sort by Popularity'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'recent',
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, size: 20),
+                  SizedBox(width: 8),
+                  Text('Sort by Recent'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'alphabetical',
+              child: Row(
+                children: [
+                  Icon(Icons.sort_by_alpha, size: 20),
+                  SizedBox(width: 8),
+                  Text('Sort Alphabetically'),
+                ],
+              ),
+            ),
+          ],
+          onSelected: (value) {
+            if (value != 'divider') {
+              _changeSortMethod(value.toString());
+            }
+          },
+        );
       },
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Tìm kiếm prompt...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    context.read<PromptBloc>().add(SearchQueryChanged(''));
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      ),
-    );
-  }
+  Widget _buildPromptList(List<PromptModel> prompts) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80), // Space for FAB
+      itemCount: prompts.length,
+      itemBuilder: (context, index) {
+        final prompt = prompts[index];
+        final isOwner = _isPromptOwner(prompt);
 
-  // Cập nhật _buildCategoryFilter để hiển thị tên categories dễ đọc
-  Widget _buildCategoryFilter() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-      child: SizedBox(
-        height: 40,
-        child: BlocBuilder<PromptBloc, PromptState>(
-          builder: (context, state) {
-            return ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                final displayName = _categoryDisplayNames[category] ?? category;
-                final isSelected =
-                    state.selectedCategories.contains(category) ?? false;
-                final color = Prompt.getCategoryColor(category);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: () => _toggleCategorySelection(category),
-                    child: Chip(
-                      label: Text(displayName), // Hiển thị tên thân thiện
-                      backgroundColor: isSelected
-                          ? color.withOpacity(0.2)
-                          : Colors.grey[200],
-                      labelStyle: TextStyle(
-                        color: isSelected ? color : Colors.black54,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(bool isFavoritesView) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isFavoritesView ? Icons.favorite_border : Icons.search_off,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            isFavoritesView
-                ? 'Bạn chưa có prompt yêu thích nào'
-                : 'Không tìm thấy prompt nào',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isFavoritesView
-                ? 'Hãy thêm prompt yêu thích để xem ở đây'
-                : 'Thử tìm kiếm với từ khóa khác',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ],
-      ),
+        // Sử dụng ModernPromptListItem thay thế
+        return PromptListItem(
+          prompt: prompt,
+          isOwner: isOwner,
+          onViewDetails: _viewPromptDetails,
+          onToggleFavorite: _toggleFavorite,
+          onEdit: _editPrompt,
+          onDelete: _showDeleteConfirmation,
+          onUse: _usePrompt,
+          formatDate: _formatDate,
+        );
+      },
     );
   }
 
@@ -767,327 +573,46 @@ class _PromptsScreenState extends State<PromptsScreen> {
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 1,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
         childAspectRatio: 1.5,
       ),
       itemCount: prompts.length,
       itemBuilder: (context, index) {
         final prompt = prompts[index];
         final isOwner = _isPromptOwner(prompt);
-        return Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () => _viewPromptDetails(prompt),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          prompt.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          prompt.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: prompt.isFavorite ? Colors.red : null,
-                          size: 20,
-                        ),
-                        onPressed: () => _toggleFavorite(prompt),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (prompt.category != null)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            Prompt.getCategoryColor(prompt.category ?? 'Other')
-                                .withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: Prompt.getCategoryColor(
-                                    prompt.category ?? 'Other')
-                                .withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        prompt.category ?? 'Other',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Prompt.getCategoryColor(
-                              prompt.category ?? 'Other'),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Text(
-                      prompt.description,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Uses: ${prompt.useCount}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      if (isOwner)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: const Text('Edit'),
-                          onPressed: () => _editPrompt(prompt),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                          ),
-                        ),
-                      if (isOwner)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.delete_outline, size: 16),
-                          label: const Text('Delete'),
-                          onPressed: () =>
-                              _showDeleteConfirmation(context, prompt),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                          ),
-                        ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.chat, size: 16),
-                        label: const Text('Use'),
-                        onPressed: () => _usePrompt(prompt),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+
+        // Sử dụng Modern Grid Item thay thế
+        return PromptGridItem(
+          prompt: prompt,
+          isOwner: isOwner,
+          onViewDetails: _viewPromptDetails,
+          onToggleFavorite: _toggleFavorite,
+          onEdit: _editPrompt,
+          onDelete: _showDeleteConfirmation,
+          onUse: _usePrompt,
+          formatDate: _formatDate,
         );
       },
     );
   }
 
-  Widget _buildPromptList(List<PromptModel> prompts) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.only(bottom: 80), // Space for FAB
-      itemCount: prompts.length,
-      itemBuilder: (context, index) {
-        final prompt = prompts[index];
-        final isOwner = _isPromptOwner(prompt);
+  // Helper method để định dạng ngày
+  String _formatDate(DateTime date) {
+    // Format to a user-friendly date
+    final now = DateTime.now();
+    final difference = now.difference(date);
 
-        print('Building prompt item: ${prompt.title}, isOwner: $isOwner');
-
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () => _viewPromptDetails(prompt),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              prompt.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 17,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'By: ${prompt.userName ?? 'Unknown'}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          prompt.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: prompt.isFavorite ? Colors.red : null,
-                        ),
-                        onPressed: () => _toggleFavorite(prompt),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    prompt.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Prompt.getCategoryColor(
-                                    prompt.category ?? 'Other')
-                                .withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color: Prompt.getCategoryColor(
-                                        prompt.category ?? 'Other')
-                                    .withOpacity(0.3)),
-                          ),
-                          child: Text(
-                            prompt.category ?? 'Other',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Prompt.getCategoryColor(
-                                  prompt.category ?? 'Other'),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Uses: ${prompt.useCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          // Edit button
-                          if (isOwner)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.edit_outlined, size: 16),
-                                label: const Text('Edit'),
-                                onPressed: () => _editPrompt(prompt),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // Delete button
-                          if (isOwner)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ElevatedButton.icon(
-                                icon:
-                                    const Icon(Icons.delete_outline, size: 16),
-                                label: const Text('Delete'),
-                                onPressed: () =>
-                                    _showDeleteConfirmation(context, prompt),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // Use button
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.chat, size: 16),
-                            label: const Text('Use'),
-                            onPressed: () => _usePrompt(prompt),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    if (difference.inDays < 1) {
+      if (difference.inHours < 1) {
+        return '${difference.inMinutes} phút trước';
+      }
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 
   // Thêm phương thức xử lý sự kiện chỉnh sửa prompt
@@ -1191,10 +716,9 @@ class _PromptsScreenState extends State<PromptsScreen> {
     final currentUserId = authState.user?.id;
 
     // Thêm logs để debug
-    print('==== PROMPT OWNERSHIP CHECK ====');
-    print('Checking ownership: prompt.userId = ${prompt.userId}');
-    print('Checking ownership: currentUserId = $currentUserId');
-    print('Is owner? ${prompt.userId == currentUserId}');
+    debugPrint('Checking ownership: prompt.userId = ${prompt.userId}');
+    debugPrint('Checking ownership: currentUserId = $currentUserId');
+    debugPrint('Is owner? ${prompt.userId == currentUserId}');
 
     if (prompt.userId != null && currentUserId != null) {
       return prompt.userId == currentUserId;
@@ -1202,7 +726,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
     return false;
   }
 
-  // 4. Tạo phương thức _searchPrompts để gọi API tìm kiếm
+  // Phương thức tìm kiếm prompts
   void _searchPrompts(String query) {
     debugPrint('Searching prompts with query: "$query"');
 
@@ -1232,5 +756,18 @@ class _PromptsScreenState extends State<PromptsScreen> {
             query: query.isEmpty ? null : query, // Chỉ gửi query khi có giá trị
           ),
         );
+  }
+
+  // Phương thức điều hướng tạo prompt mới
+  void _navigateToCreatePrompt() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
+    ).then((result) {
+      if (result == true) {
+        _loadPrompts();
+        context.showSuccessNotification('Tạo prompt thành công');
+      }
+    });
   }
 }
