@@ -104,4 +104,48 @@ class ConversationApiService {
       throw exception;
     }
   }
+
+  // Get conversation history
+  Future<Map<String, dynamic>> getConversationHistory({
+    required String conversationId,
+    String? cursor,
+    int? limit,
+    AssistantId? assistantId,
+    required AssistantModel assistantModel,
+    String? xJarvisGuid,
+  }) async {
+    // Build query parameters
+    final queryParams = <String, dynamic>{
+      'assistantModel': assistantModel.toString(),
+    };
+
+    if (cursor != null) queryParams['cursor'] = cursor;
+    if (limit != null) queryParams['limit'] = limit;
+    if (assistantId != null)
+      queryParams['assistantId'] = assistantId.toString();
+
+    // Get the access token from secure storage
+    final accessToken = await SecureStorageUtil().getAccessToken();
+
+    try {
+      final response = await _apiService.dio.get(
+        '/conversations/$conversationId/messages',
+        queryParameters: queryParams,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            if (xJarvisGuid != null) 'x-jarvis-guid': xJarvisGuid,
+          },
+        ),
+      );
+
+      return _apiService.handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      final exception = _apiService.handleError(e);
+      throw exception;
+    }
+  }
 }

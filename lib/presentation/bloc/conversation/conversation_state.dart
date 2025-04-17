@@ -1,4 +1,5 @@
 import 'package:aichatbot/data/models/chat/message_request_model.dart';
+import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
 import 'package:equatable/equatable.dart';
 
 /// Base state class for the conversation bloc
@@ -27,6 +28,44 @@ class ConversationLoadingMore extends ConversationState {
 
   @override
   List<Object?> get props => [conversations, hasMore];
+}
+
+/// State when conversation history is being loaded
+class ConversationHistoryLoading extends ConversationState {}
+
+/// State when more conversation history items are being loaded (pagination)
+class ConversationHistoryLoadingMore extends ConversationState {
+  final List<ConversationHistoryItem> historyItems;
+  final bool hasMore;
+  final String conversationId;
+
+  const ConversationHistoryLoadingMore({
+    required this.historyItems,
+    required this.hasMore,
+    required this.conversationId,
+  });
+
+  @override
+  List<Object?> get props => [historyItems, hasMore, conversationId];
+}
+
+/// State when conversation history has been successfully loaded
+class ConversationHistoryLoaded extends ConversationState {
+  final List<ConversationHistoryItem> historyItems;
+  final bool hasMore;
+  final String? nextCursor;
+  final String conversationId;
+
+  const ConversationHistoryLoaded({
+    required this.historyItems,
+    required this.hasMore,
+    this.nextCursor,
+    required this.conversationId,
+  });
+
+  @override
+  List<Object?> get props =>
+      [historyItems, hasMore, nextCursor, conversationId];
 }
 
 /// State when conversations have been successfully loaded

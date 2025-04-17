@@ -1,9 +1,11 @@
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart'
     as message;
+import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_event.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart';
 
@@ -11,9 +13,11 @@ import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart
 /// It handles fetching, creating, updating, and deleting conversations
 class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
   final GetConversationsUsecase getConversationsUsecase;
+  final GetConversationHistoryUsecase? getConversationHistoryUsecase;
 
   ConversationBloc({
     required this.getConversationsUsecase,
+    this.getConversationHistoryUsecase,
   }) : super(ConversationInitial()) {
     on<FetchConversations>(_onFetchConversations);
     on<FetchMoreConversations>(_onFetchMoreConversations);
@@ -21,6 +25,8 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     on<CreateConversation>(_onCreateConversation);
     on<UpdateConversation>(_onUpdateConversation);
     on<DeleteConversation>(_onDeleteConversation);
+    on<FetchConversationHistory>(_onFetchConversationHistory);
+    on<FetchMoreConversationHistory>(_onFetchMoreConversationHistory);
   }
 
   /// Handles fetching conversations
@@ -149,5 +155,85 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     emit(ConversationDeleting());
     // TODO: Implement when DeleteConversationUsecase is available
     emit(const ConversationError(message: "Not implemented yet"));
+  }
+
+  /// Handles fetching conversation history
+  Future<void> _onFetchConversationHistory(
+    FetchConversationHistory event,
+    Emitter<ConversationState> emit,
+  ) async {
+    emit(ConversationHistoryLoading());
+
+    try {
+      if (getConversationHistoryUsecase == null) {
+        throw Exception('GetConversationHistoryUsecase not initialized');
+      }
+
+      final result = await getConversationHistoryUsecase!.call(
+        conversationId: event.conversationId,
+        assistantModel: AssistantModel.dify,
+        assistantId: event.assistantId,
+        cursor: event.cursor,
+        limit: event.limit,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      AppLogger.i(
+          "Response from getConversationHistory: ${result.items.length} items");
+
+      emit(ConversationHistoryLoaded(
+        historyItems: result.items,
+        hasMore: result.hasMore,
+        nextCursor: result.cursor,
+        conversationId: event.conversationId,
+      ));
+    } catch (e) {
+      AppLogger.e("Error fetching conversation history: $e");
+      emit(ConversationError(message: e.toString()));
+    }
+  }
+
+  /// Handles fetching more conversation history items (pagination)
+  Future<void> _onFetchMoreConversationHistory(
+    FetchMoreConversationHistory event,
+    Emitter<ConversationState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ConversationHistoryLoaded) {
+      emit(ConversationHistoryLoadingMore(
+        historyItems: currentState.historyItems,
+        hasMore: currentState.hasMore,
+        conversationId: currentState.conversationId,
+      ));
+
+      try {
+        if (getConversationHistoryUsecase == null) {
+          throw Exception('GetConversationHistoryUsecase not initialized');
+        }
+
+        final result = await getConversationHistoryUsecase!.call(
+          conversationId: event.conversationId,
+          assistantModel: AssistantModel.dify,
+          assistantId: event.assistantId,
+          cursor: event.cursor,
+          limit: event.limit,
+          xJarvisGuid: event.xJarvisGuid,
+        );
+
+        final updatedHistoryItems =
+            List<ConversationHistoryItem>.from(currentState.historyItems)
+              ..addAll(result.items);
+
+        emit(ConversationHistoryLoaded(
+          historyItems: updatedHistoryItems,
+          hasMore: result.hasMore,
+          nextCursor: result.cursor,
+          conversationId: event.conversationId,
+        ));
+      } catch (e) {
+        AppLogger.e("Error fetching more conversation history: $e");
+        emit(ConversationError(message: e.toString()));
+      }
+    }
   }
 }

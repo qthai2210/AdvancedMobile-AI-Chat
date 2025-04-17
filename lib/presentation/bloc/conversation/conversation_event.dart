@@ -9,6 +9,48 @@ abstract class ConversationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Event triggered to fetch conversation history
+class FetchConversationHistory extends ConversationEvent {
+  final String conversationId;
+  final int? limit;
+  final String? cursor;
+  final AssistantId? assistantId;
+  final String? xJarvisGuid;
+
+  const FetchConversationHistory({
+    required this.conversationId,
+    this.limit,
+    this.cursor,
+    this.assistantId,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props =>
+      [conversationId, limit, cursor, assistantId, xJarvisGuid];
+}
+
+/// Event triggered to fetch more conversation history items (pagination)
+class FetchMoreConversationHistory extends ConversationEvent {
+  final String conversationId;
+  final int? limit;
+  final String cursor;
+  final AssistantId? assistantId;
+  final String? xJarvisGuid;
+
+  const FetchMoreConversationHistory({
+    required this.conversationId,
+    this.limit,
+    required this.cursor,
+    this.assistantId,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props =>
+      [conversationId, limit, cursor, assistantId, xJarvisGuid];
+}
+
 /// Event triggered to fetch conversations
 class FetchConversations extends ConversationEvent {
   final int? limit;

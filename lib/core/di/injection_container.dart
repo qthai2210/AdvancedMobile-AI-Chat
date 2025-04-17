@@ -14,6 +14,7 @@ import 'package:aichatbot/domain/repositories/conversation_repository.dart';
 import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
@@ -71,6 +72,7 @@ Future<void> init() async {
   sl.registerLazySingleton(
     () => ConversationBloc(
       getConversationsUsecase: sl(),
+      getConversationHistoryUsecase: sl(),
     ),
   );
   // Registering ChatBloc as a factory instead of a singleton
@@ -106,6 +108,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => RemoveFavoriteUsecase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
   sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
+  sl.registerLazySingleton(() => GetConversationHistoryUsecase(sl()));
   sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
   sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
   sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));

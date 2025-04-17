@@ -24,6 +24,8 @@ import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
+import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
+import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
 
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
@@ -377,15 +379,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() {
       _showHistory = false;
       _currentThreadTitle = thread.title;
+      _messages = []; // Clear existing messages
+      _isTyping = true; // Show loading state
     });
 
-    // Navigate to the thread using its ID
-    // Load the conversation using the thread ID
+    // Fetch conversation history for the selected thread
     context.read<ConversationBloc>().add(
-          const FetchConversations(
-            // threadId: thread.id,
-            cursor: null,
+          FetchConversationHistory(
+            conversationId: thread.id,
             limit: 100,
+            assistantId: _selectedAgent.id == 'claude-3-haiku-20240307'
+                ? AssistantId.CLAUDE_3_HAIKU_20240307
+                : _selectedAgent.id == 'claude-3-5-sonnet-20240620'
+                    ? AssistantId.CLAUDE_35_SONNET_20240620
+                    : _selectedAgent.id == 'gemini-1.5-flash-latest'
+                        ? AssistantId.GEMINI_15_FLASH_LATEST
+                        : _selectedAgent.id == 'gemini-1.5-pro-latest'
+                            ? AssistantId.GEMINI_15_PRO_LATEST
+                            : _selectedAgent.id == 'gpt-4o'
+                                ? AssistantId.GPT_4_O
+                                : _selectedAgent.id == 'gpt-4o-mini'
+                                    ? AssistantId.GPT_4_O_MINI
+                                    : null,
             xJarvisGuid: '',
           ),
         );
@@ -696,6 +711,46 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // Handle when AI is generating a message
       setState(() {
         _isTyping = true;
+      });
+    } else if (state is ConversationHistoryLoading) {
+      setState(() {
+        _isTyping = true;
+      });
+    } else if (state is ConversationHistoryLoaded) {
+      setState(() {
+        _isTyping = false;
+
+        // Convert history items to UI Message model
+        _messages = [];
+        for (var item in state.historyItems) {
+          if (item.query != null) {
+            _messages.add(
+              Message(
+                text: item.query!,
+                isUser: true,
+                timestamp: item.createdAt != null
+                    ? DateTime.fromMillisecondsSinceEpoch(item.createdAt!)
+                    : DateTime.now(),
+              ),
+            );
+          }
+
+          if (item.answer != null) {
+            _messages.add(
+              Message(
+                text: item.answer!,
+                isUser: false,
+                timestamp: item.createdAt != null
+                    ? DateTime.fromMillisecondsSinceEpoch(item.createdAt!)
+                    : DateTime.now(),
+                agent: _selectedAgent,
+              ),
+            );
+          }
+        }
+
+        // Scroll to bottom after loading messages
+        _scrollToBottom();
       });
     }
   }
