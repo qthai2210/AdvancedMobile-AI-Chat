@@ -1,3 +1,10 @@
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
+import 'package:aichatbot/domain/entities/prompt.dart';
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+import 'package:flutter/services.dart';
+import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/chat/ai_agent_selector.dart';
@@ -27,12 +34,9 @@ import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
 
-import 'package:aichatbot/core/di/injection_container.dart' as di;
-
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
 import 'package:aichatbot/widgets/chat/image_preview.dart';
 import 'package:aichatbot/services/prompt_service.dart';
-import 'package:aichatbot/models/prompt_model.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
@@ -84,10 +88,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   // Conversation history will be fetched from the API
   List<ChatThread> _chatThreads = [];
 
+  // Thêm các biến để xử lý gợi ý prompt
+  bool _showPromptSuggestions = false;
+  OverlayEntry? _promptOverlay;
+  final LayerLink _layerLink = LayerLink();
+  List<PromptModel> _promptSuggestions = [];
+  bool _isLoadingPromptSuggestions = false;
+
   @override
   void initState() {
     super.initState();
     print("ChatDetailScreen initialized");
+
+    // Thêm listener để theo dõi khi người dùng nhập "/"
+    _messageController.addListener(_checkForPromptCommand);
+
     try {
       // Initialize use cases from dependency injection with error handling
       _sendMessageUseCase = di.sl<SendMessageUseCase>();
@@ -459,18 +474,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _loadRecentPrompts() async {
     setState(() => _isLoadingPrompts = true);
+
     try {
-      // Load recent prompts in background
-      _recentPrompts = await PromptService.getPrompts();
-      // Sort by most recently used
-      _recentPrompts.sort((a, b) => b.useCount.compareTo(a.useCount));
-      // Take only top 5
-      if (_recentPrompts.length > 5) {
-        _recentPrompts = _recentPrompts.sublist(0, 5);
+      // Thay thế việc gọi trực tiếp PromptService bằng việc dispatch event qua PromptBloc
+      final authState = context.read<AuthBloc>().state;
+      if (authState.user?.accessToken != null) {
+        context.read<PromptBloc>().add(
+              FetchPrompts(
+                accessToken: authState.user!.accessToken!,
+                limit: 5, // Chỉ lấy 5 prompt gần đây
+                offset: 0,
+                category: null,
+                isFavorite: false,
+                query: null,
+              ),
+            );
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingPrompts = false);
+        }
       }
     } catch (e) {
-      debugPrint('Error loading prompts: $e');
-    } finally {
+      debugPrint('Error dispatching FetchPrompts: $e');
       if (mounted) {
         setState(() => _isLoadingPrompts = false);
       }
@@ -765,6 +790,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         BlocProvider(
           create: (context) => di.sl<ChatBloc>(),
         ),
+        // Thêm PromptBloc cho chức năng gợi ý prompt
+        BlocProvider(
+          create: (context) => di.sl<PromptBloc>(),
+        ),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -778,12 +807,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               _handleChatState(state);
             },
           ),
+          // Thêm listener cho PromptBloc
+          BlocListener<PromptBloc, PromptState>(
+            listener: (context, state) {
+              _handlePromptState(state);
+            },
+          ),
         ],
         child: Builder(
           builder: (context) {
             return Scaffold(
               key: _scaffoldKey,
-              // Replace ChatHistoryDrawer with MainAppDrawer
               drawer: MainAppDrawer(
                 currentIndex: _selectedTabIndex,
                 onTabSelected: (index) => navigation_utils
@@ -840,16 +874,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               tooltip: 'Add image',
                             ),
 
-                            // Text field
+                            // Text field với CompositedTransformTarget để đính kèm overlay
                             Expanded(
-                              child: TextField(
-                                controller: _messageController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message...',
-                                  border: InputBorder.none,
+                              child: CompositedTransformTarget(
+                                link: _layerLink,
+                                child: TextField(
+                                  controller: _messageController,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Type a message or / for prompts...',
+                                    border: InputBorder.none,
+                                    suffixIcon: _messageController.text
+                                                .startsWith('/') &&
+                                            _isLoadingPromptSuggestions
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(8.0),
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  textInputAction: TextInputAction.send,
+                                  onSubmitted: (_) => _sendMessage(),
                                 ),
-                                textInputAction: TextInputAction.send,
-                                onSubmitted: (_) => _sendMessage(),
                               ),
                             ),
 
@@ -1077,8 +1128,263 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    _messageController.removeListener(_checkForPromptCommand);
+    _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // Kiểm tra nếu người dùng nhập "/"
+  void _checkForPromptCommand() {
+    final text = _messageController.text;
+    if (text == "/") {
+      // Người dùng vừa nhập "/", hiển thị prompt suggestions
+      _fetchPromptSuggestions();
+    } else if (!text.startsWith("/")) {
+      // Người dùng đã xóa "/", ẩn suggestions nếu đang hiển thị
+      _hidePromptSuggestions();
+    }
+  }
+
+  // Lấy danh sách các prompts từ API
+  void _fetchPromptSuggestions() {
+    if (_isLoadingPromptSuggestions) return;
+
+    setState(() {
+      _isLoadingPromptSuggestions = true;
+    });
+
+    // Sử dụng BloC để lấy danh sách prompts
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState.user?.accessToken != null) {
+        context.read<PromptBloc>().add(
+              FetchPrompts(
+                accessToken: authState.user!.accessToken!,
+                limit: 20,
+                offset: 0,
+                category: null, // Không lọc theo category
+                isFavorite:
+                    false, // Hiển thị tất cả prompt, không chỉ favorites
+                query: null, // Không có query tìm kiếm
+              ),
+            );
+      } else {
+        print('User not logged in, cannot fetch prompts');
+        setState(() {
+          _isLoadingPromptSuggestions = false;
+        });
+
+        // Hiển thị thông báo yêu cầu đăng nhập
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Bạn cần đăng nhập để sử dụng tính năng này'),
+            action: SnackBarAction(
+              label: 'Đăng nhập',
+              onPressed: () => context.go('/login'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error dispatching FetchPrompts event: $e');
+      setState(() {
+        _isLoadingPromptSuggestions = false;
+      });
+
+      // Hiển thị thông báo lỗi
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString()}')),
+      );
+    }
+  }
+
+  // Hiển thị overlay với các gợi ý prompt
+  void _showPromptSuggestionsOverlay() {
+    _hidePromptSuggestions(); // Đảm bảo overlay cũ được xóa
+
+    _promptOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, -200), // Điều chỉnh vị trí hiển thị
+          child: Material(
+            elevation: 4.0,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: 200,
+                maxWidth: MediaQuery.of(context).size.width * 0.9,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: _isLoadingPromptSuggestions
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  : _promptSuggestions.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Text('No prompts found'),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _promptSuggestions.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final prompt = _promptSuggestions[index];
+                            return ListTile(
+                              dense: true,
+                              title: Text(
+                                prompt.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: prompt.description != null &&
+                                      prompt.description!.isNotEmpty
+                                  ? Text(
+                                      prompt.description!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    )
+                                  : null,
+                              onTap: () => _selectPromptSuggestion(prompt),
+                            );
+                          },
+                        ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_promptOverlay!);
+    setState(() {
+      _showPromptSuggestions = true;
+    });
+  }
+
+  // Xử lý khi người dùng chọn một prompt
+  void _selectPromptSuggestion(PromptModel prompt) {
+    _hidePromptSuggestions();
+
+    // Xóa ký tự "/" và thay thế bằng nội dung prompt
+    _messageController.text = prompt.content;
+
+    // Đặt con trỏ ở cuối văn bản
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _messageController.text.length),
+    );
+
+    // Tăng số lượt sử dụng prompt (nếu có API)
+    // context.read<PromptBloc>().add(IncrementPromptUseCount(promptId: prompt.id));
+  }
+
+  // Ẩn overlay gợi ý prompt
+  void _hidePromptSuggestions() {
+    if (_promptOverlay != null) {
+      _promptOverlay!.remove();
+      _promptOverlay = null;
+    }
+
+    setState(() {
+      _showPromptSuggestions = false;
+    });
+  }
+
+  // Xử lý trạng thái của PromptBloc
+  void _handlePromptState(PromptState state) {
+    // Xử lý kết quả của FetchPrompts event (cho _loadRecentPrompts)
+    if (state.status == PromptStatus.success) {
+      if (state.prompts != null) {
+        // Chuyển đổi danh sách PromptModel từ bloc thành danh sách Prompt
+        final promptsList = state.prompts!
+            .map((promptModel) => Prompt(
+                  id: promptModel.id,
+                  title: promptModel.title,
+                  content: promptModel.content,
+                  description: promptModel.description ?? '',
+                  useCount: promptModel.useCount ?? 0,
+                  category: promptModel.category ?? 'Other',
+                  createdAt: promptModel.createdAt ?? DateTime.now(),
+                ))
+            .toList();
+
+        // Sắp xếp theo lượt sử dụng
+        promptsList.sort((a, b) => b.useCount.compareTo(a.useCount));
+
+        // Chỉ lấy 5 prompt đầu tiên
+        final recentPrompts = promptsList.take(5).toList();
+
+        setState(() {
+          _recentPrompts = recentPrompts;
+          _isLoadingPrompts = false;
+        });
+      } else {
+        setState(() {
+          _recentPrompts = [];
+          _isLoadingPrompts = false;
+        });
+      }
+    } else if (state.status == PromptStatus.loading) {
+      // Đang tải
+      setState(() {
+        _isLoadingPrompts = true;
+      });
+    } else if (state.status == PromptStatus.failure) {
+      // Xảy ra lỗi
+      setState(() {
+        _isLoadingPrompts = false;
+        _recentPrompts = [];
+      });
+      debugPrint('Error loading prompts: ${state.errorMessage}');
+    }
+
+    // Phần xử lý cho gợi ý prompt khi nhập "/"
+    if (state.status == PromptStatus.loading &&
+        state.showOnlyFavorites == false) {
+      // Đang tải prompts từ API
+      setState(() {
+        _isLoadingPromptSuggestions = true;
+      });
+    } else if (state.status == PromptStatus.success &&
+        state.showOnlyFavorites == false) {
+      // Tải prompts thành công
+      setState(() {
+        _isLoadingPromptSuggestions = false;
+        _promptSuggestions = state.prompts ?? [];
+      });
+
+      // Hiển thị overlay nếu người dùng vẫn đang nhập "/"
+      if (_messageController.text.startsWith('/')) {
+        _showPromptSuggestionsOverlay();
+      }
+    } else if (state.status == PromptStatus.failure) {
+      // Xử lý lỗi
+      setState(() {
+        _isLoadingPromptSuggestions = false;
+        _promptSuggestions = [];
+      });
+      debugPrint('Error loading prompt suggestions: ${state.errorMessage}');
+    }
   }
 }
