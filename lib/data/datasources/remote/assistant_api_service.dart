@@ -37,9 +37,9 @@ class AssistantApiService {
       }
       AppLogger.i("dio headers ${_apiService.dio.options.headers}");
       AppLogger.i(
-          "dio endpoint ${_apiService.dio.options.baseUrl}/kb-core/v1/ai-assistants");
+          "dio endpoint ${_apiService.dio.options.baseUrl}/kb-core/v1/ai-assistant");
       final response = await _apiService.dio.get(
-        '/kb-core/v1/ai-assistants',
+        '/kb-core/v1/ai-assistant',
         queryParameters: params.toQueryParameters(),
         // options: Options(headers: headers),
       );
@@ -77,6 +77,174 @@ class AssistantApiService {
     } catch (e) {
       print('Unexpected error: $e');
       rethrow;
+    }
+  }
+
+  /// Creates a new assistant
+  ///
+  /// Makes a POST request to the create assistant endpoint
+  ///
+  /// Returns the created [AssistantModel] on success
+  Future<AssistantModel> createAssistant({
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? guidId,
+  }) async {
+    try {
+      // Prepare headers with optional GUID
+      final headers = <String, dynamic>{};
+      if (guidId != null && guidId.isNotEmpty) {
+        headers['x-jarvis-guid'] = guidId;
+      }
+
+      // Prepare request body
+      final Map<String, dynamic> body = {
+        'assistantName': assistantName,
+      };
+
+      // Add optional fields if they exist
+      if (instructions != null && instructions.isNotEmpty) {
+        body['instructions'] = instructions;
+      }
+
+      if (description != null && description.isNotEmpty) {
+        body['description'] = description;
+      }
+
+      // Make the API call
+      final response = await _apiService.dio.post(
+        '/kb-core/v1/ai-assistant',
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      AppLogger.i('Create assistant response: ${response.data}');
+
+      // Check status code and parse response
+      if (response.statusCode == 201) {
+        return AssistantModel.fromJson(response.data);
+      } else {
+        throw Exception(
+            'Failed to create assistant: Unexpected status code ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error creating assistant: ${e.message}');
+      AppLogger.e('Error response: ${e.response?.data}');
+      throw Exception('Failed to create assistant: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error creating assistant: $e');
+      throw Exception('Failed to create assistant: $e');
+    }
+  }
+
+  /// Updates an existing assistant
+  ///
+  /// Makes a PUT request to the update assistant endpoint
+  ///
+  /// [assistantId] is required to identify which assistant to update
+  /// [assistantName] is required as the new name
+  /// [instructions] and [description] are optional updated values
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns the updated [AssistantModel] on success
+  Future<AssistantModel> updateAssistant({
+    required String assistantId,
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional GUID
+      final headers = <String, dynamic>{};
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Prepare request body
+      final Map<String, dynamic> body = {
+        'assistantName': assistantName,
+      };
+
+      // Add optional fields if they exist
+      if (instructions != null) {
+        body['instructions'] = instructions;
+      }
+
+      if (description != null) {
+        body['description'] = description;
+      } // Make the API call
+      final response = await _apiService.dio.patch(
+        '/kb-core/v1/ai-assistant/$assistantId',
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      AppLogger.i('Update assistant response: ${response.data}');
+
+      // Handle different response structures
+      try {
+        if (response.data['data'] != null) {
+          // If response has a nested 'data' field
+          return AssistantModel.fromJson(response.data['data']);
+        } else if (response.data is Map<String, dynamic>) {
+          // If the response itself is the assistant data
+          return AssistantModel.fromJson(response.data);
+        } else {
+          throw Exception('Unexpected response format: ${response.data}');
+        }
+      } catch (e) {
+        AppLogger.e('Error parsing assistant response: $e');
+        AppLogger.e('Response was: ${response.data}');
+        throw Exception('Failed to parse assistant response: $e');
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error updating assistant: ${e.message}');
+      AppLogger.e('Error response: ${e.response?.data}');
+      throw Exception('Failed to update assistant: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error updating assistant: $e');
+      throw Exception('Failed to update assistant: $e');
+    }
+  }
+
+  /// Deletes an existing assistant
+  ///
+  /// Makes a DELETE request to the delete assistant endpoint
+  ///
+  /// [assistantId] is required to identify which assistant to delete
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns true on successful deletion
+  Future<bool> deleteAssistant({
+    required String assistantId,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional GUID
+      final headers = <String, dynamic>{};
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Make the API call
+      final response = await _apiService.dio.delete(
+        '/kb-core/v1/ai-assistant/$assistantId',
+        options: Options(headers: headers),
+      );
+
+      AppLogger.i('Delete assistant response: ${response.statusCode}');
+
+      // If status code is 200, the deletion was successful
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      AppLogger.e('Error deleting assistant: ${e.message}');
+      AppLogger.e('Error response: ${e.response?.data}');
+      throw Exception('Failed to delete assistant: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error deleting assistant: $e');
+      throw Exception('Failed to delete assistant: $e');
     }
   }
 }

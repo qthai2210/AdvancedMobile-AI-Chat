@@ -56,3 +56,72 @@ class BotsError extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when an assistant is being created
+class AssistantCreating extends BotState {}
+
+/// State when an assistant has been successfully created
+class AssistantCreated extends BotState {
+  final AssistantModel assistant;
+
+  const AssistantCreated({required this.assistant});
+
+  @override
+  List<Object?> get props => [assistant];
+}
+
+/// State when there was an error creating an assistant
+class AssistantCreationFailed extends BotState {
+  final String message;
+
+  const AssistantCreationFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// State when an assistant is being updated
+class AssistantUpdating extends BotState {}
+
+/// State when an assistant has been successfully updated
+class AssistantUpdated extends BotState {
+  final AssistantModel assistant;
+
+  const AssistantUpdated({required this.assistant});
+
+  @override
+  List<Object?> get props => [assistant];
+}
+
+/// State when there was an error updating an assistant
+class AssistantUpdateFailed extends BotState {
+  final String message;
+
+  const AssistantUpdateFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// State when an assistant is being deleted
+class AssistantDeleting extends BotState {}
+
+/// State when an assistant has been successfully deleted
+class AssistantDeleted extends BotState {
+  final String assistantId;
+
+  const AssistantDeleted({required this.assistantId});
+
+  @override
+  List<Object?> get props => [assistantId];
+}
+
+/// State when there was an error deleting an assistant
+class AssistantDeleteFailed extends BotState {
+  final String message;
+
+  const AssistantDeleteFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

@@ -24,7 +24,7 @@ dependencies:
   equatable: ^2.0.7
   shared_preferences: ^2.2.2
   uuid: ^4.3.3
-  logger: ^2.5.0
+  logger: ^2.0.1
 
 dev_dependencies:
   flutter_test:

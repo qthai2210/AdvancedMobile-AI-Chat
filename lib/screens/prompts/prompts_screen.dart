@@ -640,8 +640,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
         List<PromptModel> currentPrompts = [];
         if (state.prompts != null && state.prompts!.isNotEmpty) {
           // Convert PromptModel list to Prompt list
-          currentPrompts =
-              state.prompts!.map((model) => model as PromptModel).toList();
+          currentPrompts = state.prompts!.map((model) => model).toList();
 
           if (state.sortBy == 'alphabetical') {
             currentPrompts.sort((a, b) => a.title.compareTo(b.title));
@@ -706,7 +705,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 final category = _categories[index];
                 final displayName = _categoryDisplayNames[category] ?? category;
                 final isSelected =
-                    state.selectedCategories?.contains(category) ?? false;
+                    state.selectedCategories.contains(category) ?? false;
                 final color = Prompt.getCategoryColor(category);
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),

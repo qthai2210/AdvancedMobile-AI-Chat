@@ -1,17 +1,26 @@
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/utils/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
-import 'package:aichatbot/core/errors/exceptions.dart';
+import 'package:aichatbot/core/network/api_service_factory.dart';
+
 import 'package:aichatbot/data/models/auth/user_model.dart';
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthApiService {
-  final ApiService _apiService = sl.get<ApiService>();
-  AuthApiService() {
-    // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = ApiConfig.authBaseUrl;
+  // Use a dedicated Dio instance for auth operations
+  final Dio _dio;
+  final ApiService _apiService;
+
+  // Constructor - initialize with a dedicated auth Dio instance
+  AuthApiService()
+      : _dio = ApiServiceFactory.createAuthDio(),
+        _apiService = sl.get<ApiService>() {
+    AppLogger.w('AuthApiService initialized with dedicated Dio instance');
+    AppLogger.w('Base URL: ${_dio.options.baseUrl}');
   }
+
   Future<UserModel> login({
     required String email,
     required String password,
@@ -24,7 +33,8 @@ class AuthApiService {
     try {
       debugPrint('Sending login request to $endpoint with email: $email');
 
-      final response = await _apiService.dio.post(
+      // Use the dedicated Dio instance for this request
+      final response = await _dio.post(
         endpoint,
         data: body,
       );
@@ -110,8 +120,9 @@ class AuthApiService {
     required String password,
   }) async {
     try {
-      final response = await _apiService.dio.post(
-        '${ApiConfig.authBaseUrl}/auth/password/sign-up',
+      // Use dedicated Dio instance
+      final response = await _dio.post(
+        '/auth/password/sign-up',
         data: {
           'email': email,
           'password': password,
@@ -201,14 +212,17 @@ class AuthApiService {
     const endpoint = '/auth/sessions/current';
 
     // Create options with custom headers for this request
-    final headers = await _apiService.createAuthHeader();
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+    };
 
     if (refreshToken != null) {
       headers['X-Stack-Refresh-Token'] = refreshToken;
     }
 
     try {
-      final response = await _apiService.dio.delete(
+      // Use dedicated Dio instance
+      final response = await _dio.delete(
         endpoint,
         options: Options(headers: headers),
         data: {},
@@ -222,4 +236,42 @@ class AuthApiService {
       throw _apiService.handleError(e);
     }
   }
+
+  /// Refreshes the access token using the refresh token
+  ///
+  /// Returns the new access token if successful
+  Future<String?> refreshToken(String refreshToken) async {
+    try {
+      AppLogger.i('Attempting to refresh token');
+
+      // We don't need to save/restore base URLs because we're using a dedicated Dio instance
+      // with the correct auth base URL already set
+
+      final response = await _dio.post(
+        '/auth/sessions/current/refresh',
+        options: Options(
+          headers: {
+            'X-Stack-Refresh-Token': refreshToken,
+          },
+          contentType: 'application/json',
+        ),
+        data: {},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final newAccessToken = response.data['access_token'];
+        AppLogger.i('Token refresh successful, obtained new access token');
+        return newAccessToken;
+      } else {
+        AppLogger.e('Token refresh failed with status: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      AppLogger.e('Error refreshing token: $e');
+      return null;
+    }
+  }
+
+  // Method to get the Dio instance for TokenRefreshInterceptor to use
+  Dio get dio => _dio;
 }

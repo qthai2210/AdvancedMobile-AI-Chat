@@ -44,9 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       drawer: MainAppDrawer(
-        currentIndex: 5, // Index 5 corresponds to the Profile tab
+        currentIndex: 2, // Index 5 corresponds to the Profile tab
         onTabSelected: (index) => navigation_utils
-            .handleDrawerNavigation(context, index, currentIndex: 5),
+            .handleDrawerNavigation(context, index, currentIndex: 2),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

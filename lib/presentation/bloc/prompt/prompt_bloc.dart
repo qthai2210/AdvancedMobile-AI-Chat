@@ -1,6 +1,5 @@
 import 'package:aichatbot/core/di/injection_container.dart' as di;
-import 'package:aichatbot/domain/entities/prompt.dart';
-import 'package:aichatbot/domain/repositories/prompt_repository.dart';
+
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/remove_favorite_usecase.dart';
@@ -13,7 +12,6 @@ import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/domain/usecases/prompt/get_prompts_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
-import 'package:aichatbot/data/models/prompt/prompt_list_model.dart';
 
 class PromptBloc extends Bloc<PromptEvent, PromptState> {
   final GetPromptsUsecase getPromptsUsecase;

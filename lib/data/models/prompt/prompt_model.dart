@@ -1,5 +1,3 @@
-import 'package:aichatbot/domain/entities/prompt.dart';
-
 class PromptModel {
   final String id;
   final String title;

@@ -29,4 +29,39 @@ abstract class AssistantRepository {
   /// Retrieves a specific AI assistant by ID
   Future<AssistantModel> getAssistantById(String assistantId,
       {String? xJarvisGuid});
+
+  /// Creates a new AI assistant
+  ///
+  /// [assistantName] is required
+  /// [instructions] and [description] are optional
+  /// [guidId] is an optional tracking GUID
+  Future<AssistantModel> createAssistant({
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? guidId,
+  });
+
+  /// Updates an existing AI assistant
+  ///
+  /// [assistantId] is required to identify which assistant to update
+  /// [assistantName] is required as the new name
+  /// [instructions] and [description] are optional updated values
+  /// [xJarvisGuid] is an optional tracking GUID
+  Future<AssistantModel> updateAssistant({
+    required String assistantId,
+    required String assistantName,
+    String? instructions,
+    String? description,
+    String? xJarvisGuid,
+  });
+
+  /// Deletes an existing AI assistant
+  ///
+  /// [assistantId] is required to identify which assistant to delete
+  /// [xJarvisGuid] is an optional tracking GUID
+  Future<bool> deleteAssistant({
+    required String assistantId,
+    String? xJarvisGuid,
+  });
 }

@@ -1,16 +1,29 @@
+import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
+import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
+import 'package:aichatbot/data/datasources/remote/knowledge_api_service.dart';
 import 'package:aichatbot/data/repositories/assistant_repository_impl.dart';
 import 'package:aichatbot/data/repositories/conversation_repository_impl.dart';
+import 'package:aichatbot/data/repositories/knowledge_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/assistant_repository.dart';
 import 'package:aichatbot/domain/repositories/conversation_repository.dart';
+import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/update_prompt_usecase.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/network/api_service.dart';
@@ -66,11 +79,20 @@ Future<void> init() async {
     () => ChatBloc(
       sendMessageUseCase: sl(),
     ),
-  );
-  // Register BotBloc as a factory to ensure fresh instance each time
-  sl.registerFactory(
+  ); // Register BotBloc as a factory to ensure fresh instance each time  sl.registerLazySingleton(
+  sl.registerLazySingleton(
     () => BotBloc(
       getAssistantsUseCase: sl(),
+      createAssistantUseCase: sl(),
+      updateAssistantUseCase: sl(),
+      deleteAssistantUseCase: sl(),
+    ),
+  );
+  sl.registerLazySingleton(
+    () => KnowledgeBloc(
+      getKnowledgesUseCase: sl(),
+      createKnowledgeUseCase: sl(),
+      deleteKnowledgeUseCase: sl(),
     ),
   );
 
@@ -87,6 +109,12 @@ Future<void> init() async {
   sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
   sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
   sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
+  sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
+  sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(() => CreateAssistantUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authApiService: sl()),
@@ -103,29 +131,38 @@ Future<void> init() async {
   sl.registerLazySingleton<AssistantRepository>(
     () => AssistantRepositoryImpl(assistantApiService: sl()),
   );
+  sl.registerLazySingleton<KnowledgeRepository>(
+    () => KnowledgeRepositoryImpl(knowledgeApiService: sl()),
+  );
+
   // Core
+  sl.registerLazySingleton(() => SecureStorageUtil());
   sl.registerLazySingleton(() => ApiService());
 
   // Data sources
-  sl.registerLazySingleton(
-    () => AuthApiService(),
-  );
-  sl.registerLazySingleton(
-    () => PromptApiService(),
-  );
-  sl.registerLazySingleton(
-    () => AssistantApiService(),
-  );
-  sl.registerLazySingleton(
-    () => ChatApiService(),
-  );
-  sl.registerLazySingleton(
-    () => ConversationApiService(),
-  );
+  sl.registerFactory(() => AuthApiService());
+  sl.registerFactory(() => PromptApiService());
+  sl.registerFactory(() => AssistantApiService());
+  sl.registerFactory(() => ChatApiService());
+  sl.registerFactory(() => ConversationApiService());
+  sl.registerFactory(() => KnowledgeApiService());
 
   // External
   sl.registerLazySingleton(() => Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       )));
+
+  // After all services are registered, manually add the TokenRefreshInterceptor to avoid circular dependency
+  final apiService = sl<ApiService>();
+  final authApiService = sl<AuthApiService>();
+  final secureStorage = sl<SecureStorageUtil>();
+
+  final interceptor = TokenRefreshInterceptor(
+    dio: apiService.dio,
+    authApiService: authApiService,
+    secureStorage: secureStorage,
+  );
+
+  apiService.addTokenRefreshInterceptor(interceptor);
 }

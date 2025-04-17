@@ -23,6 +23,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
+      //App
       return user;
     } catch (e) {
       debugPrint('Login error in repository: $e');

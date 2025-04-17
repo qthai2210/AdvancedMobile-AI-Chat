@@ -1,5 +1,7 @@
+import 'package:aichatbot/widgets/app_bar_loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
@@ -38,10 +40,21 @@ class _BotListScreenState extends State<BotListScreen> {
   /// Current search query entered by the user
   String _searchQuery = '';
 
+  /// Track if we're currently creating an assistant
+  bool _isCreatingAssistant = false;
+
+  /// Track if we're currently deleting an assistant
+  bool _isDeletingAssistant = false;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    // Initial fetch of assistants
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<BotBloc>().add(const FetchBotsEvent());
+    });
   }
 
   @override
@@ -156,55 +169,573 @@ class _BotListScreenState extends State<BotListScreen> {
     );
   }
 
-  /// This method is no longer needed as filtering is handled by the API
-  /// through the BotBloc. Keeping this as a comment for reference.
-  ///
-  /// List<AIBot> get _filteredBots {
-  ///   if (_searchQuery.isEmpty) return _bots;
-  ///   return _bots
-  ///       .where(
-  ///         (bot) =>
-  ///             bot.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-  ///             bot.description.toLowerCase().contains(
-  ///                  _searchQuery.toLowerCase(),
-  ///                ),
-  ///       )
-  ///       .toList();
-  /// }
-
   /// Navigates to the bot creation screen and handles the result.
   ///
   /// If a new bot is created, refreshes the bot list.
   Future<void> _navigateToCreateBot() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreateBotScreen()),
-    );
+    // Set creating flag to true
+    setState(() {
+      _isCreatingAssistant = true;
+    });
 
-    if (result != null && result is AIBot) {
-      // Refresh the list to include the new bot
+    try {
+      // Navigate to create assistant screen using GoRouter
+      await context.pushNamed('createAssistant');
+
+      // The refresh will happen when we return to this screen
       context.read<BotBloc>().add(const RefreshBotsEvent());
+    } finally {
+      // Set creating flag to false when we return
+      setState(() {
+        _isCreatingAssistant = false;
+      });
     }
+  }
+
+  /// Shows a dialog to create a new assistant directly from this screen
+  void _showCreateAssistantDialog() {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final instructionsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => BlocProvider.value(
+        value: context.read<BotBloc>(),
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.85,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.add, size: 24),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Create New Assistant',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(dialogContext),
+                      color: Colors.grey,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: _buildCreateAssistantForm(
+                      nameController,
+                      descriptionController,
+                      instructionsController,
+                      dialogContext,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('CANCEL'),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Validate that name is not empty
+                        final name = nameController.text.trim();
+                        if (name.isEmpty) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.warning_amber,
+                                      color: Colors.white),
+                                  SizedBox(width: 16),
+                                  Text('Assistant name cannot be empty'),
+                                ],
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
+
+                        // Set creating flag to true
+                        setState(() {
+                          _isCreatingAssistant = true;
+                        });
+
+                        // Dispatch the create event
+                        BlocProvider.of<BotBloc>(dialogContext).add(
+                          CreateAssistantEvent(
+                            assistantName: name,
+                            description:
+                                descriptionController.text.trim().isNotEmpty
+                                    ? descriptionController.text.trim()
+                                    : null,
+                            instructions:
+                                instructionsController.text.trim().isNotEmpty
+                                    ? instructionsController.text.trim()
+                                    : null,
+                          ),
+                        );
+
+                        // Close the dialog
+                        Navigator.pop(dialogContext);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 20),
+                          SizedBox(width: 8),
+                          Text('CREATE'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds a form for creating a new assistant
+  Widget _buildCreateAssistantForm(
+    TextEditingController nameController,
+    TextEditingController descriptionController,
+    TextEditingController instructionsController,
+    BuildContext dialogContext,
+  ) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Assistant name field
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Assistant Name',
+                hintText: 'Enter assistant name',
+                prefixIcon: const Icon(Icons.smart_toy),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Description field
+            TextField(
+              controller: descriptionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Description (Optional)',
+                hintText: 'Enter assistant description',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(bottom: 64),
+                  child: Icon(Icons.description),
+                ),
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Instructions field
+            TextField(
+              controller: instructionsController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                labelText: 'Instructions (Optional)',
+                hintText: 'Enter specific instructions for the assistant',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(bottom: 100),
+                  child: Icon(Icons.psychology),
+                ),
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Navigates to the bot detail screen for editing.
   ///
   /// If the bot is updated, refreshes the bot list.
   void _editBot(AIBot bot) async {
-    // final result = await Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => CreateBotScreen(
-    //       editMode: true,
-    //       bot: bot,
-    //     ),
-    //   ),
-    // );
+    // Find the original AssistantModel for this bot
+    final state = context.read<BotBloc>().state;
+    if (state is BotsLoaded) {
+      final assistantModel = state.bots.firstWhere(
+        (assistant) => assistant.id == bot.id,
+        orElse: () => throw Exception('Assistant not found'),
+      );
 
-    // if (result != null && result is AIBot) {
-    //   // Refresh the list to reflect the updated bot
-    //   context.read<BotBloc>().add(const RefreshBotsEvent());
-    // }
+      // Create controllers outside the dialog to avoid rebuilding them
+      final nameController =
+          TextEditingController(text: assistantModel.assistantName);
+      final descriptionController =
+          TextEditingController(text: assistantModel.description ?? '');
+      final instructionsController =
+          TextEditingController(text: assistantModel.instructions ?? '');
+
+      // Show a dialog to edit the assistant
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => BlocProvider.value(
+          value: context.read<BotBloc>(),
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.85,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.edit, size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Edit ${bot.name}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(dialogContext),
+                        color: Colors.grey,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: _buildEditAssistantForm(
+                        assistantModel,
+                        nameController,
+                        descriptionController,
+                        instructionsController,
+                        dialogContext,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('CANCEL'),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Validate that name is not empty
+                          final name = nameController.text.trim();
+                          if (name.isEmpty) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.warning_amber,
+                                        color: Colors.white),
+                                    SizedBox(width: 16),
+                                    Text('Assistant name cannot be empty'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Dispatch the update event
+                          BlocProvider.of<BotBloc>(dialogContext).add(
+                            UpdateAssistantEvent(
+                              assistantId: assistantModel.id,
+                              assistantName: name,
+                              description:
+                                  descriptionController.text.trim().isNotEmpty
+                                      ? descriptionController.text.trim()
+                                      : null,
+                              instructions:
+                                  instructionsController.text.trim().isNotEmpty
+                                      ? instructionsController.text.trim()
+                                      : null,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.save, size: 20),
+                            SizedBox(width: 8),
+                            Text('UPDATE'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot edit assistant right now')),
+      );
+    }
+  }
+
+  /// Builds a form for editing an assistant's properties
+  Widget _buildEditAssistantForm(
+    AssistantModel assistant,
+    TextEditingController nameController,
+    TextEditingController descriptionController,
+    TextEditingController instructionsController,
+    BuildContext dialogContext,
+  ) {
+    return BlocListener<BotBloc, BotState>(
+      listener: (context, state) {
+        if (state is AssistantUpdating) {
+          // Show loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Updating assistant...'),
+                ],
+              ),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        } else if (state is AssistantUpdated) {
+          // Close the dialog when update is successful
+          Navigator.of(dialogContext).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                        '${state.assistant.assistantName} updated successfully'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+            ),
+          );
+
+          // Refresh the list
+          context.read<BotBloc>().add(RefreshBotsEvent(
+                searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+              ));
+        } else if (state is AssistantUpdateFailed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text('Update failed: ${state.message}'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
+      },
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Assistant name field
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Assistant Name',
+                  hintText: 'Enter assistant name',
+                  prefixIcon: const Icon(Icons.smart_toy),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Description field
+              TextField(
+                controller: descriptionController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Description (Optional)',
+                  hintText: 'Enter assistant description',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 64),
+                    child: Icon(Icons.description),
+                  ),
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Instructions field
+              TextField(
+                controller: instructionsController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  labelText: 'Instructions (Optional)',
+                  hintText: 'Enter specific instructions for the assistant',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 100),
+                    child: Icon(Icons.psychology),
+                  ),
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Handles deleting a bot after confirmation.
@@ -212,7 +743,7 @@ class _BotListScreenState extends State<BotListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Bot'),
+        title: const Text('Delete Assistant'),
         content: Text('Are you sure you want to delete "${bot.name}"?'),
         actions: [
           TextButton(
@@ -222,13 +753,16 @@ class _BotListScreenState extends State<BotListScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // In a real app, call the delete API here
-              // For now we just refresh the list
-              context.read<BotBloc>().add(const RefreshBotsEvent());
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${bot.name} deleted')),
-              );
+              // Set deleting flag to true
+              setState(() {
+                _isDeletingAssistant = true;
+              });
+              // Dispatch the DeleteAssistantEvent to delete the assistant
+              context.read<BotBloc>().add(DeleteAssistantEvent(
+                    assistantId: bot.id,
+                  ));
             },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('DELETE'),
           ),
         ],
@@ -367,60 +901,201 @@ class _BotListScreenState extends State<BotListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => di.sl<BotBloc>()..add(const FetchBotsEvent()),
-      child: Builder(
-        builder: (context) {
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('AI Assistants'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _navigateToCreateBot,
-                ),
-              ],
-            ),
-            drawer: MainAppDrawer(
-              currentIndex: 1, // Index for "Bots" tab
-              onTabSelected: (index) => navigation_utils
-                  .handleDrawerNavigation(context, index, currentIndex: 1),
-            ),
-            body: Column(
-              children: [
-                // Search input
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search assistants...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: _clearSearch,
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onChanged: _updateSearchQuery,
+    // Use BlocProvider.value to ensure we're not creating a new BlocProvider on each build
+    return BlocListener<BotBloc, BotState>(
+      listener: (context, state) {
+        // Handle assistant deletion states
+        if (state is AssistantDeleting) {
+          // Show loading indicator for deletion
+          // We're already using _isDeletingAssistant flag in the UI
+          setState(() {
+            _isDeletingAssistant = true;
+          });
+        } else if (state is AssistantDeleted) {
+          // Reset deleting flag
+          setState(() {
+            _isDeletingAssistant = false;
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text('Assistant deleted successfully'),
                   ),
-                ),
-                // Bot list
-                Expanded(
-                  child: _buildBotList(),
-                ),
-              ],
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: _navigateToCreateBot,
-              child: const Icon(Icons.add),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
             ),
           );
-        },
+
+          // Refresh the assistants list after deletion - already handled in BotBloc
+        } else if (state is AssistantDeleteFailed) {
+          // Reset deleting flag
+          setState(() {
+            _isDeletingAssistant = false;
+          });
+
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text('Delete failed: ${state.message}'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
+
+        // Handle assistant creation states
+        if (state is AssistantCreating) {
+          // Show loading indicator for creation
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   const SnackBar(
+          //     content: Row(
+          //       children: [
+          //         SizedBox(
+          //           width: 20,
+          //           height: 20,
+          //           child: CircularProgressIndicator(
+          //             strokeWidth: 2,
+          //             color: Colors.white,
+          //           ),
+          //         ),
+          //         SizedBox(width: 16),
+          //         Text('Creating assistant...'),
+          //       ],
+          //     ),
+          //     duration: Duration(seconds: 2),
+          //   ),
+          // );
+
+          setState(() {
+            _isCreatingAssistant = true;
+          });
+        } else if (state is AssistantCreated) {
+          // Reset creating flag
+          setState(() {
+            _isCreatingAssistant = false;
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                        '${state.assistant.assistantName} created successfully'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+            ),
+          );
+
+          // Refresh the list
+          context.read<BotBloc>().add(const RefreshBotsEvent());
+        } else if (state is AssistantCreationFailed) {
+          // Reset creating flag
+          setState(() {
+            _isCreatingAssistant = false;
+          });
+
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text('Creation failed: ${state.message}'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('AI Assistants'),
+          actions: [
+            // Only show the add button if we're not currently creating an assistant
+            if (!_isCreatingAssistant)
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _showCreateAssistantDialog,
+                tooltip: 'Create New Assistant',
+              ),
+          ],
+        ),
+        drawer: MainAppDrawer(
+          currentIndex: 4, // Index for "Bots" tab
+          onTabSelected: (index) => navigation_utils
+              .handleDrawerNavigation(context, index, currentIndex: 4),
+        ),
+        body: Column(
+          children: [
+            // Search input
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search assistants...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: _clearSearch,
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onChanged: _updateSearchQuery,
+              ),
+            ),
+            // Bot list
+            Expanded(
+              child: _buildBotList(),
+            ),
+          ],
+        ),
+        floatingActionButton: _isCreatingAssistant
+            ? const FloatingActionButton(
+                onPressed: null,
+                backgroundColor: Colors.grey,
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : FloatingActionButton.extended(
+                onPressed: _navigateToCreateBot,
+                icon: const Icon(Icons.add),
+                label: const Text('New Assistant'),
+              ),
       ),
     );
   }

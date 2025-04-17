@@ -1,28 +1,29 @@
 class MessageResponseModel {
-  final String id;
-  final String content;
-  final String role;
-  final String createdAt;
-  final AssistantInfo? assistant;
+  // Required fields from the actual API response
+  final String conversationId;
+  final String message;
+  final int remainingUsage;
 
   MessageResponseModel({
-    required this.id,
-    required this.content,
-    required this.role,
-    required this.createdAt,
-    this.assistant,
+    required this.conversationId,
+    required this.message,
+    required this.remainingUsage,
   });
 
   factory MessageResponseModel.fromJson(Map<String, dynamic> json) {
     return MessageResponseModel(
-      id: json['id'] ?? '',
-      content: json['content'] ?? '',
-      role: json['role'] ?? '',
-      createdAt: json['createdAt'] ?? '',
-      assistant: json['assistant'] != null
-          ? AssistantInfo.fromJson(json['assistant'])
-          : null,
+      conversationId: json['conversationId'] ?? '',
+      message: json['message'] ?? '',
+      remainingUsage: json['remainingUsage'] ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'conversationId': conversationId,
+      'message': message,
+      'remainingUsage': remainingUsage,
+    };
   }
 }
 
