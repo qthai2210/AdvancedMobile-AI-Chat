@@ -13,7 +13,7 @@ class PromptApiService {
       : _dio = ApiServiceFactory.createJarvisDio(),
         _apiService = sl.get<ApiService>() {
     // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
+    // _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
   // Phương thức lấy danh sách prompts
   Future<Map<String, dynamic>> getPrompts({

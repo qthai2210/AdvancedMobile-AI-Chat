@@ -1,7 +1,10 @@
+import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
@@ -187,142 +190,6 @@ class _BotListScreenState extends State<BotListScreen> {
         _isCreatingAssistant = false;
       });
     }
-  }
-
-  /// Shows a dialog to create a new assistant directly from this screen
-  void _showCreateAssistantDialog() {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final instructionsController = TextEditingController();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider.value(
-        value: context.read<BotBloc>(),
-        child: Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.add, size: 24),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Create New Assistant',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(dialogContext),
-                      color: Colors.grey,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: _buildCreateAssistantForm(
-                      nameController,
-                      descriptionController,
-                      instructionsController,
-                      dialogContext,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      child: const Text('CANCEL'),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Validate that name is not empty
-                        final name = nameController.text.trim();
-                        if (name.isEmpty) {
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            const SnackBar(
-                              content: Row(
-                                children: [
-                                  Icon(Icons.warning_amber,
-                                      color: Colors.white),
-                                  SizedBox(width: 16),
-                                  Text('Assistant name cannot be empty'),
-                                ],
-                              ),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          return;
-                        }
-
-                        // Set creating flag to true
-                        setState(() {
-                          _isCreatingAssistant = true;
-                        });
-
-                        // Dispatch the create event
-                        BlocProvider.of<BotBloc>(dialogContext).add(
-                          CreateAssistantEvent(
-                            assistantName: name,
-                            description:
-                                descriptionController.text.trim().isNotEmpty
-                                    ? descriptionController.text.trim()
-                                    : null,
-                            instructions:
-                                instructionsController.text.trim().isNotEmpty
-                                    ? instructionsController.text.trim()
-                                    : null,
-                          ),
-                        );
-
-                        // Close the dialog
-                        Navigator.pop(dialogContext);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add, size: 20),
-                          SizedBox(width: 8),
-                          Text('CREATE'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   /// Builds a form for creating a new assistant
@@ -520,23 +387,25 @@ class _BotListScreenState extends State<BotListScreen> {
                               ),
                             );
                             return;
-                          }
-
-                          // Dispatch the update event
-                          BlocProvider.of<BotBloc>(dialogContext).add(
-                            UpdateAssistantEvent(
-                              assistantId: assistantModel.id,
-                              assistantName: name,
-                              description:
-                                  descriptionController.text.trim().isNotEmpty
+                          } // Dispatch the update event using BlocManager to prevent "Cannot add new events after calling close" error
+                          sl<BlocManager>()
+                              .getBloc<BotBloc>(() => sl<BotBloc>())
+                              .add(
+                                UpdateAssistantEvent(
+                                  assistantId: assistantModel.id,
+                                  assistantName: name,
+                                  description: descriptionController.text
+                                          .trim()
+                                          .isNotEmpty
                                       ? descriptionController.text.trim()
                                       : null,
-                              instructions:
-                                  instructionsController.text.trim().isNotEmpty
+                                  instructions: instructionsController.text
+                                          .trim()
+                                          .isNotEmpty
                                       ? instructionsController.text.trim()
                                       : null,
-                            ),
-                          );
+                                ),
+                              );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
@@ -820,7 +689,8 @@ class _BotListScreenState extends State<BotListScreen> {
           if (assistants.isEmpty) {
             return _buildEmptyState();
           }
-
+          AppLogger.e(
+              'Loaded ${assistants.length} assistants with query: $_searchQuery');
           // Convert API assistant models to AIBot models for UI
           final bots = assistants.map(_convertToAIBot).toList();
 
@@ -898,23 +768,27 @@ class _BotListScreenState extends State<BotListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Create a new BotBloc instance for this screen
-    return BlocProvider<BotBloc>(
-      create: (context) {
-        // Get a fresh instance of BotBloc from the dependency injection container
-        final bloc = sl.get<BotBloc>();
+    // Get BlocManager instance
+    final blocManager = sl<BlocManager>();
+
+    // Create a BotBloc instance that will be managed by BlocManager
+    return BlocProvider<BotBloc>.value(
+      value: blocManager.getBloc<BotBloc>(() {
+        final bloc = sl<BotBloc>();
         // Immediately fetch bots when the bloc is created
         bloc.add(FetchBotsEvent(
           searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
         ));
         return bloc;
-      },
+      }),
       child: BlocListener<BotBloc, BotState>(
         listener: (context, state) {
           // Handle assistant deletion states
           if (state is AssistantDeleting) {
             // Show loading indicator for deletion
+
             // We're already using _isDeletingAssistant flag in the UI
+            AppLogger.e('Deleting assistant...111');
             setState(() {
               _isDeletingAssistant = true;
             });
@@ -1040,15 +914,30 @@ class _BotListScreenState extends State<BotListScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('AI Assistants'),
+            elevation: 0,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            centerTitle: false,
+            title: Text(
+              'AI Assistants',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            iconTheme:
+                IconThemeData(color: Theme.of(context).colorScheme.primary),
             actions: [
-              // Only show the add button if we're not currently creating an assistant
-              if (!_isCreatingAssistant)
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showCreateAssistantDialog,
-                  tooltip: 'Create New Assistant',
-                ),
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'Help',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Help coming soon')),
+                  );
+                },
+              ),
             ],
           ),
           drawer: MainAppDrawer(
@@ -1078,10 +967,99 @@ class _BotListScreenState extends State<BotListScreen> {
                   ),
                   onChanged: _updateSearchQuery,
                 ),
-              ),
-              // Bot list
+              ), // Bot list with deletion overlay when needed
               Expanded(
-                child: _buildBotList(),
+                child: Stack(
+                  children: [
+                    _buildBotList(), // Show modern deletion overlay when deleting an assistant
+                    if (_isDeletingAssistant)
+                      Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: Center(
+                            child: Container(
+                              width: MediaQuery.of(context).size.width * 0.8,
+                              constraints: const BoxConstraints(maxWidth: 350),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Custom animated progress indicator
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 50,
+                                        height: 50,
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                          strokeWidth: 3,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    "Deleting Assistant",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    "Please wait while we process your request",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                          fontSize: 16,
+                                        ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  LinearProgressIndicator(
+                                    backgroundColor: Colors.grey[200],
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

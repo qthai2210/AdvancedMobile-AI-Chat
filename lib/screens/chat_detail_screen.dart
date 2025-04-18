@@ -3,7 +3,6 @@ import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
-import 'package:flutter/services.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/utils/logger.dart';
@@ -35,7 +34,7 @@ import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
-import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
+import 'package:aichatbot/core/services/bloc_manager.dart';
 
 import 'package:aichatbot/widgets/chat/image_capture_options.dart';
 import 'package:aichatbot/widgets/chat/image_preview.dart';
@@ -426,8 +425,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) => BlocProvider(
-        create: (context) => di.sl<BotBloc>(),
+      builder: (BuildContext context) => BlocProvider<BotBloc>.value(
+        value: di.sl<BlocManager>().getBloc<BotBloc>(() {
+          // Get a managed instance of BotBloc to prevent "Cannot add new events after calling close" error
+          final bloc = di.sl<BotBloc>();
+          // Initialize the bloc if needed
+          bloc.add(const FetchBotsEvent());
+          return bloc;
+        }),
         child: SizedBox(
           height: MediaQuery.of(context).size.height * 0.7,
           child: AIAgentSelector(
@@ -867,15 +872,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (context) => di.sl<ConversationBloc>(),
+        BlocProvider<PromptBloc>.value(
+          value: di.sl<PromptBloc>(),
         ),
-        BlocProvider(
-          create: (context) => di.sl<ChatBloc>(),
+        BlocProvider<ConversationBloc>.value(
+          value: di.sl<ConversationBloc>(),
         ),
-        // Thêm PromptBloc cho chức năng gợi ý prompt
-        BlocProvider(
-          create: (context) => di.sl<PromptBloc>(),
+        BlocProvider<ChatBloc>.value(
+          value: di.sl<ChatBloc>(),
+        ),
+        BlocProvider<BotBloc>.value(
+          value: di.sl<BotBloc>(),
         ),
       ],
       child: MultiBlocListener(

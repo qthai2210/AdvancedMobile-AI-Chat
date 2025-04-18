@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/models/ai_agent_model.dart';
 import 'package:aichatbot/screens/create_bot_screen.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
+import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
@@ -98,15 +99,18 @@ class _AIAgentSelectorState extends State<AIAgentSelector> {
 
   @override
   Widget build(BuildContext context) {
-    // Create a new BotBloc with the necessary dependencies
-    // This ensures we always have a working BotBloc regardless of the parent context
-    return BlocProvider<BotBloc>(
-      create: (context) => BotBloc(
-        getAssistantsUseCase: di.sl<GetAssistantsUseCase>(),
-        createAssistantUseCase: di.sl<CreateAssistantUseCase>(),
-        updateAssistantUseCase: di.sl<UpdateAssistantUseCase>(),
-        deleteAssistantUseCase: di.sl<DeleteAssistantUseCase>(),
-      )..add(const FetchBotsEvent()), // Fetch bots immediately when created
+    // Use BlocManager to get a managed instance of BotBloc
+    // This prevents the bloc from being automatically closed when the widget is disposed
+    final blocManager = di.sl<BlocManager>();
+
+    return BlocProvider<BotBloc>.value(
+      value: blocManager.getBloc<BotBloc>(() {
+        // Create a new BotBloc if needed
+        final bloc = di.sl<BotBloc>();
+        // Fetch bots immediately when created
+        bloc.add(const FetchBotsEvent());
+        return bloc;
+      }),
       child: BlocListener<BotBloc, BotState>(
         listener: (context, state) {
           if (state is BotsLoaded) {

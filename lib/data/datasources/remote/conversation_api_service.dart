@@ -1,16 +1,20 @@
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/core/network/api_service.dart';
+import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 
 class ConversationApiService {
-  final ApiService _apiService = sl.get<ApiService>();
-
-  ConversationApiService() {
+  final ApiService _apiService;
+  final Dio _dio;
+  // Constructor - initialize with a dedicated Dio instance
+  ConversationApiService()
+      : _apiService = sl.get<ApiService>(),
+        _dio = ApiServiceFactory.createJarvisDio() {
     // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = '${ApiConfig.jarvisBaseUrl}/ai-chat';
+    _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
 
   // Get user's conversations
@@ -37,7 +41,7 @@ class ConversationApiService {
     final accessToken = await SecureStorageUtil().getAccessToken();
 
     try {
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/ai-chat/conversations',
         queryParameters: queryParams,
         options: Options(
@@ -64,7 +68,7 @@ class ConversationApiService {
     required String conversationId,
   }) async {
     try {
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/ai-chat/conversations/$conversationId',
         options: Options(
           headers: {
@@ -90,7 +94,7 @@ class ConversationApiService {
     required String conversationId,
   }) async {
     try {
-      final response = await _apiService.dio.delete(
+      final response = await _dio.delete(
         '/ai-chat/conversations/$conversationId',
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
@@ -128,8 +132,8 @@ class ConversationApiService {
     final accessToken = await SecureStorageUtil().getAccessToken();
 
     try {
-      final response = await _apiService.dio.get(
-        '/conversations/$conversationId/messages',
+      final response = await _dio.get(
+        '/ai-chat/conversations/$conversationId/messages',
         queryParameters: queryParams,
         options: Options(
           headers: {

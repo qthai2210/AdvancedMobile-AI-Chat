@@ -110,7 +110,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     //   limit: 20,
     //   isFavorite: event.isFavorite,
     // ));
-    AppLogger.i('Refreshing bots with query: ${event.searchQuery}');
+    AppLogger.e('Refreshing bots with query: ${event.searchQuery}');
     emit(BotsLoading());
     try {
       final result = await _getAssistantsUseCase.call(
@@ -121,15 +121,16 @@ class BotBloc extends Bloc<BotEvent, BotState> {
         limit: 20,
         isFavorite: event.isFavorite,
       );
+      AppLogger.e(
+          'Bots refreshed successfully: ${result.data.length} bots loaded.');
       emit(BotsLoaded(
         bots: result.data,
         hasMore: result.meta.hasNext,
         offset: result.meta.offset,
         total: result.meta.total,
       ));
-      AppLogger.i(
-          'Bots refreshed successfully: ${result.data.length} bots loaded.');
     } catch (e) {
+      AppLogger.e('Error refreshing bots: $e');
       emit(BotsError(message: e.toString()));
     }
   }

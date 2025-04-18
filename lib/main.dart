@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/router/app_router.dart';
+import 'package:aichatbot/core/services/bloc_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,27 +22,33 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
+    // Get BlocManager instance
+    final blocManager = di.sl<BlocManager>();
+
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => di.sl<AuthBloc>(),
+        // Use BlocProvider.value to prevent automatic closing of blocs
+        BlocProvider<AuthBloc>.value(
+          value: blocManager.getBloc<AuthBloc>(() => di.sl<AuthBloc>()),
         ),
-        BlocProvider<PromptBloc>(
-          create: (context) => di.sl<PromptBloc>(),
+        BlocProvider<PromptBloc>.value(
+          value: blocManager.getBloc<PromptBloc>(() => di.sl<PromptBloc>()),
         ),
-        BlocProvider<ConversationBloc>(
-          create: (context) => di.sl<ConversationBloc>(),
+        BlocProvider<ConversationBloc>.value(
+          value: blocManager
+              .getBloc<ConversationBloc>(() => di.sl<ConversationBloc>()),
         ),
-        BlocProvider<ChatBloc>(
-          create: (context) => di.sl<ChatBloc>(),
+        BlocProvider<ChatBloc>.value(
+          value: blocManager.getBloc<ChatBloc>(() => di.sl<ChatBloc>()),
         ),
-        BlocProvider<BotBloc>(
-          create: (context) => di.sl<BotBloc>(),
+        BlocProvider<BotBloc>.value(
+          value: blocManager.getBloc<BotBloc>(() => di.sl<BotBloc>()),
         ),
-        BlocProvider(create: (context) => di.sl<KnowledgeBloc>()),
+        BlocProvider<KnowledgeBloc>.value(
+            value: blocManager
+                .getBloc<KnowledgeBloc>(() => di.sl<KnowledgeBloc>())),
       ],
       child: MaterialApp.router(
         title: 'AI Chat Bot',

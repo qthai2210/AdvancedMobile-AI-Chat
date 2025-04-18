@@ -1,4 +1,5 @@
 import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
+import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
@@ -52,15 +53,24 @@ import 'package:aichatbot/domain/usecases/prompt/remove_favorite_usecase.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // Register BlocManager first to manage Bloc lifecycles
+  sl.registerLazySingleton(() => BlocManager());
+
   // Blocs
-  sl.registerFactory(
+  // Global blocs - Use lazySingleton for app-wide state management
+  // These should NEVER be closed in widget dispose methods
+  sl.registerLazySingleton(
     () => AuthBloc(
       loginUsecase: sl(),
       registerUsecase: sl(),
       logoutUsecase: sl(),
     ),
   );
-  sl.registerFactory(
+
+  // Screen-specific blocs - Use factory to get fresh instances
+  // These should be created at the screen level with BlocProvider
+  // and will be automatically closed when the screen is disposed
+  sl.registerLazySingleton(
     () => PromptBloc(
       getPromptsUsecase: sl(),
       createPromptUsecase: sl(),
@@ -70,20 +80,19 @@ Future<void> init() async {
       deletePromptUsecase: sl(),
     ),
   );
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => ConversationBloc(
       getConversationsUsecase: sl(),
       getConversationHistoryUsecase: sl(),
     ),
-  ); // Registering ChatBloc as a factory instead of a singleton
-  // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc  sl.registerFactory(
-  sl.registerFactory(
+  );
+  sl.registerLazySingleton(
     () => ChatBloc(
       sendMessageUseCase: sl(),
       sendCustomBotMessageUseCase: sl(),
     ),
   ); // Register BotBloc as a factory to ensure fresh instance each time  sl.registerLazySingleton(
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => BotBloc(
       getAssistantsUseCase: sl(),
       createAssistantUseCase: sl(),
@@ -91,13 +100,14 @@ Future<void> init() async {
       deleteAssistantUseCase: sl(),
     ),
   );
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => KnowledgeBloc(
       getKnowledgesUseCase: sl(),
       createKnowledgeUseCase: sl(),
       deleteKnowledgeUseCase: sl(),
     ),
   );
+
   // Use cases
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
