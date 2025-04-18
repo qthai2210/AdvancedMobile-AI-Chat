@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 
 class AIAgent {
-  final AssistantId id;
+  final dynamic id; // Can be either AssistantId or String for custom assistants
   final String name;
   final String description;
   final Color color;
+  final bool isCustom;
 
   AIAgent({
     required this.id,
     required this.name,
     required this.description,
     required this.color,
+    this.isCustom = false,
   });
 
   String get idString => id.toString();

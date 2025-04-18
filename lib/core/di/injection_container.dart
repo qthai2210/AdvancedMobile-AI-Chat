@@ -15,6 +15,7 @@ import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
+import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
@@ -74,12 +75,12 @@ Future<void> init() async {
       getConversationsUsecase: sl(),
       getConversationHistoryUsecase: sl(),
     ),
-  );
-  // Registering ChatBloc as a factory instead of a singleton
+  ); // Registering ChatBloc as a factory instead of a singleton
   // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc  sl.registerFactory(
   sl.registerLazySingleton(
     () => ChatBloc(
       sendMessageUseCase: sl(),
+      sendCustomBotMessageUseCase: sl(),
     ),
   ); // Register BotBloc as a factory to ensure fresh instance each time  sl.registerLazySingleton(
   sl.registerLazySingleton(
@@ -97,7 +98,6 @@ Future<void> init() async {
       deleteKnowledgeUseCase: sl(),
     ),
   );
-
   // Use cases
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
@@ -107,6 +107,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => AddFavoriteUsecase(sl()));
   sl.registerLazySingleton(() => RemoveFavoriteUsecase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
+  sl.registerLazySingleton(() => SendCustomBotMessageUseCase(sl()));
   sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
   sl.registerLazySingleton(() => GetConversationHistoryUsecase(sl()));
   sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));

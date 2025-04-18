@@ -30,46 +30,8 @@ class AIAgentSelector extends StatefulWidget {
 class _AIAgentSelectorState extends State<AIAgentSelector> {
   List<AIAgent> _customAgents = [];
   bool _isLoading = true;
-  @override
-  void initState() {
-    super.initState();
-    // Fetch custom assistants when widget initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return; // Check if widget is still mounted
 
-      try {
-        // Safely check if BotBloc is available and not closed
-        BotBloc? botBloc;
-        try {
-          botBloc = context.read<BotBloc>();
-        } catch (e) {
-          AppLogger.w("BotBloc not available: $e");
-          botBloc = null;
-        }
-
-        if (botBloc != null && !botBloc.isClosed) {
-          botBloc.add(const FetchBotsEvent());
-        } else {
-          AppLogger.w("BotBloc is closed or not available, skipping fetch");
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _customAgents =
-                  []; // Use empty list if BotBloc is not available or closed
-            });
-          }
-        }
-      } catch (e) {
-        AppLogger.e("Error fetching bots: $e");
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _customAgents = []; // Use empty list if any error occurs
-          });
-        }
-      }
-    });
-  }
+  // No need for initState with postFrameCallback since we're using BlocProvider now
 
   // Convert AssistantModel to AIAgent
   AIAgent _convertToAIAgent(AssistantModel assistant) {
@@ -98,16 +60,29 @@ class _AIAgentSelectorState extends State<AIAgentSelector> {
 
   @override
   Widget build(BuildContext context) {
-    // Create a new BotBloc with the necessary dependencies
-    // This ensures we always have a working BotBloc regardless of the parent context
+    // Create a fresh BotBloc that will live only for the duration of this widget
     return BlocProvider<BotBloc>(
-      create: (context) => BotBloc(
-        getAssistantsUseCase: di.sl<GetAssistantsUseCase>(),
-        createAssistantUseCase: di.sl<CreateAssistantUseCase>(),
-        updateAssistantUseCase: di.sl<UpdateAssistantUseCase>(),
-        deleteAssistantUseCase: di.sl<DeleteAssistantUseCase>(),
-      )..add(const FetchBotsEvent()), // Fetch bots immediately when created
-      child: BlocListener<BotBloc, BotState>(
+      create: (context) {
+        try {
+          return BotBloc(
+            getAssistantsUseCase: di.sl<GetAssistantsUseCase>(),
+            createAssistantUseCase: di.sl<CreateAssistantUseCase>(),
+            updateAssistantUseCase: di.sl<UpdateAssistantUseCase>(),
+            deleteAssistantUseCase: di.sl<DeleteAssistantUseCase>(),
+          )..add(
+              const FetchBotsEvent()); // Fetch bots immediately upon creation
+        } catch (e) {
+          AppLogger.e("Failed to create BotBloc: $e");
+          // Return a minimal BotBloc that will just show empty state
+          return BotBloc(
+            getAssistantsUseCase: di.sl<GetAssistantsUseCase>(),
+            createAssistantUseCase: di.sl<CreateAssistantUseCase>(),
+            updateAssistantUseCase: di.sl<UpdateAssistantUseCase>(),
+            deleteAssistantUseCase: di.sl<DeleteAssistantUseCase>(),
+          );
+        }
+      },
+      child: BlocConsumer<BotBloc, BotState>(
         listener: (context, state) {
           if (state is BotsLoaded) {
             setState(() {
@@ -115,47 +90,60 @@ class _AIAgentSelectorState extends State<AIAgentSelector> {
               _isLoading = false;
             });
             AppLogger.i("Loaded ${_customAgents.length} custom assistants");
+          } else if (state is BotsError) {
+            setState(() {
+              _isLoading = false;
+              _customAgents = []; // Use empty list on error
+            });
+            AppLogger.e("Error loading bots: ${state.message}");
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Choose AI Assistant',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Expanded(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      if (AIAgents.agents.isNotEmpty)
-                        _buildSectionHeader('Built-in Models'),
-                      ..._buildAgentList(AIAgents.agents),
-                      if (_customAgents.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _buildSectionHeader('Your Custom Assistants'),
-                        ..._buildAgentList(_customAgents),
-                      ],
-                      const SizedBox(height: 16),
-                      _buildCreateBotTile(),
-                    ],
+        builder: (context, state) {
+          // Set loading state based on BotState
+          if (state is BotInitial || state is BotsLoading) {
+            _isLoading = true;
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Choose AI Assistant',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-            ],
-          ),
-        ),
+                const SizedBox(height: 8),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  Expanded(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        if (AIAgents.agents.isNotEmpty)
+                          _buildSectionHeader('Built-in Models'),
+                        ..._buildAgentList(AIAgents.agents),
+                        if (_customAgents.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildSectionHeader('Your Custom Assistants'),
+                          ..._buildAgentList(_customAgents),
+                        ],
+                        const SizedBox(height: 16),
+                        _buildCreateBotTile(),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

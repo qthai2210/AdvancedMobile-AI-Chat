@@ -14,6 +14,7 @@ import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart'
     as msg_model;
+import 'package:aichatbot/data/models/chat/custom_bot_message_model.dart';
 
 import 'package:aichatbot/data/models/chat/conversation_model.dart';
 
@@ -24,6 +25,8 @@ import 'package:aichatbot/presentation/bloc/conversation/conversation_state.dart
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
+import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:aichatbot/data/models/chat/conversation_history_model.dart';
 
@@ -286,27 +289,83 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         //               name: _selectedAgent.name,
         //               id: _selectedAgent.id,
         //             ));
-        // }).toList();
+        // }).toList();        // Create API request
 
-        // Create API request
-        final requestModel = msg_model.MessageRequestModel(
-          content: message,
-          files: [],
-          metadata: msg_model.MessageMetadata(
-            conversation: msg_model.Conversation(
-              id: widget.threadId ?? 'new_conversation',
-              title: _currentThreadTitle,
-              createdAt: DateTime.now(),
+        if (_selectedAgent.isCustom) {
+          // Create a custom bot request
+          // Convert existing messages to CustomBotMessage format
+          // Exclude the most recent user message (which was just added to _messages)
+          AppLogger.w("CustombotResquest2: $_messages");
+          // Get all messages except the last one (which is the current user message)
+          final messagesToInclude = _messages.length > 1
+              ? _messages.sublist(0, _messages.length - 1)
+              : [];
+          List<CustomBotMessage> messageHistory = messagesToInclude.map((msg) {
+            return CustomBotMessage(
+              role: msg.isUser ? 'user' : 'assistant',
+              content: msg.text,
+              files: const [],
+              assistant: !msg.isUser
+                  ? CustomBotAssistantReference(
+                      model: "knowledge-base",
+                      name: _selectedAgent.name,
+                      id: _selectedAgent.id,
+                    )
+                  : null,
+            );
+          }).toList();
+
+          AppLogger.w("CustombotResquest1: $messageHistory");
+          final customBotRequest = CustomBotMessageRequest(
+            content: message,
+            files: const [],
+            metadata: CustomBotMetadata(
+              conversation: CustomBotConversation(
+                id: widget.threadId ?? 'new_conversation',
+                title: _currentThreadTitle,
+                createdAt: DateTime.now(),
+                messages: messageHistory,
+              ),
             ),
-          ),
-          assistant: msg_model.AssistantModel(
-              model: "dify", name: _selectedAgent.name, id: _selectedAgent.id),
-        );
-
-        // Use ChatBloc to send the message
-        context.read<ChatBloc>().add(SendMessageEvent(request: requestModel));
+            assistant: CustomBotAssistant(
+              model: "knowledge-base",
+              name: _selectedAgent.name,
+              id: _selectedAgent
+                  .idString, // Use idString instead of id directly
+            ),
+          );
+          AppLogger.w("Custom bot request: $customBotRequest");
+          // Use CustomBotMessageEvent instead
+          context
+              .read<ChatBloc>()
+              .add(SendCustomBotMessageEvent(request: customBotRequest));
+        } else {
+          // Use regular ChatBloc to send the message for standard bots
+          final requestModel = msg_model.MessageRequestModel(
+            content: message,
+            files: [],
+            metadata: msg_model.MessageMetadata(
+              conversation: msg_model.Conversation(
+                id: widget.threadId ?? 'new_conversation',
+                title: _currentThreadTitle,
+                createdAt: DateTime.now(),
+              ),
+            ),
+            assistant: msg_model.AssistantModel(
+              model: "dify",
+              name: _selectedAgent.name,
+              id: _selectedAgent.id,
+            ),
+          ); // Check if we're using a custom bot
+          AppLogger.w("Selected agent: $_selectedAgent");
+          AppLogger.w("Regular bot request: $requestModel");
+          context.read<ChatBloc>().add(SendMessageEvent(request: requestModel));
+        }
       } catch (error) {
         // Handle initial errors (like not authenticated)
+        AppLogger.e("Error sending message: $error");
+        AppLogger.e("Error sending message: ${error.toString()}");
+
         setState(() {
           _isTyping = false;
           // Add error message
@@ -354,17 +413,47 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void _changeAIAgent() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) => AIAgentSelector(
-        selectedAgent: _selectedAgent,
-        onAgentSelected: (agent) {
-          setState(() {
-            _selectedAgent = agent;
-          });
-          Navigator.pop(context);
-        },
+      builder: (BuildContext context) => BlocProvider(
+        create: (context) => di.sl<BotBloc>(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: AIAgentSelector(
+            selectedAgent: _selectedAgent,
+            onAgentSelected: (agent) {
+              // Only refresh if agent changed
+              if (agent.id != _selectedAgent.id) {
+                setState(() {
+                  _selectedAgent = agent;
+                  _messages = [];
+                  // Clear current chat
+                  // if (widget.isNewChat || _messages.isEmpty) {
+                  //   // For new or empty chats, start a new conversation
+                  //   _messages = [];
+                  // } else {
+                  //   // For existing conversations, add a transition message
+                  //   _messages.add(
+                  //     Message(
+                  //       text:
+                  //           "Tôi đã chuyển sang ${agent.name}. Tôi có thể giúp gì cho bạn?",
+                  //       isUser: false,
+                  //       timestamp: DateTime.now(),
+                  //       agent: agent,
+                  //     ),
+                  //   );
+                  // }
+                });
+
+                // Scroll to the latest message
+                _scrollToBottom();
+              }
+              Navigator.pop(context);
+            },
+          ),
+        ),
       ),
     );
   }
