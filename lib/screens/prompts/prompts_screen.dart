@@ -425,11 +425,14 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 ],
               ),
               floatingActionButton: FloatingActionButton.extended(
-                onPressed: () => _navigateToCreatePrompt(),
-                icon: const Icon(Icons.add),
-                label: const Text('Tạo Prompt'),
-                backgroundColor: Theme.of(context).primaryColor,
-              ),
+                  onPressed: () => _navigateToCreatePrompt(),
+                  icon: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                  ),
+                  label: const Text('Tạo Prompt',
+                      style: TextStyle(color: Colors.white)),
+                  backgroundColor: Theme.of(context).primaryColor),
             ),
           );
         },
