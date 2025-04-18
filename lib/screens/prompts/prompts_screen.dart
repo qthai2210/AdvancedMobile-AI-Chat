@@ -486,6 +486,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
           icon: const Icon(Icons.more_vert),
           itemBuilder: (context) => [
             PopupMenuItem(
+              onTap: _toggleViewMode,
               child: Row(
                 children: [
                   Icon(
@@ -497,7 +498,6 @@ class _PromptsScreenState extends State<PromptsScreen> {
                   Text((state.isGridView ?? false) ? 'List view' : 'Grid view'),
                 ],
               ),
-              onTap: _toggleViewMode,
             ),
             const PopupMenuItem(
               value: 'divider',
@@ -733,32 +733,51 @@ class _PromptsScreenState extends State<PromptsScreen> {
   void _searchPrompts(String query) {
     debugPrint('Searching prompts with query: "$query"');
 
+    // Kiểm tra xem widget còn mounted không để tránh lỗi
+    if (!mounted) return;
+
     final authState = context.read<AuthBloc>().state;
     if (authState.user?.accessToken == null) {
-      context.showWarningNotification(
-        'Bạn cần đăng nhập để tìm kiếm prompts',
-        actionLabel: 'Đăng nhập',
-        onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
-      );
+      if (mounted) {
+        context.showWarningNotification(
+          'Bạn cần đăng nhập để tìm kiếm prompts',
+          actionLabel: 'Đăng nhập',
+          onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+        );
+      }
       return;
     }
 
-    final selectedCategory = context.read<PromptBloc>().state.selectedCategory;
-    final apiCategory = (selectedCategory != 'All' && selectedCategory != null)
-        ? selectedCategory
-        : null;
+    try {
+      // Kiểm tra xem PromptBloc còn tồn tại không
+      final promptBloc = context.read<PromptBloc>();
+      final selectedCategory = promptBloc.state.selectedCategory;
+      final apiCategory =
+          (selectedCategory != 'All' && selectedCategory != null)
+              ? selectedCategory
+              : null;
 
-    // Gọi API getPrompts với tham số query
-    context.read<PromptBloc>().add(
+      // Gọi API getPrompts với tham số query
+      if (mounted) {
+        promptBloc.add(
           FetchPrompts(
             accessToken: authState.user!.accessToken!,
             limit: 20,
             offset: 0,
             category: apiCategory,
-            isFavorite: context.read<PromptBloc>().state.isFavoriteFilter,
+            isFavorite: promptBloc.state.isFavoriteFilter,
             query: query.isEmpty ? null : query, // Chỉ gửi query khi có giá trị
           ),
         );
+      }
+    } catch (e) {
+      // Xử lý trường hợp PromptBloc đã bị đóng hoặc không tồn tại
+      debugPrint('Error dispatching FetchPrompts event: $e');
+      // Không hiển thị thông báo lỗi nếu widget không còn mounted
+      if (mounted) {
+        context.showErrorNotification('Đã xảy ra lỗi khi tìm kiếm');
+      }
+    }
   }
 
   // Phương thức điều hướng tạo prompt mới

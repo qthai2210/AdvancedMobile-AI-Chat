@@ -53,14 +53,14 @@ final sl = GetIt.instance;
 
 Future<void> init() async {
   // Blocs
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => AuthBloc(
       loginUsecase: sl(),
       registerUsecase: sl(),
       logoutUsecase: sl(),
     ),
   );
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => PromptBloc(
       getPromptsUsecase: sl(),
       createPromptUsecase: sl(),
@@ -70,20 +70,20 @@ Future<void> init() async {
       deletePromptUsecase: sl(),
     ),
   );
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => ConversationBloc(
       getConversationsUsecase: sl(),
       getConversationHistoryUsecase: sl(),
     ),
   ); // Registering ChatBloc as a factory instead of a singleton
   // This ensures each ChatDetailScreen gets its own fresh instance of ChatBloc  sl.registerFactory(
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => ChatBloc(
       sendMessageUseCase: sl(),
       sendCustomBotMessageUseCase: sl(),
     ),
   ); // Register BotBloc as a factory to ensure fresh instance each time  sl.registerLazySingleton(
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => BotBloc(
       getAssistantsUseCase: sl(),
       createAssistantUseCase: sl(),
@@ -91,7 +91,7 @@ Future<void> init() async {
       deleteAssistantUseCase: sl(),
     ),
   );
-  sl.registerLazySingleton(
+  sl.registerFactory(
     () => KnowledgeBloc(
       getKnowledgesUseCase: sl(),
       createKnowledgeUseCase: sl(),

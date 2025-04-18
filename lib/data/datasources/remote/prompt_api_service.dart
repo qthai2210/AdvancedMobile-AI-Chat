@@ -1,13 +1,17 @@
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:flutter/foundation.dart';
 
 class PromptApiService {
-  final ApiService _apiService = sl.get<ApiService>();
-  PromptApiService() {
+  final ApiService _apiService;
+  final Dio _dio;
+  PromptApiService()
+      : _dio = ApiServiceFactory.createJarvisDio(),
+        _apiService = sl.get<ApiService>() {
     // Set the base URL for the Dio instance
     _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
@@ -34,7 +38,7 @@ class PromptApiService {
     if (isPublic != null) queryParams['isPublic'] = isPublic;
 
     try {
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/prompts',
         queryParameters: queryParams,
         options: Options(
@@ -130,7 +134,7 @@ class PromptApiService {
       debugPrint('Request body: $body');
 
       // Gọi API
-      final response = await _apiService.dio.post(
+      final response = await _dio.post(
         '/prompts',
         options: Options(headers: headers),
         data: body,
@@ -275,7 +279,7 @@ class PromptApiService {
       // Gọi API
       final stopwatch = Stopwatch()..start();
 
-      final response = await _apiService.dio.patch(
+      final response = await _dio.patch(
         '/prompts/$promptId',
         options: Options(headers: headers),
         data: body,
@@ -449,7 +453,7 @@ class PromptApiService {
       // Gọi API
       final stopwatch = Stopwatch()..start();
 
-      final response = await _apiService.dio.delete(
+      final response = await _dio.delete(
         '/prompts/$promptId',
         options: Options(headers: headers),
       );
@@ -606,7 +610,7 @@ class PromptApiService {
       };
 
       // Sửa URL - remove the duplicate api/v1
-      final response = await _apiService.dio.post(
+      final response = await _dio.post(
         'https://api.dev.jarvis.cx/api/v1/prompts/$promptId/favorite',
         options: Options(
           headers: headers, // Bỏ qua baseUrl của Dio
@@ -672,7 +676,7 @@ class PromptApiService {
       };
 
       // Sửa URL - remove the duplicate api/v1
-      final response = await _apiService.dio.delete(
+      final response = await _dio.delete(
         'https://api.dev.jarvis.cx/api/v1/prompts/$promptId/favorite', // Đã sửa URL - không lặp lại api/v1
         options: Options(headers: headers),
       );

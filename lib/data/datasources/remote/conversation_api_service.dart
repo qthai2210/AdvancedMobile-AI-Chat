@@ -38,7 +38,7 @@ class ConversationApiService {
 
     try {
       final response = await _apiService.dio.get(
-        '/conversations',
+        '/ai-chat/conversations',
         queryParameters: queryParams,
         options: Options(
           headers: {
@@ -65,7 +65,7 @@ class ConversationApiService {
   }) async {
     try {
       final response = await _apiService.dio.get(
-        '/conversations/$conversationId',
+        '/ai-chat/conversations/$conversationId',
         options: Options(
           headers: {
             'Authorization': 'Bearer $accessToken',
@@ -91,7 +91,7 @@ class ConversationApiService {
   }) async {
     try {
       final response = await _apiService.dio.delete(
-        '/conversations/$conversationId',
+        '/ai-chat/conversations/$conversationId',
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 

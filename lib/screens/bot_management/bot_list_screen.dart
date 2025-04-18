@@ -1,17 +1,17 @@
-import 'package:aichatbot/widgets/app_bar_loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:aichatbot/core/di/injection_container.dart' as di;
+
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
-import 'package:aichatbot/screens/create_bot_screen.dart';
+
 import 'package:aichatbot/widgets/bots/bot_list_item.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
+import 'package:aichatbot/core/di/injection_container.dart';
 
 /// A screen that displays and manages a list of AI bots.
 ///
@@ -51,10 +51,7 @@ class _BotListScreenState extends State<BotListScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
 
-    // Initial fetch of assistants
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BotBloc>().add(const FetchBotsEvent());
-    });
+    // We'll fetch assistants in the build method using BlocProvider instead of directly here
   }
 
   @override
@@ -901,201 +898,212 @@ class _BotListScreenState extends State<BotListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use BlocProvider.value to ensure we're not creating a new BlocProvider on each build
-    return BlocListener<BotBloc, BotState>(
-      listener: (context, state) {
-        // Handle assistant deletion states
-        if (state is AssistantDeleting) {
-          // Show loading indicator for deletion
-          // We're already using _isDeletingAssistant flag in the UI
-          setState(() {
-            _isDeletingAssistant = true;
-          });
-        } else if (state is AssistantDeleted) {
-          // Reset deleting flag
-          setState(() {
-            _isDeletingAssistant = false;
-          });
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Text('Assistant deleted successfully'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green.shade700,
-            ),
-          );
-
-          // Refresh the assistants list after deletion - already handled in BotBloc
-        } else if (state is AssistantDeleteFailed) {
-          // Reset deleting flag
-          setState(() {
-            _isDeletingAssistant = false;
-          });
-
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text('Delete failed: ${state.message}'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        }
-
-        // Handle assistant creation states
-        if (state is AssistantCreating) {
-          // Show loading indicator for creation
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   const SnackBar(
-          //     content: Row(
-          //       children: [
-          //         SizedBox(
-          //           width: 20,
-          //           height: 20,
-          //           child: CircularProgressIndicator(
-          //             strokeWidth: 2,
-          //             color: Colors.white,
-          //           ),
-          //         ),
-          //         SizedBox(width: 16),
-          //         Text('Creating assistant...'),
-          //       ],
-          //     ),
-          //     duration: Duration(seconds: 2),
-          //   ),
-          // );
-
-          setState(() {
-            _isCreatingAssistant = true;
-          });
-        } else if (state is AssistantCreated) {
-          // Reset creating flag
-          setState(() {
-            _isCreatingAssistant = false;
-          });
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                        '${state.assistant.assistantName} created successfully'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green.shade700,
-            ),
-          );
-
-          // Refresh the list
-          context.read<BotBloc>().add(const RefreshBotsEvent());
-        } else if (state is AssistantCreationFailed) {
-          // Reset creating flag
-          setState(() {
-            _isCreatingAssistant = false;
-          });
-
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text('Creation failed: ${state.message}'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        }
+    // Create a new BotBloc instance for this screen
+    return BlocProvider<BotBloc>(
+      create: (context) {
+        // Get a fresh instance of BotBloc from the dependency injection container
+        final bloc = sl.get<BotBloc>();
+        // Immediately fetch bots when the bloc is created
+        bloc.add(FetchBotsEvent(
+          searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+        ));
+        return bloc;
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('AI Assistants'),
-          actions: [
-            // Only show the add button if we're not currently creating an assistant
-            if (!_isCreatingAssistant)
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: _showCreateAssistantDialog,
-                tooltip: 'Create New Assistant',
-              ),
-          ],
-        ),
-        drawer: MainAppDrawer(
-          currentIndex: 4, // Index for "Bots" tab
-          onTabSelected: (index) => navigation_utils
-              .handleDrawerNavigation(context, index, currentIndex: 4),
-        ),
-        body: Column(
-          children: [
-            // Search input
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search assistants...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: _clearSearch,
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+      child: BlocListener<BotBloc, BotState>(
+        listener: (context, state) {
+          // Handle assistant deletion states
+          if (state is AssistantDeleting) {
+            // Show loading indicator for deletion
+            // We're already using _isDeletingAssistant flag in the UI
+            setState(() {
+              _isDeletingAssistant = true;
+            });
+          } else if (state is AssistantDeleted) {
+            // Reset deleting flag
+            setState(() {
+              _isDeletingAssistant = false;
+            });
+
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Text('Assistant deleted successfully'),
+                    ),
+                  ],
                 ),
-                onChanged: _updateSearchQuery,
+                backgroundColor: Colors.green.shade700,
               ),
-            ),
-            // Bot list
-            Expanded(
-              child: _buildBotList(),
-            ),
-          ],
-        ),
-        floatingActionButton: _isCreatingAssistant
-            ? const FloatingActionButton(
-                onPressed: null,
-                backgroundColor: Colors.grey,
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+            );
+
+            // Refresh the assistants list after deletion - already handled in BotBloc
+          } else if (state is AssistantDeleteFailed) {
+            // Reset deleting flag
+            setState(() {
+              _isDeletingAssistant = false;
+            });
+
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text('Delete failed: ${state.message}'),
+                    ),
+                  ],
                 ),
-              )
-            : FloatingActionButton.extended(
-                onPressed: _navigateToCreateBot,
-                icon: const Icon(Icons.add),
-                label: const Text('New Assistant'),
+                backgroundColor: Colors.red.shade700,
               ),
+            );
+          }
+
+          // Handle assistant creation states
+          if (state is AssistantCreating) {
+            // Show loading indicator for creation
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   const SnackBar(
+            //     content: Row(
+            //       children: [
+            //         SizedBox(
+            //           width: 20,
+            //           height: 20,
+            //           child: CircularProgressIndicator(
+            //             strokeWidth: 2,
+            //             color: Colors.white,
+            //           ),
+            //         ),
+            //         SizedBox(width: 16),
+            //         Text('Creating assistant...'),
+            //       ],
+            //     ),
+            //     duration: Duration(seconds: 2),
+            //   ),
+            // );
+
+            setState(() {
+              _isCreatingAssistant = true;
+            });
+          } else if (state is AssistantCreated) {
+            // Reset creating flag
+            setState(() {
+              _isCreatingAssistant = false;
+            });
+
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                          '${state.assistant.assistantName} created successfully'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green.shade700,
+              ),
+            );
+
+            // Refresh the list
+            context.read<BotBloc>().add(const RefreshBotsEvent());
+          } else if (state is AssistantCreationFailed) {
+            // Reset creating flag
+            setState(() {
+              _isCreatingAssistant = false;
+            });
+
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text('Creation failed: ${state.message}'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('AI Assistants'),
+            actions: [
+              // Only show the add button if we're not currently creating an assistant
+              if (!_isCreatingAssistant)
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showCreateAssistantDialog,
+                  tooltip: 'Create New Assistant',
+                ),
+            ],
+          ),
+          drawer: MainAppDrawer(
+            currentIndex: 4, // Index for "Bots" tab
+            onTabSelected: (index) => navigation_utils
+                .handleDrawerNavigation(context, index, currentIndex: 4),
+          ),
+          body: Column(
+            children: [
+              // Search input
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search assistants...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearSearch,
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onChanged: _updateSearchQuery,
+                ),
+              ),
+              // Bot list
+              Expanded(
+                child: _buildBotList(),
+              ),
+            ],
+          ),
+          floatingActionButton: _isCreatingAssistant
+              ? const FloatingActionButton(
+                  onPressed: null,
+                  backgroundColor: Colors.grey,
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: _navigateToCreateBot,
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Assistant'),
+                ),
+        ),
       ),
     );
   }

@@ -156,14 +156,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (widget.isNewChat) {
       _currentThreadTitle = 'New Conversation';
       _messages = [];
-      _messages.add(
-        Message(
-          text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-          isUser: false,
-          timestamp: DateTime.now(),
-          agent: _selectedAgent,
-        ),
-      );
+      // _messages.add(
+      //   Message(
+      //     text: "Xin chào! Tôi là1 ${_selectedAgent.name}. Bạn cần giúp gì?",
+      //     isUser: false,
+      //     timestamp: DateTime.now(),
+      //     agent: _selectedAgent,
+      //   ),
+      // );
     } else {
       // Load existing conversation from API
       _loadExistingConversation();
@@ -198,14 +198,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // Add a fallback welcome message if conversation loading fails
       setState(() {
         _isTyping = false;
-        _messages.add(
-          Message(
-            text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-            isUser: false,
-            timestamp: DateTime.now(),
-            agent: _selectedAgent,
-          ),
-        );
+        // _messages.add(
+        //   Message(
+        //     text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
+        //     isUser: false,
+        //     timestamp: DateTime.now(),
+        //     agent: _selectedAgent,
+        //   ),
+        // );
       });
     }
   }
@@ -282,12 +282,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
       try {
         // Get authentication token (you might need to adjust this based on your auth system)
-        final authState = di.sl<AuthBloc>().state;
-        final accessToken = authState.user?.accessToken ?? '';
-
-        if (accessToken.isEmpty) {
-          throw Exception('User not authenticated');
-        }
 
         // Create conversation history for the API request
         // create conversationHIstory empty
@@ -515,14 +509,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() {
       _currentThreadTitle = 'New Conversation';
       _messages = [];
-      _messages.add(
-        Message(
-          text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
-          isUser: false,
-          timestamp: DateTime.now(),
-          agent: _selectedAgent,
-        ),
-      );
+      // _messages.add(
+      //   Message(
+      //     text: "Xin chào! Tôi là ${_selectedAgent.name}. Bạn cần giúp gì?",
+      //     isUser: false,
+      //     timestamp: DateTime.now(),
+      //     agent: _selectedAgent,
+      //   ),
+      // );
     });
 
     // Close drawer if it's open
@@ -1218,7 +1212,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void dispose() {
     _messageController.removeListener(_checkForPromptCommand);
-    _hidePromptSuggestions();
+    // _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -1348,10 +1342,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold),
                               ),
-                              subtitle: prompt.description != null &&
-                                      prompt.description!.isNotEmpty
+                              subtitle: prompt.description.isNotEmpty
                                   ? Text(
-                                      prompt.description!,
+                                      prompt.description,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     )
@@ -1395,13 +1388,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       _promptOverlay = null;
     }
 
-    setState(() {
-      _showPromptSuggestions = false;
-    });
+    if (mounted) {
+      setState(() {
+        _showPromptSuggestions = false;
+      });
+    }
   }
 
   // Xử lý trạng thái của PromptBloc
   void _handlePromptState(PromptState state) {
+    // Kiểm tra xem widget còn mounted không trước khi gọi setState
+    if (!mounted) return;
+
     // Xử lý kết quả của FetchPrompts event (cho _loadRecentPrompts)
     if (state.status == PromptStatus.success) {
       if (state.prompts != null) {
@@ -1424,27 +1422,35 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         // Chỉ lấy 5 prompt đầu tiên
         final recentPrompts = promptsList.take(5).toList();
 
-        setState(() {
-          _recentPrompts = recentPrompts;
-          _isLoadingPrompts = false;
-        });
+        if (mounted) {
+          setState(() {
+            _recentPrompts = recentPrompts;
+            _isLoadingPrompts = false;
+          });
+        }
       } else {
-        setState(() {
-          _recentPrompts = [];
-          _isLoadingPrompts = false;
-        });
+        if (mounted) {
+          setState(() {
+            _recentPrompts = [];
+            _isLoadingPrompts = false;
+          });
+        }
       }
     } else if (state.status == PromptStatus.loading) {
       // Đang tải
-      setState(() {
-        _isLoadingPrompts = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingPrompts = true;
+        });
+      }
     } else if (state.status == PromptStatus.failure) {
       // Xảy ra lỗi
-      setState(() {
-        _isLoadingPrompts = false;
-        _recentPrompts = [];
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingPrompts = false;
+          _recentPrompts = [];
+        });
+      }
       debugPrint('Error loading prompts: ${state.errorMessage}');
     }
 
@@ -1452,27 +1458,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (state.status == PromptStatus.loading &&
         state.showOnlyFavorites == false) {
       // Đang tải prompts từ API
-      setState(() {
-        _isLoadingPromptSuggestions = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingPromptSuggestions = true;
+        });
+      }
     } else if (state.status == PromptStatus.success &&
         state.showOnlyFavorites == false) {
       // Tải prompts thành công
-      setState(() {
-        _isLoadingPromptSuggestions = false;
-        _promptSuggestions = state.prompts ?? [];
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingPromptSuggestions = false;
+          _promptSuggestions = state.prompts ?? [];
+        });
 
-      // Hiển thị overlay nếu người dùng vẫn đang nhập "/"
-      if (_messageController.text.startsWith('/')) {
-        _showPromptSuggestionsOverlay();
+        // Hiển thị overlay nếu người dùng vẫn đang nhập "/"
+        if (_messageController.text.startsWith('/') && mounted) {
+          _showPromptSuggestionsOverlay();
+        }
       }
     } else if (state.status == PromptStatus.failure) {
       // Xử lý lỗi
-      setState(() {
-        _isLoadingPromptSuggestions = false;
-        _promptSuggestions = [];
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingPromptSuggestions = false;
+          _promptSuggestions = [];
+        });
+      }
       debugPrint('Error loading prompt suggestions: ${state.errorMessage}');
     }
   }
