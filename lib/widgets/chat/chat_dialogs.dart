@@ -46,19 +46,88 @@ class DeleteConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Xác nhận xóa'),
-      content: const Text(
-        'Bạn có chắc muốn xóa cuộc trò chuyện này? Hành động này không thể hoàn tác.',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
       ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.delete_outline,
+              color: Colors.red,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text(
+            'Xác nhận xóa',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bạn có chắc muốn xóa cuộc trò chuyện này?',
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Hành động này không thể hoàn tác.',
+            style: TextStyle(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Hủy'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey[300]!),
+            ),
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black87,
+          ),
+          child: const Text(
+            'Hủy',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
         ),
-        TextButton(
+        const SizedBox(width: 12),
+        TextButton.icon(
+          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.white),
+          label: const Text(
+            'Xóa',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
           onPressed: onConfirm,
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Xóa'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
       ],
     );
