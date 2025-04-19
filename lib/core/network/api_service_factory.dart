@@ -1,5 +1,6 @@
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/network/dio_app_logger.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 
 /// Factory for creating service-specific API clients
@@ -20,6 +21,9 @@ class ApiServiceFactory {
     return _createDio(ApiConfig.jarvisBaseUrl);
   }
 
+  /// add bear token to headers
+  ///
+
   /// Internal helper to create and configure a Dio instance with the given base URL
   static Dio _createDio(String baseUrl) {
     final dio = Dio(BaseOptions(
@@ -29,6 +33,20 @@ class ApiServiceFactory {
       sendTimeout: const Duration(seconds: 180),
       headers: ApiConfig.defaultHeaders,
     ));
+
+    /// add bear token to headers
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          // Get the access token from secure storage
+          final accessToken = await SecureStorageUtil().getAccessToken();
+          if (accessToken != null) {
+            options.headers['Authorization'] = 'Bearer $accessToken';
+          }
+          return handler.next(options); // continue with the request
+        },
+      ),
+    );
 
     // Add logging interceptor
     dio.interceptors.add(

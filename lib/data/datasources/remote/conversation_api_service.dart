@@ -14,7 +14,6 @@ class ConversationApiService {
       : _apiService = sl.get<ApiService>(),
         _dio = ApiServiceFactory.createJarvisDio() {
     // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
 
   // Get user's conversations
