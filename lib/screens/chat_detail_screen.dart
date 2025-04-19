@@ -47,12 +47,14 @@ class ChatDetailScreen extends StatefulWidget {
   final bool isNewChat;
   final String? threadId;
   final String? initialPrompt;
+  final bool? setCursorToEnd;
 
   const ChatDetailScreen({
     Key? key,
     this.isNewChat = false,
     this.threadId,
     this.initialPrompt,
+    this.setCursorToEnd,
   }) : super(key: key);
 
   @override
@@ -144,10 +146,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     _loadRecentPrompts();
+    print("initialPrompt: ${widget.initialPrompt}");
 
     // Set the initial prompt if provided
     if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
       _messageController.text = widget.initialPrompt!;
+
+      // Position cursor at the end of the text
+      if (widget.setCursorToEnd == true) {
+        _messageController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _messageController.text.length),
+        );
+      } else {
+        // Position cursor at the start of the text
+        _messageController.selection = TextSelection.fromPosition(
+          const TextPosition(offset: 0),
+        );
+      }
     }
   }
 

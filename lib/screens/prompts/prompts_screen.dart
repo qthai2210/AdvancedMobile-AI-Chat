@@ -205,27 +205,28 @@ class _PromptsScreenState extends State<PromptsScreen> {
   /// Uses the selected prompt in a new chat conversation
   void _usePrompt(PromptModel prompt) {
     try {
-      context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
-      context.showInfoNotification('Đã chuyển sang trò chuyện mới');
-    } catch (e) {
-      // Fallback to regular navigation
-      try {
-        Navigator.of(context).pushAndRemoveUntil(
+      // Show notification first, before navigation
+      context.showInfoNotification('Đang chuyển sang trò chuyện mới');
+
+      // Delay navigation slightly to allow notification to show
+      Future.delayed(const Duration(milliseconds: 100), () {
+        Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ChatDetailScreen(
               initialPrompt: prompt.content,
               isNewChat: true,
+              setCursorToEnd: true,
             ),
           ),
-          (route) => false,
         );
-      } catch (e2) {
-        context.showErrorNotification(
-          'Không thể chuyển trang, vui lòng thử lại sau',
-          actionLabel: 'Thử lại',
-          onAction: () => _usePrompt(prompt),
-        );
-      }
+      });
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+      context.showErrorNotification(
+        'Không thể chuyển trang, vui lòng thử lại sau',
+        actionLabel: 'Thử lại',
+        onAction: () => _usePrompt(prompt),
+      );
     }
   }
 
