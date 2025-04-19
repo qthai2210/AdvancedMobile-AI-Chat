@@ -72,79 +72,77 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   void _deleteSource(KnowledgeSource source) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Xóa nguồn dữ liệu'),
-            content: const Text(
-              'Bạn có chắc muốn xóa nguồn dữ liệu này? Hành động này không thể hoàn tác.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _knowledgeBase = _knowledgeBase.removeSource(source.id);
-                  });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã xóa nguồn dữ liệu'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Xóa'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa nguồn dữ liệu'),
+        content: const Text(
+          'Bạn có chắc muốn xóa nguồn dữ liệu này? Hành động này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _knowledgeBase = _knowledgeBase.removeSource(source.id);
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã xóa nguồn dữ liệu'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
     );
   }
 
   void _showSourceOptions(KnowledgeSource source) {
     showModalBottomSheet(
       context: context,
-      builder:
-          (context) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(
-                  source.isEnabled ? Icons.toggle_off : Icons.toggle_on,
-                  color: source.isEnabled ? Colors.red : Colors.green,
-                ),
-                title: Text(
-                  source.isEnabled
-                      ? 'Vô hiệu hóa nguồn dữ liệu'
-                      : 'Kích hoạt nguồn dữ liệu',
-                  style: TextStyle(
-                    color: source.isEnabled ? Colors.red : Colors.green,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _toggleSourceStatus(source);
-                },
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(
+              source.isEnabled ? Icons.toggle_off : Icons.toggle_on,
+              color: source.isEnabled ? Colors.red : Colors.green,
+            ),
+            title: Text(
+              source.isEnabled
+                  ? 'Vô hiệu hóa nguồn dữ liệu'
+                  : 'Kích hoạt nguồn dữ liệu',
+              style: TextStyle(
+                color: source.isEnabled ? Colors.red : Colors.green,
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text(
-                  'Xóa nguồn dữ liệu',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteSource(source);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _toggleSourceStatus(source);
+            },
           ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Colors.red),
+            title: const Text(
+              'Xóa nguồn dữ liệu',
+              style: TextStyle(color: Colors.red),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _deleteSource(source);
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 
@@ -180,10 +178,9 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
         const Divider(height: 1),
         _buildSourcesHeader(),
         Expanded(
-          child:
-              _knowledgeBase.sources.isEmpty
-                  ? _buildEmptySourcesView()
-                  : _buildSourcesList(),
+          child: (_knowledgeBase.sources?.isEmpty ?? true)
+              ? _buildEmptySourcesView()
+              : _buildSourcesList(),
         ),
       ],
     );
@@ -256,11 +253,10 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value:
-                _knowledgeBase.totalSourcesCount > 0
-                    ? _knowledgeBase.activeSourcesCount /
-                        _knowledgeBase.totalSourcesCount
-                    : 0,
+            value: _knowledgeBase.totalSourcesCount > 0
+                ? _knowledgeBase.activeSourcesCount /
+                    _knowledgeBase.totalSourcesCount
+                : 0,
             backgroundColor: Colors.grey.shade200,
             valueColor: AlwaysStoppedAnimation<Color>(
               _knowledgeBase.isEnabled
@@ -284,9 +280,9 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
             'Nguồn dữ liệu',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          if (_knowledgeBase.sources.isNotEmpty)
+          if (_knowledgeBase.sources?.isNotEmpty ?? false)
             Text(
-              '${_knowledgeBase.sources.length} nguồn',
+              '${_knowledgeBase.sources?.length ?? 0} nguồn',
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
         ],
@@ -330,12 +326,14 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   }
 
   Widget _buildSourcesList() {
+    final sources = _knowledgeBase.sources ?? [];
+
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 80), // Space for FAB
-      itemCount: _knowledgeBase.sources.length,
+      itemCount: sources.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final source = _knowledgeBase.sources[index];
+        final source = sources[index];
         return _buildSourceItem(source);
       },
     );
@@ -356,10 +354,9 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   }
 
   Widget _buildSourceIcon(KnowledgeSource source) {
-    final sourceColor =
-        source.isEnabled
-            ? KnowledgeSource.getColorForType(source.type)
-            : Colors.grey;
+    final sourceColor = source.isEnabled
+        ? KnowledgeSource.getColorForType(source.type)
+        : Colors.grey;
 
     return CircleAvatar(
       backgroundColor: sourceColor.withOpacity(0.1),

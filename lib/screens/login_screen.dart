@@ -1,11 +1,13 @@
+import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:aichatbot/blocs/auth/auth_bloc.dart';
-import 'package:aichatbot/blocs/auth/auth_event.dart';
-import 'package:aichatbot/blocs/auth/auth_state.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,9 +17,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'user@example.com');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _emailController = TextEditingController(text: '2test@gmail.com');
+  final _passwordController = TextEditingController(text: '22102003T');
   bool _obscurePassword = true;
+
+  // Thêm biến để lưu trạng thái lỗi password
+  String? _passwordError;
 
   @override
   void initState() {
@@ -26,11 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthBloc>().add(EmailChanged(_emailController.text));
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  // Thêm phương thức kiểm tra mật khẩu
+  void _validatePassword(String password) {
+    setState(() {
+      if (password.isEmpty) {
+        _passwordError = null;
+      } else if (password.length < 8) {
+        _passwordError = 'Mật khẩu phải có ít nhất 8 ký tự';
+      } else {
+        _passwordError = null;
+      }
+    });
+
+    context.read<AuthBloc>().add(PasswordChanged(password));
   }
 
   @override
@@ -38,18 +51,20 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'Authentication failed'),
-            ),
-          );
-        } else if (state.status == AuthStatus.success) {
-          // Navigate directly to chat detail or chat screen
-          if (state.user?.directNavigationPath != null) {
-            context.go(state.user!.directNavigationPath!);
-          } else {
-            context.go('/chat');
-          }
+          // Make sure this code runs when login fails
+          debugPrint('Login failure detected: ${state.errorMessage}');
+          context.showAuthErrorNotification(state.errorMessage is String
+              ? state.errorMessage
+              : ErrorFormatter.formatAuthError(state.errorMessage));
+        } else if (state.status == AuthStatus.success && state.user != null) {
+          // Only navigate to chat if login succeeded AND we have a user
+          Future.delayed(const Duration(milliseconds: 500), () {
+            try {
+              context.go('/chat/detail/${state.user?.id}');
+            } catch (_) {
+              Navigator.of(context).pushReplacementNamed('/chat');
+            }
+          });
         }
       },
       child: Scaffold(
@@ -161,6 +176,52 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginForm() {
     return Column(
       children: [
+        // Thêm BlocBuilder để hiển thị lỗi đăng nhập
+        BlocBuilder<AuthBloc, AuthState>(
+          buildWhen: (previous, current) =>
+              previous.status != current.status ||
+              previous.errorMessage != current.errorMessage,
+          builder: (context, state) {
+            if (state.status == AuthStatus.failure &&
+                state.errorMessage != null) {
+              String errorMessage = '';
+              if (state.errorMessage is String) {
+                errorMessage = state.errorMessage;
+              } else {
+                errorMessage =
+                    ErrorFormatter.formatAuthError(state.errorMessage);
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline,
+                          color: Colors.red.shade700, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          errorMessage,
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+
         // Email Field
         TextField(
           controller: _emailController,
@@ -175,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Password Field
+        // Password Field - thêm hiển thị lỗi
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
@@ -192,9 +253,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
               },
             ),
+            // Thêm hiển thị lỗi nếu password quá ngắn
+            errorText: _passwordError,
+            // Điều chỉnh thêm space nếu có errorText
+            contentPadding: EdgeInsets.only(
+              top: 12,
+              bottom: _passwordError != null ? 12 : 16,
+            ),
           ),
           onChanged: (password) {
-            context.read<AuthBloc>().add(PasswordChanged(password));
+            // Gọi hàm validate để kiểm tra độ dài
+            _validatePassword(password);
           },
         ),
 
@@ -262,7 +331,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 text: 'Log in',
                 isLoading: state.status == AuthStatus.loading,
                 onPressed: () {
-                  context.read<AuthBloc>().add(LoginSubmitted());
+                  // Kiểm tra các field có dữ liệu không
+                  if (_emailController.text.isEmpty ||
+                      _passwordController.text.isEmpty) {
+                    context.showWarningNotification(
+                      'Vui lòng nhập email và mật khẩu',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra định dạng email
+                  final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRegExp.hasMatch(_emailController.text)) {
+                    context.showWarningNotification(
+                      'Email không đúng định dạng, vui lòng kiểm tra lại',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra độ dài mật khẩu
+                  if (_passwordController.text.length < 8) {
+                    context.showWarningNotification(
+                      'Mật khẩu phải có ít nhất 8 ký tự',
+                    );
+                    return;
+                  }
+
+                  // Gửi request đăng nhập
+                  context.read<AuthBloc>().add(
+                        LoginSubmitted(
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                        ),
+                      );
                 },
                 type: ButtonType.filled,
                 gradient: const LinearGradient(

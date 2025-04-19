@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:aichatbot/models/ai_agent_model.dart';
 
 class Message {

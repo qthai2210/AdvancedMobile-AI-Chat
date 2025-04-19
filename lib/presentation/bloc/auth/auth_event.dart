@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 abstract class AuthEvent {}
 
 class EmailChanged extends AuthEvent {
@@ -10,7 +12,15 @@ class PasswordChanged extends AuthEvent {
   PasswordChanged(this.password);
 }
 
-class LoginSubmitted extends AuthEvent {}
+class LoginSubmitted extends AuthEvent {
+  final String email;
+  final String password;
+
+  LoginSubmitted({
+    required this.email,
+    required this.password,
+  });
+}
 
 class ForgotPasswordRequested extends AuthEvent {}
 
@@ -31,4 +41,10 @@ class RegisterSubmitted extends AuthEvent {
     required this.email,
     required this.password,
   });
+}
+
+class LogoutRequested extends AuthEvent {
+  final BuildContext? context;
+
+  LogoutRequested({this.context});
 }

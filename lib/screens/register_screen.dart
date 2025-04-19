@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:aichatbot/blocs/auth/auth_bloc.dart';
-import 'package:aichatbot/blocs/auth/auth_event.dart';
-import 'package:aichatbot/blocs/auth/auth_state.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
+import 'package:aichatbot/utils/error_formatter.dart';
+import 'package:aichatbot/widgets/error_dialog.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,18 +39,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'Registration failed'),
-            ),
+          debugPrint(
+              'Auth failure with message type: ${state.errorMessage.runtimeType}');
+
+          final formattedError =
+              ErrorFormatter.formatAuthError(state.errorMessage);
+          debugPrint('Formatted error: $formattedError');
+
+          context.showErrorNotification(
+            formattedError,
+            actionLabel: 'Thử lại',
           );
         } else if (state.status == AuthStatus.success) {
-          // Navigate directly to chat detail or chat screen
-          if (state.user?.directNavigationPath != null) {
-            context.go(state.user!.directNavigationPath!);
-          } else {
-            context.go('/chat');
-          }
+          context.showSuccessNotification('Đăng ký thành công');
+
+          // Tự động chuyển hướng đến trang login sau khi đăng ký thành công
+          Future.delayed(const Duration(milliseconds: 500), () {
+            try {
+              context.go('/login');
+            } catch (_) {
+              // Fallback cho Navigation 1.0 nếu GoRouter gặp lỗi
+              Navigator.of(context).pushReplacementNamed('/login');
+            }
+          });
         }
       },
       child: Scaffold(
@@ -104,14 +118,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 right: 0,
                 child: Center(
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black,
                           spreadRadius: 2,
                           blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -242,7 +256,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // Register Button
           BlocBuilder<AuthBloc, AuthState>(
             buildWhen: (previous, current) => previous.status != current.status,
             builder: (context, state) {
@@ -250,20 +263,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 text: 'Create Account',
                 isLoading: state.status == AuthStatus.loading,
                 onPressed: () {
-                  if (_passwordController.text ==
-                      _confirmPasswordController.text) {
-                    context.read<AuthBloc>().add(
-                          RegisterSubmitted(
-                            name: _nameController.text,
-                            email: _emailController.text,
-                            password: _passwordController.text,
-                          ),
-                        );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Passwords don't match")),
+                  // Kiểm tra các field có dữ liệu không
+                  if (_nameController.text.isEmpty ||
+                      _emailController.text.isEmpty ||
+                      _passwordController.text.isEmpty ||
+                      _confirmPasswordController.text.isEmpty) {
+                    context.showWarningNotification(
+                      'Vui lòng điền đầy đủ thông tin',
                     );
+                    return;
                   }
+
+                  // Kiểm tra định dạng email
+                  final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRegExp.hasMatch(_emailController.text)) {
+                    context.showWarningNotification(
+                      'Email không đúng định dạng, vui lòng kiểm tra lại',
+                    );
+                    return;
+                  }
+
+                  // Kiểm tra password trùng khớp
+                  if (_passwordController.text !=
+                      _confirmPasswordController.text) {
+                    context.showWarningNotification(
+                      'Mật khẩu nhập lại không khớp',
+                    );
+                    return;
+                  }
+
+                  // Gửi form đăng ký
+                  context.read<AuthBloc>().add(
+                        RegisterSubmitted(
+                          name: _nameController.text,
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                        ),
+                      );
                 },
                 type: ButtonType.filled,
                 gradient: const LinearGradient(

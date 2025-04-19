@@ -571,7 +571,7 @@ class KnowledgeBase {
   final String id;
   final String name;
   final String description;
-  final List<KnowledgeSource> sources;
+  final List<KnowledgeSource>? sources;
   final DateTime createdAt;
   final DateTime lastUpdatedAt;
   final bool isEnabled;
@@ -587,9 +587,9 @@ class KnowledgeBase {
     required this.id,
     required this.name,
     required this.description,
-    required this.sources,
     required this.createdAt,
     required this.lastUpdatedAt,
+    this.sources, // đã là optional, không bắt buộc
     this.isEnabled = true,
     this.botId,
     this.category,
@@ -600,14 +600,15 @@ class KnowledgeBase {
 
   /// Get the count of active sources
   int get activeSourcesCount =>
-      sources.where((source) => source.isEnabled).length;
+      sources?.where((source) => source.isEnabled).length ?? 0;
 
   /// Get the total number of sources
-  int get totalSourcesCount => sources.length;
+  int get totalSourcesCount => sources?.length ?? 0;
 
   /// Estimate the total token count for this knowledge base
   int get estimatedTokenCount {
-    return sources
+    if (sources == null) return 0;
+    return sources!
         .where((source) => source.isEnabled && source.tokenCount != null)
         .fold(0, (sum, source) => sum + (source.tokenCount ?? 0));
   }
@@ -620,16 +621,17 @@ class KnowledgeBase {
 
   /// Check if any sources require syncing
   bool get requiresSyncing {
-    return sources.any((source) =>
-        source.isEnabled &&
-        source.supportsSyncing &&
-        (source.lastSynced == null ||
-            DateTime.now().difference(source.lastSynced!).inDays > 7));
+    return sources?.any((source) =>
+            source.isEnabled &&
+            source.supportsSyncing &&
+            (source.lastSynced == null ||
+                DateTime.now().difference(source.lastSynced!).inDays > 7)) ??
+        false;
   }
 
   /// Get sources by type
   List<KnowledgeSource> getSourcesByType(KnowledgeSourceType type) {
-    return sources.where((source) => source.type == type).toList();
+    return sources?.where((source) => source.type == type).toList() ?? [];
   }
 
   /// Find credential by ID
@@ -684,7 +686,13 @@ class KnowledgeBase {
 
   /// Add a new knowledge source to this knowledge base
   KnowledgeBase addSource(KnowledgeSource source) {
-    final updatedSources = List<KnowledgeSource>.from(sources)..add(source);
+    final List<KnowledgeSource> updatedSources;
+    if (sources == null) {
+      updatedSources = [source];
+    } else {
+      updatedSources = List<KnowledgeSource>.from(sources!)..add(source);
+    }
+
     return copyWith(
       sources: updatedSources,
       lastUpdatedAt: DateTime.now(),
@@ -693,7 +701,9 @@ class KnowledgeBase {
 
   /// Update an existing knowledge source
   KnowledgeBase updateSource(KnowledgeSource updatedSource) {
-    final updatedSources = sources.map((source) {
+    if (sources == null) return this;
+
+    final updatedSources = sources!.map((source) {
       if (source.id == updatedSource.id) {
         return updatedSource;
       }
@@ -708,8 +718,10 @@ class KnowledgeBase {
 
   /// Remove a knowledge source
   KnowledgeBase removeSource(String sourceId) {
+    if (sources == null) return this;
+
     final updatedSources =
-        sources.where((source) => source.id != sourceId).toList();
+        sources!.where((source) => source.id != sourceId).toList();
     return copyWith(
       sources: updatedSources,
       lastUpdatedAt: DateTime.now(),

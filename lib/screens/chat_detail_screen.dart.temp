@@ -1,0 +1,43 @@
+  void _handleChatState(ChatState state) {
+    if (state.status == ChatStatus.loading) {
+      // The message is already shown as "typing" from the _sendMessage method
+      // Nothing to do here as we've already updated the UI to show typing status
+    } else if (state.status == ChatStatus.success) {
+      // Handle successful message response from API
+      if (state.response != null) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(
+            Message(
+              text: state.response!.content,
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: _selectedAgent,
+            ),
+          );
+        });
+        
+        _scrollToBottom();
+      }
+    } else if (state.status == ChatStatus.error) {
+      // Handle error state
+      setState(() {
+        _isTyping = false;
+        _messages.add(
+          Message(
+            text: "Sorry, there was an error processing your request: ${state.errorMessage ?? 'Unknown error'}",
+            isUser: false,
+            timestamp: DateTime.now(),
+            agent: _selectedAgent,
+          ),
+        );
+      });
+      
+      // Show error in snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${state.errorMessage ?? 'Unknown error'}')),
+      );
+      
+      _scrollToBottom();
+    }
+  }
