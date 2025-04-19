@@ -4,10 +4,20 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
+import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
+import 'package:aichatbot/screens/prompts/edit_prompt_screen.dart';
+import 'package:aichatbot/screens/prompts/widgets/empty_state.dart';
+import 'package:aichatbot/screens/prompts/widgets/loading_state_view.dart';
+import 'package:aichatbot/screens/prompts/widgets/prompt_detail_sheet.dart';
+import 'package:aichatbot/screens/prompts/widgets/private_prompt_item.dart';
+import 'package:aichatbot/screens/prompts/widgets/private_prompts_header.dart';
+import 'package:aichatbot/screens/prompts/widgets/private_prompts_empty_state.dart';
 import 'package:aichatbot/utils/build_context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:aichatbot/utils/date_formatter.dart';
 
 class PrivatePromptsScreen extends StatefulWidget {
   const PrivatePromptsScreen({Key? key}) : super(key: key);
@@ -89,11 +99,291 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
         );
   }
 
+  void _toggleFavorite(PromptModel prompt) async {
+    final authState = context.read<AuthBloc>().state;
+    final accessToken = authState.user?.accessToken;
+
+    if (accessToken != null) {
+      context.read<PromptBloc>().add(
+            ToggleFavoriteRequested(
+              promptId: prompt.id,
+              accessToken: accessToken,
+              currentFavoriteStatus: prompt.isFavorite,
+            ),
+          );
+
+      final message = prompt.isFavorite
+          ? 'Đã xóa khỏi danh sách yêu thích'
+          : 'Đã thêm vào danh sách yêu thích';
+
+      context.showSuccessNotification(message);
+    } else {
+      context.showWarningNotification(
+        'Bạn cần đăng nhập để sử dụng tính năng này',
+      );
+    }
+  }
+
+  void _editPrompt(PromptModel prompt) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditPromptScreen(prompt: prompt),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadPrivatePrompts();
+      }
+    });
+  }
+
+  void _usePrompt(PromptModel prompt) {
+    try {
+      context.go('/chat/detail/new', extra: {'initialPrompt': prompt.content});
+      context.showInfoNotification('Đã chuyển sang trò chuyện mới');
+    } catch (e) {
+      try {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => ChatDetailScreen(
+              initialPrompt: prompt.content,
+              isNewChat: true,
+            ),
+          ),
+          (route) => false,
+        );
+      } catch (e2) {
+        context.showErrorNotification(
+          'Không thể chuyển trang, vui lòng thử lại sau',
+        );
+      }
+    }
+  }
+
+  void _confirmDeletePrompt(BuildContext context, PromptModel prompt) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Xác nhận xóa',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bạn có chắc chắn muốn xóa prompt "${prompt.title}"?',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Đây là prompt riêng tư và sẽ bị xóa vĩnh viễn.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+            ],
+          ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey[300]!),
+                ),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+              ),
+              child: const Text(
+                'Hủy',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              icon: const Icon(Icons.delete_outline,
+                  size: 18, color: Colors.white),
+              label: const Text(
+                'Xóa',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _deletePrompt(prompt);
+              },
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deletePrompt(PromptModel prompt) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState.user?.accessToken != null) {
+      context.read<PromptBloc>().add(
+            DeletePrompt(
+              accessToken: authState.user!.accessToken!,
+              promptId: prompt.id,
+            ),
+          );
+
+      // Hiển thị loading indicator trong khi chờ xóa
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (loadingContext) {
+          return BlocListener<PromptBloc, PromptState>(
+            listener: (context, state) {
+              if (state.status == PromptStatus.success &&
+                  state.deletedPromptId == prompt.id) {
+                Navigator.pop(loadingContext);
+                context.showSuccessNotification('Đã xóa prompt thành công');
+                _loadPrivatePrompts(); // Reload danh sách sau khi xóa
+              } else if (state.status == PromptStatus.failure) {
+                Navigator.pop(loadingContext);
+                context.showErrorNotification(
+                  'Lỗi: ${state.errorMessage ?? "Không thể xóa prompt"}',
+                );
+              }
+            },
+            child: AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).primaryColor,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Đang xóa prompt...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Vui lòng đợi trong giây lát',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  void _viewPromptDetails(PromptModel prompt) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => PromptDetailSheet(
+        prompt: prompt,
+        isOwner: true, // Private prompts are always owned by the user
+        onToggleFavorite: _toggleFavorite,
+        onEdit: _editPrompt,
+        onSaveAsPrivate: (_) {}, // Not needed for private prompts
+        onUse: _usePrompt,
+        onDelete: _confirmDeletePrompt,
+      ),
+    );
+  }
+
+  void _navigateToCreatePrompt() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
+    ).then((result) {
+      if (result == true) {
+        _loadPrivatePrompts();
+        context.showSuccessNotification('Tạo prompt thành công');
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('My Private Prompts'),
+        title: const Text(
+          'Prompts Riêng Tư',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Tạo Prompt mới',
+            onPressed: _navigateToCreatePrompt,
+          ),
+        ],
       ),
       body: BlocConsumer<PromptBloc, PromptState>(
         listenWhen: (previous, current) =>
@@ -102,7 +392,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
         listener: (context, state) {
           if (state.status == PromptStatus.failure) {
             context.showErrorNotification(
-              state.errorMessage ?? 'An error occurred while loading prompts',
+              state.errorMessage ?? 'Lỗi khi tải prompts',
             );
           }
         },
@@ -114,41 +404,10 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
           if (state.status == PromptStatus.initial ||
               state.status == PromptStatus.loading &&
                   (state.prompts?.isEmpty ?? true)) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingStateView();
           } else if (state.prompts?.isEmpty ?? true) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.lock_outline,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Bạn chưa có prompt riêng tư nào',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreatePromptScreen(),
-                        ),
-                      ).then((result) {
-                        if (result == true) {
-                          _loadPrivatePrompts();
-                        }
-                      });
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tạo prompt riêng tư'),
-                  ),
-                ],
-              ),
+            return PrivatePromptsEmptyState(
+              onCreatePrompt: _navigateToCreatePrompt,
             );
           } else {
             final prompts = [...?state.prompts];
@@ -156,252 +415,35 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
 
             return ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: prompts.length,
+              padding: const EdgeInsets.all(16),
+              itemCount: prompts.length + 1, // +1 for the header
               itemBuilder: (context, index) {
-                final prompt = prompts[index];
-                return _buildPromptItem(prompt);
+                if (index == 0) {
+                  // Header with count
+                  return PrivatePromptsHeader(count: prompts.length);
+                }
+
+                final prompt = prompts[index - 1];
+                return PrivatePromptItem(
+                  prompt: prompt,
+                  onViewDetails: _viewPromptDetails,
+                  onToggleFavorite: _toggleFavorite,
+                  onEdit: _editPrompt,
+                  onUsePrompt: _usePrompt,
+                  onDeletePrompt: _confirmDeletePrompt,
+                  formatDate: DateFormatter.formatRelative,
+                );
               },
             );
           }
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreatePromptScreen(),
-            ),
-          ).then((result) {
-            if (result == true) {
-              _loadPrivatePrompts();
-            }
-          });
-        },
-        tooltip: 'Tạo Prompt Riêng Tư',
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToCreatePrompt,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Tạo Prompt', style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
     );
-  }
-
-  Widget _buildPromptItem(PromptModel prompt) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () => _viewPromptDetails(prompt),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.lock_outline,
-                                size: 16, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                prompt.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Private prompt',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      prompt.isFavorite
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: prompt.isFavorite ? Colors.red : null,
-                    ),
-                    onPressed: () => _toggleFavorite(prompt),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                prompt.description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[800],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-              if (prompt.category != null)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Prompt.getCategoryColor(
-                                  prompt.category ?? 'Other')
-                              .withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: Prompt.getCategoryColor(
-                                      prompt.category ?? 'Other')
-                                  .withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          prompt.category ?? 'Other',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Prompt.getCategoryColor(
-                                prompt.category ?? 'Other'),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Edit'),
-                    onPressed: () => _editPrompt(prompt),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text('Delete'),
-                    onPressed: () => _confirmDeletePrompt(prompt),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.chat, size: 16),
-                    label: const Text('Use'),
-                    onPressed: () => _usePrompt(prompt),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Các phương thức xử lý hành động - có thể tái sử dụng từ PromptsScreen
-  void _viewPromptDetails(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _buildPromptDetailSheet(prompt),
-    );
-  }
-
-  Widget _buildPromptDetailSheet(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
-    // Nhớ thêm biểu tượng khóa để thể hiện rằng đây là prompt riêng tư
-    return DraggableScrollableSheet(
-      builder: (context, scrollController) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.lock_outline,
-                            size: 18, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            prompt.title,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              // Phần còn lại giống với _buildPromptDetailSheet của PromptsScreen
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _toggleFavorite(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
-  }
-
-  void _editPrompt(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
-  }
-
-  void _confirmDeletePrompt(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
-  }
-
-  void _usePrompt(PromptModel prompt) {
-    // Tái sử dụng phương thức từ PromptsScreen
   }
 }

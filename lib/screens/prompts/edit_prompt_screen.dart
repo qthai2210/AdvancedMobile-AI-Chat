@@ -6,10 +6,12 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
-import 'package:aichatbot/widgets/app_notification.dart'; // Đảm bảo đã import AppNotification
-import 'package:aichatbot/utils/error_formatter.dart';
-import 'package:aichatbot/utils/build_context_extensions.dart'; // Đầu tiên, thêm import cho BuildContext extension
-import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:aichatbot/utils/build_context_extensions.dart';
+import 'package:aichatbot/screens/prompts/widgets/section_title.dart';
+import 'package:aichatbot/screens/prompts/widgets/prompt_header_info.dart';
+import 'package:aichatbot/screens/prompts/widgets/category_selector.dart';
+import 'package:aichatbot/screens/prompts/widgets/privacy_toggle.dart';
+import 'package:aichatbot/screens/prompts/widgets/submit_button.dart';
 
 class EditPromptScreen extends StatefulWidget {
   final PromptModel prompt;
@@ -25,25 +27,9 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _contentController;
-  String _selectedCategory =
-      'other'; // This is already defined as a single string
+  String _selectedCategory = 'other';
   bool _isPublic = true;
   bool _isSubmitting = false;
-
-  // Available categories
-  final List<String> _categories = [
-    'business',
-    'career',
-    'chatbot',
-    'coding',
-    'education',
-    'fun',
-    'marketing',
-    'productivity',
-    'seo',
-    'writing',
-    'other',
-  ];
 
   @override
   void initState() {
@@ -52,8 +38,7 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
     _descriptionController =
         TextEditingController(text: widget.prompt.description);
     _contentController = TextEditingController(text: widget.prompt.content);
-    _selectedCategory =
-        widget.prompt.category ?? 'Other'; // Use the single category
+    _selectedCategory = widget.prompt.category ?? 'other';
     _isPublic = widget.prompt.isPublic;
   }
 
@@ -65,16 +50,231 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
     super.dispose();
   }
 
-  void _selectCategory(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<PromptBloc, PromptState>(
+      listener: (context, state) {
+        if (state.status == PromptStatus.success) {
+          setState(() {
+            _isSubmitting = false;
+          });
+          context.showSuccessNotification('Cập nhật prompt thành công');
+          Future.delayed(const Duration(milliseconds: 500), () {
+            Navigator.of(context).pop(true);
+          });
+        } else if (state.status == PromptStatus.failure) {
+          setState(() {
+            _isSubmitting = false;
+          });
+          context.showErrorNotification('Lỗi: ${state.errorMessage}');
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          appBar: _buildAppBar(state),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Hiển thị thanh trạng thái
+                _buildProgressBar(),
+
+                // Form chính
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Tiêu đề và ID prompt
+                        PromptHeaderInfo(
+                          title: widget.prompt.title,
+                          id: widget.prompt.id,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Thông tin cơ bản
+                        const SectionTitle(title: 'Thông tin cơ bản'),
+                        const SizedBox(height: 16),
+                        _buildTitleField(),
+                        const SizedBox(height: 16),
+                        _buildDescriptionField(),
+                        const SizedBox(height: 24),
+
+                        // Danh mục
+                        const SectionTitle(title: 'Danh mục'),
+                        const SizedBox(height: 12),
+                        CategorySelector(
+                          selectedCategory: _selectedCategory,
+                          onCategorySelected: (category) {
+                            setState(() {
+                              _selectedCategory = category;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Quyền riêng tư
+                        const SectionTitle(title: 'Quyền riêng tư'),
+                        const SizedBox(height: 12),
+                        PrivacyToggle(
+                          isPublic: _isPublic,
+                          onToggle: (value) {
+                            setState(() {
+                              _isPublic = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Nội dung
+                        const SectionTitle(title: 'Nội dung Prompt'),
+                        const SizedBox(height: 12),
+                        _buildContentField(),
+                        const SizedBox(height: 30),
+
+                        // Nút lưu
+                        SubmitButton(
+                          isLoading: _isSubmitting,
+                          onPressed: _isSubmitting ? null : _savePrompt,
+                          label: 'Cập nhật Prompt',
+                        ),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  AppBar _buildAppBar(PromptState state) {
+    return AppBar(
+      title: const Text('Chỉnh sửa Prompt'),
+      elevation: 0,
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black,
+      actions: [
+        if (_isSubmitting)
+          const Padding(
+            padding: EdgeInsets.all(14.0),
+            child: SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          )
+        else
+          TextButton.icon(
+            icon: const Icon(Icons.save),
+            label: const Text('Lưu'),
+            onPressed: _savePrompt,
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).primaryColor,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBar() {
+    return Container(
+      width: double.infinity,
+      height: 4,
+      color: Colors.grey[200],
+      child: _isSubmitting
+          ? LinearProgressIndicator(
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).primaryColor,
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildTitleField() {
+    return TextFormField(
+      controller: _titleController,
+      decoration: InputDecoration(
+        labelText: 'Tiêu đề',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        prefixIcon: const Icon(Icons.title),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Vui lòng nhập tiêu đề';
+        }
+        if (value.trim().length < 3) {
+          return 'Tiêu đề phải có ít nhất 3 ký tự';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return TextFormField(
+      controller: _descriptionController,
+      decoration: InputDecoration(
+        labelText: 'Mô tả',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        prefixIcon: const Icon(Icons.description),
+      ),
+      maxLines: 3,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Vui lòng nhập mô tả';
+        }
+        if (value.trim().length < 10) {
+          return 'Mô tả phải có ít nhất 10 ký tự';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildContentField() {
+    return TextFormField(
+      controller: _contentController,
+      decoration: InputDecoration(
+        labelText: 'Nội dung Prompt',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        alignLabelWithHint: true,
+      ),
+      maxLines: 10,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Vui lòng nhập nội dung prompt';
+        }
+        if (value.trim().length < 10) {
+          return 'Nội dung prompt phải có ít nhất 10 ký tự';
+        }
+        return null;
+      },
+    );
   }
 
   void _savePrompt() {
     if (_formKey.currentState!.validate()) {
       if (_selectedCategory.isEmpty) {
-        // Thay ScaffoldMessenger bằng extension
         context.showWarningNotification('Vui lòng chọn một danh mục');
         return;
       }
@@ -114,204 +314,12 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
         setState(() {
           _isSubmitting = false;
         });
-
-        // Thay AppNotification bằng extension
         context.showWarningNotification(
-          'Đăng nhập để tiếp tục',
+          'Bạn cần đăng nhập để cập nhật prompt',
+          actionLabel: 'Đăng nhập',
+          onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
         );
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocConsumer<PromptBloc, PromptState>(
-      listener: (context, state) {
-        // Thêm log ở đây để xem state thực tế
-        debugPrint(
-            'EditPromptScreen - Current state: ${state.status}, updatedPrompt: ${state.updatedPrompt?.id}');
-
-        // Sửa điều kiện kiểm tra - chỉ kiểm tra status là success
-        if (state.status == PromptStatus.success) {
-          debugPrint('Edit screen: Success detected, hiding loading indicator');
-          setState(() {
-            _isSubmitting = false;
-          });
-
-          // Đảm bảo thông báo hiển thị trước khi navigation
-          context.showSuccessNotification('Cập nhật prompt thành công');
-
-          // Thêm delay nhỏ trước khi điều hướng để đảm bảo thông báo đã hiển thị
-          Future.delayed(const Duration(milliseconds: 500), () {
-            // Đóng màn hình và quay lại
-            Navigator.of(context).pop(true);
-          });
-        } else if (state.status == PromptStatus.failure) {
-          debugPrint('Edit screen: Failure detected, hiding loading indicator');
-          setState(() {
-            _isSubmitting = false;
-          });
-
-          context.showErrorNotification('Lỗi: ${state.errorMessage}');
-        }
-      },
-      builder: (context, state) {
-        // Phần còn lại của builder...
-        debugPrint('Edit screen: Building UI with state: ${state.status}');
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text('Chỉnh sửa Prompt'),
-            actions: [
-              if (_isSubmitting) // Hiển thị loading indicator ở app bar
-                const Padding(
-                  padding: EdgeInsets.all(14.0),
-                  child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else // Hiển thị nút save khi không loading
-                IconButton(
-                  icon: const Icon(Icons.save),
-                  onPressed: _savePrompt,
-                ),
-            ],
-          ),
-          body: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Tiêu đề',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Vui lòng nhập tiêu đề';
-                    }
-                    if (value.trim().length < 3) {
-                      return 'Tiêu đề phải có ít nhất 3 ký tự';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Mô tả',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Vui lòng nhập mô tả';
-                    }
-                    if (value.trim().length < 10) {
-                      return 'Mô tả phải có ít nhất 10 ký tự';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _contentController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nội dung Prompt',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: 8,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Vui lòng nhập nội dung prompt';
-                    }
-                    if (value.trim().length < 10) {
-                      return 'Nội dung prompt phải có ít nhất 10 ký tự';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Danh mục',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _categories.map((category) {
-                    final isSelected = _selectedCategory == category;
-                    final color = Prompt.getCategoryColor(category);
-                    return InkWell(
-                      onTap: () => _selectCategory(category),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? color.withOpacity(0.2)
-                              : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected
-                                ? color.withOpacity(0.5)
-                                : Colors.grey[300]!,
-                          ),
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: isSelected ? color : Colors.black54,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-                SwitchListTile(
-                  title: const Text('Hiển thị công khai'),
-                  subtitle: const Text(
-                      'Người khác có thể thấy và sử dụng prompt này'),
-                  value: _isPublic,
-                  onChanged: (value) {
-                    setState(() {
-                      _isPublic = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isSubmitting ? null : _savePrompt,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Cập nhật Prompt'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
