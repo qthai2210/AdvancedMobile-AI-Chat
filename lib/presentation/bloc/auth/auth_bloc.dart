@@ -1,3 +1,4 @@
+import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/core/errors/auth_exception.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
@@ -7,6 +8,7 @@ import 'package:aichatbot/domain/usecases/auth/register_usecase.dart';
 import 'package:aichatbot/domain/usecases/auth/logout_usecase.dart';
 import 'package:aichatbot/core/errors/failures.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
+import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 
 // Ensure that AuthFailure is defined in the 'failures.dart' file or replace it with the correct class name.
@@ -69,6 +71,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
+
+      // Initialize all post-login services after successful authentication
+      await initPostLoginServices();
+      debugPrint('Post-login services initialized after successful login');
 
       emit(state.copyWith(
         status: AuthStatus.success,
@@ -165,6 +171,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (state.user?.accessToken == null) {
       // If no user is logged in or no access token, just reset state
 
+      // Reset post-login services even if there's no token
+      // This ensures cleanup in case of app state inconsistency
+      await resetPostLoginServices();
+      debugPrint('Post-login services reset during logout (no token)');
+
       emit(const AuthState(status: AuthStatus.initial));
 
       // Redirect to login page
@@ -178,6 +189,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(status: AuthStatus.loading));
 
     try {
+      // Reset post-login services before logging out
+      await resetPostLoginServices();
+      debugPrint('Post-login services reset before logout');
+
       await logoutUsecase(
         accessToken: state.user!.accessToken!,
         refreshToken: state.user!.refreshToken,

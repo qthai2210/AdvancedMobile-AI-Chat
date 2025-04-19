@@ -1,5 +1,6 @@
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:aichatbot/core/config/api_config.dart';
+import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/data/models/assistant/assistant_list_response.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/data/models/assistant/get_assistants_params.dart';
@@ -9,14 +10,14 @@ import 'package:dio/dio.dart';
 
 /// API service for interacting with Assistant endpoints
 class AssistantApiService {
-  final ApiService _apiService = sl.get<ApiService>();
+  final ApiService _apiService;
+  final Dio _dio;
 
   /// Creates a new instance of [AssistantApiService]
-  AssistantApiService() {
+  AssistantApiService()
+      : _dio = ApiServiceFactory.createKnowledgeDio(),
+        _apiService = sl.get<ApiService>() {
     // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = ApiConfig.knowledgeUrl;
-    // awaits _apiService.createAuthHeader();
-    _apiService.addAuthHeader();
   }
 
   /// Retrieves a list of AI assistants with optional filtering and pagination
@@ -38,7 +39,7 @@ class AssistantApiService {
       AppLogger.i("dio headers ${_apiService.dio.options.headers}");
       AppLogger.i(
           "dio endpoint ${_apiService.dio.options.baseUrl}/kb-core/v1/ai-assistant");
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/kb-core/v1/ai-assistant',
         queryParameters: params.toQueryParameters(),
         // options: Options(headers: headers),
@@ -65,7 +66,7 @@ class AssistantApiService {
         headers['x-jarvis-guid'] = xJarvisGuid;
       }
 
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/api/v1/ai-assistants/$assistantId',
         options: Options(headers: headers),
       );
@@ -113,7 +114,7 @@ class AssistantApiService {
       }
 
       // Make the API call
-      final response = await _apiService.dio.post(
+      final response = await _dio.post(
         '/kb-core/v1/ai-assistant',
         data: body,
         options: Options(headers: headers),
@@ -175,7 +176,7 @@ class AssistantApiService {
       if (description != null) {
         body['description'] = description;
       } // Make the API call
-      final response = await _apiService.dio.patch(
+      final response = await _dio.patch(
         '/kb-core/v1/ai-assistant/$assistantId',
         data: body,
         options: Options(headers: headers),

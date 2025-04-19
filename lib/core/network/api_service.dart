@@ -61,7 +61,7 @@ class ApiService {
   Future<void> addAuthHeader() async {
     final authHeader = await createAuthHeader();
     dio.options.headers.addAll(authHeader);
-    AppLogger.i('Dio headers: ${dio.options.headers}');
+    AppLogger.e('Dio headers: ${dio.options.headers}');
   }
 
   /// Handles API response and converts errors to appropriate exceptions
