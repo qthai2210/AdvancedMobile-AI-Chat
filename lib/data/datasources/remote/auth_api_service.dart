@@ -1,5 +1,6 @@
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/utils/logger.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
 import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/network/api_service_factory.dart';
@@ -55,6 +56,14 @@ class AuthApiService {
                 'error': 'Phản hồi từ máy chủ không hợp lệ'
               };
             }
+            // Lưu access token và refresh token vào secure storage
+            AppLogger.i(
+                'Login successful, saving tokens to secure storage: ${data['access_token']}, ${data['refresh_token']}');
+            final secureStorageUtil = sl.get<SecureStorageUtil>();
+            secureStorageUtil.writeSecureData(
+                accessToken: data['access_token'],
+                refreshToken: data['refresh_token']);
+            _apiService.addAuthHeader();
             return UserModel.fromJson(data, email);
           },
         );

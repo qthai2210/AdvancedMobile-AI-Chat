@@ -1,5 +1,6 @@
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:aichatbot/core/config/api_config.dart';
+import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_list_response.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
@@ -10,13 +11,18 @@ import 'package:dio/dio.dart';
 
 /// Service for interacting with Knowledge-related API endpoints
 class KnowledgeApiService {
-  final ApiService _apiService = sl.get<ApiService>();
+  final ApiService _apiService;
+  final Dio _dio;
 
   /// Creates a new instance of [KnowledgeApiService]
-  KnowledgeApiService() {
+  KnowledgeApiService()
+      : _apiService = sl.get<ApiService>(),
+        _dio = ApiServiceFactory.createKnowledgeDio() {
     // Set the base URL for the Dio instance
-    _apiService.dio.options.baseUrl = ApiConfig.knowledgeUrl;
-    _apiService.addAuthHeader();
+    //_apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
+    AppLogger.e(
+        "KnowledgeApiService initialized with base URL: ${_apiService.dio.options.headers}");
+    AppLogger.e("12312321: ${_dio.options.baseUrl}");
   }
 
   /// Fetches knowledge items from the API based on the provided parameters
@@ -43,7 +49,7 @@ class KnowledgeApiService {
           "Fetching knowledges from ${_apiService.dio.options.baseUrl}/kb-core/v1/knowledge");
 
       // Make the API call
-      final response = await _apiService.dio.get(
+      final response = await _dio.get(
         '/kb-core/v1/knowledge',
         //queryParameters: params.toQueryParameters(),
         // options: Options(headers: headers),
@@ -77,7 +83,7 @@ class KnowledgeApiService {
       AppLogger.d('Creating knowledge base with name: ${params.knowledgeName}');
 
       // Make the API call
-      final response = await _apiService.dio.post(
+      final response = await _dio.post(
         '/kb-core/v1/knowledge',
         data: params.toJson(),
         options: Options(headers: headers.isNotEmpty ? headers : null),
@@ -111,7 +117,7 @@ class KnowledgeApiService {
       AppLogger.d('Deleting knowledge base with ID: $id');
 
       // Make the API call
-      final response = await _apiService.dio.delete(
+      final response = await _dio.delete(
         '/kb-core/v1/knowledge/$id',
         options: Options(headers: headers.isNotEmpty ? headers : null),
       );
