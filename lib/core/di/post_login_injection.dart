@@ -25,6 +25,8 @@ import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/fetch_knowledge_units_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_local_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
@@ -35,6 +37,8 @@ import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_bloc.dart';
+import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/utils/logger.dart';
 
@@ -51,7 +55,6 @@ Future<void> initPostLoginServices() async {
   }
 
   AppLogger.i('Initializing post-login services...');
-
   // API Services (initialize on demand after login)
   sl.registerLazySingleton(() => AssistantApiService());
   sl.registerLazySingleton(() => ChatApiService());
@@ -98,6 +101,10 @@ Future<void> initPostLoginServices() async {
   sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
   sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
   sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(
+      () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
+  sl.registerLazySingleton(
+      () => UploadLocalFileUseCase(fileRepository: sl<KnowledgeRepository>()));
 
   // Blocs
   sl.registerLazySingleton(() => PromptBloc(
@@ -130,6 +137,13 @@ Future<void> initPostLoginServices() async {
         getKnowledgesUseCase: sl(),
         createKnowledgeUseCase: sl(),
         deleteKnowledgeUseCase: sl(),
+      ));
+  sl.registerLazySingleton(() => KnowledgeUnitBloc(
+        fetchKnowledgeUnitsUseCase: sl<FetchKnowledgeUnitsUseCase>(),
+      ));
+
+  sl.registerLazySingleton(() => FileUploadBloc(
+        uploadLocalFileUseCase: sl<UploadLocalFileUseCase>(),
       ));
 
   _postLoginServicesInitialized = true;

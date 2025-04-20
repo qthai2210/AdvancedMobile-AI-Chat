@@ -1,11 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
+import 'package:aichatbot/presentation/bloc/file_upload/file_upload_event.dart';
+import 'package:aichatbot/presentation/bloc/file_upload/file_upload_state.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/common_form_fields.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/file_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/url_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/google_drive_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/slack_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 /// A screen for adding or editing knowledge sources to a knowledge base.
 ///
@@ -61,9 +70,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   bool _shouldCrawlLinks = true;
   int _maxPagesToCrawl = 10;
   int _crawlDepth = 1;
-
   // Mock file selection
   String? _selectedFileName;
+  File? _selectedFile;
   String? _selectedDriveFileName;
 
   // Slack options
@@ -128,8 +137,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         // When changing tabs, set the appropriate source type for each tab
         switch (_tabController.index) {
           case 0: // File tab
-            // Always reset to PDF when switching to file tab to avoid dropdown errors
-            _selectedType = KnowledgeSourceType.pdf;
+            // File type will be determined by the file extension when uploaded
+            _selectedType = KnowledgeSourceType
+                .pdf; // Default type, will be updated on upload
             break;
           case 1: // URL tab
             _selectedType = KnowledgeSourceType.url;
@@ -242,6 +252,35 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     setState(() => _isLoading = true);
 
     try {
+      // For file upload sources, use the FileUploadBloc
+      if ((_selectedType == KnowledgeSourceType.pdf ||
+              _selectedType == KnowledgeSourceType.docx ||
+              _selectedType == KnowledgeSourceType.csv ||
+              _selectedType == KnowledgeSourceType.json ||
+              _selectedType == KnowledgeSourceType.text) &&
+          _selectedFile != null) {
+        // Get auth token from AuthBloc
+        final authState = context.read<AuthBloc>().state;
+        final accessToken = authState.user?.accessToken;
+
+        if (accessToken == null) {
+          throw Exception('Authentication required');
+        }
+
+        // Upload the file using FileUploadBloc
+        context.read<FileUploadBloc>().add(
+              UploadLocalFileEvent(
+                knowledgeId: widget.knowledgeBase.id,
+                file: _selectedFile!,
+                accessToken: accessToken,
+              ),
+            );
+
+        // The rest will be handled by the BlocListener
+        return;
+      }
+
+      // Original code for other source types
       final now = DateTime.now();
       String content = '';
       Map<String, dynamic>? metadata;
@@ -254,13 +293,12 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           break;
         case KnowledgeSourceType.url:
           content = _urlController.text.trim();
-          metadata =
-              WebsiteMetadata(
-                url: content,
-                shouldCrawlLinks: _shouldCrawlLinks,
-                maxPagesToCrawl: _maxPagesToCrawl,
-                crawlDepth: _crawlDepth,
-              ).toJson();
+          metadata = WebsiteMetadata(
+            url: content,
+            shouldCrawlLinks: _shouldCrawlLinks,
+            maxPagesToCrawl: _maxPagesToCrawl,
+            crawlDepth: _crawlDepth,
+          ).toJson();
           break;
         case KnowledgeSourceType.pdf:
         case KnowledgeSourceType.docx:
@@ -295,10 +333,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       }
 
       final source = KnowledgeSource(
-        id:
-            _isEditing
-                ? widget.editSource!.id
-                : '${now.millisecondsSinceEpoch}_${_selectedType.toString()}',
+        id: _isEditing
+            ? widget.editSource!.id
+            : '${now.millisecondsSinceEpoch}_${_selectedType.toString()}',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
@@ -315,10 +352,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       ); // Simulate network delay
 
       // Update knowledge base with new source
-      final updatedKnowledgeBase =
-          _isEditing
-              ? widget.knowledgeBase.updateSource(source)
-              : widget.knowledgeBase.addSource(source);
+      final updatedKnowledgeBase = _isEditing
+          ? widget.knowledgeBase.updateSource(source)
+          : widget.knowledgeBase.addSource(source);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -345,66 +381,95 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
-  /// Mock methods for simulating external service connections
-  void _mockSelectFile() {
-    setState(() {
-      _selectedFileName = "sample_document.pdf";
-    });
+  /// Select a file from the device storage
+  Future<void> _mockSelectFile() async {
+    try {
+      // Use file_picker to select a file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'json', 'csv'],
+      );
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đã chọn tệp')));
+      if (result != null && result.files.single.path != null) {
+        final fileName = result.files.single.name;
+
+        // Determine file type based on extension
+        if (fileName.toLowerCase().endsWith('.pdf')) {
+          _selectedType = KnowledgeSourceType.pdf;
+        } else if (fileName.toLowerCase().endsWith('.doc') ||
+            fileName.toLowerCase().endsWith('.docx')) {
+          _selectedType = KnowledgeSourceType.docx;
+        } else if (fileName.toLowerCase().endsWith('.txt')) {
+          _selectedType = KnowledgeSourceType.text;
+        } else if (fileName.toLowerCase().endsWith('.json')) {
+          _selectedType = KnowledgeSourceType.json;
+        } else if (fileName.toLowerCase().endsWith('.csv')) {
+          _selectedType = KnowledgeSourceType.csv;
+        }
+
+        setState(() {
+          _selectedFileName = fileName;
+          _selectedFile = File(result.files.single.path!);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã chọn tệp: $fileName')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi chọn tệp: $e')),
+      );
+    }
   }
 
   void _mockConnectGoogleDrive() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Kết nối Google Drive'),
-            content: const Text('Đang mô phỏng đăng nhập vào Google Drive...'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _selectedDriveFileName = "my_document.docx";
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã kết nối Google Drive')),
-                  );
-                },
-                child: const Text('Mô phỏng kết nối thành công'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Kết nối Google Drive'),
+        content: const Text('Đang mô phỏng đăng nhập vào Google Drive...'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _selectedDriveFileName = "my_document.docx";
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã kết nối Google Drive')),
+              );
+            },
+            child: const Text('Mô phỏng kết nối thành công'),
           ),
+        ],
+      ),
     );
   }
 
   void _mockConnectSlack() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Kết nối Slack'),
-            content: const Text('Đang mô phỏng đăng nhập vào Slack...'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isSlackConnected = true;
-                    _slackWorkspaceName = "Your Workspace";
-                    _selectedSlackChannels = ["#general"];
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã kết nối Slack')),
-                  );
-                },
-                child: const Text('Mô phỏng kết nối thành công'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Kết nối Slack'),
+        content: const Text('Đang mô phỏng đăng nhập vào Slack...'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _isSlackConnected = true;
+                _slackWorkspaceName = "Your Workspace";
+                _selectedSlackChannels = ["#general"];
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã kết nối Slack')),
+              );
+            },
+            child: const Text('Mô phỏng kết nối thành công'),
           ),
+        ],
+      ),
     );
   }
 
@@ -422,28 +487,27 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   void _mockConnectConfluence() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Kết nối Confluence'),
-            content: const Text('Đang mô phỏng đăng nhập vào Confluence...'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isConfluenceConnected = true;
-                    _confluenceSpaceName = "Documentation";
-                    _confluenceDomainUrl = "your-company.atlassian.net";
-                    _selectedConfluencePages = ["Home"];
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã kết nối Confluence')),
-                  );
-                },
-                child: const Text('Mô phỏng kết nối thành công'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Kết nối Confluence'),
+        content: const Text('Đang mô phỏng đăng nhập vào Confluence...'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _isConfluenceConnected = true;
+                _confluenceSpaceName = "Documentation";
+                _confluenceDomainUrl = "your-company.atlassian.net";
+                _selectedConfluencePages = ["Home"];
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã kết nối Confluence')),
+              );
+            },
+            child: const Text('Mô phỏng kết nối thành công'),
           ),
+        ],
+      ),
     );
   }
 
@@ -462,6 +526,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   void _clearSelectedFile() {
     setState(() {
       _selectedFileName = null;
+      _selectedFile = null;
     });
   }
 
@@ -497,9 +562,41 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _isLoading ? _buildLoadingIndicator() : _buildForm(),
+    return BlocProvider(
+      create: (context) => di.sl<FileUploadBloc>(),
+      child: BlocListener<FileUploadBloc, FileUploadState>(
+        listener: (context, state) {
+          if (state is FileUploadLoading) {
+            setState(() => _isLoading = true);
+          } else if (state is FileUploadSuccess) {
+            // Handle successful upload
+            setState(() => _isLoading = false);
+            final updatedKnowledgeBase = _isEditing
+                ? widget.knowledgeBase
+                    .updateSource(_createSourceFromUpload(state.response))
+                : widget.knowledgeBase
+                    .addSource(_createSourceFromUpload(state.response));
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(_isEditing
+                      ? 'Đã cập nhật nguồn dữ liệu'
+                      : 'Đã thêm nguồn dữ liệu mới')),
+            );
+            Navigator.pop(context, updatedKnowledgeBase);
+          } else if (state is FileUploadError) {
+            // Handle upload error
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Lỗi: ${state.message}')),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: _buildAppBar(),
+          body: _isLoading ? _buildLoadingIndicator() : _buildForm(),
+        ),
+      ),
     );
   }
 
@@ -565,26 +662,93 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             IndexedStack(
               index: _tabController.index,
               children: [
-                // File tab - use a fixed valid type (PDF) to ensure dropdown has a valid selection
-                FileSourceForm(
-                  selectedType:
-                      _selectedType == KnowledgeSourceType.pdf ||
-                              _selectedType == KnowledgeSourceType.docx ||
-                              _selectedType == KnowledgeSourceType.text ||
-                              _selectedType == KnowledgeSourceType.csv ||
-                              _selectedType == KnowledgeSourceType.json
-                          ? _selectedType
-                          : KnowledgeSourceType
-                              .pdf, // Default to PDF if current type isn't in dropdown
-                  contentController: _contentController,
-                  selectedFileName: _selectedFileName,
-                  onTypeChanged: _onFileTypeChanged,
-                  onSelectFile: _mockSelectFile,
-                  onClearFile: _clearSelectedFile,
-                  primaryColor: primaryColor,
+                // File tab - simplified to only show file picker and upload button
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Chọn tệp để tải lên",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Selected file info
+                      if (_selectedFileName != null)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.insert_drive_file,
+                                  color: Colors.blue),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedFileName!,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.close, color: Colors.grey),
+                                onPressed: _clearSelectedFile,
+                                tooltip: "Xóa tệp đã chọn",
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: const Text(
+                            "Chưa chọn tệp nào",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      // File picker button
+                      ElevatedButton.icon(
+                        onPressed: _mockSelectFile,
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text("Chọn tệp"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Định dạng hỗ trợ: PDF, DOCX, TXT, CSV, JSON",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-                // URL tab
+                // URL tab (unchanged)
                 UrlSourceForm(
                   urlController: _urlController,
                   shouldCrawlLinks: _shouldCrawlLinks,
@@ -596,7 +760,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Google Drive tab
+                // Google Drive tab (unchanged)
                 GoogleDriveForm(
                   selectedDriveFileName: _selectedDriveFileName,
                   onConnectDrive: _mockConnectGoogleDrive,
@@ -605,7 +769,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Slack tab
+                // Slack tab (unchanged)
                 SlackSourceForm(
                   isConnected: _isSlackConnected,
                   workspaceName: _slackWorkspaceName,
@@ -620,7 +784,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Confluence tab
+                // Confluence tab (unchanged)
                 ConfluenceSourceForm(
                   isConnected: _isConfluenceConnected,
                   spaceName: _confluenceSpaceName,
@@ -665,18 +829,57 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
         ),
-        child:
-            _isLoading
-                ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                : Text(_isEditing ? 'Cập nhật' : 'Thêm nguồn dữ liệu'),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(_isEditing ? 'Cập nhật' : 'Thêm nguồn dữ liệu'),
       ),
     );
+  }
+
+  /// Creates a KnowledgeSource from a successful file upload response
+  KnowledgeSource _createSourceFromUpload(FileUploadResponse response) {
+    final now = DateTime.now();
+    return KnowledgeSource(
+      id: response.id,
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      type: _getSourceTypeFromMimetype(response.metadata.mimetype),
+      content: response.name,
+      addedAt: now,
+      lastUpdated: now,
+      metadata: {
+        'size': response.size,
+        'mimetype': response.metadata.mimetype,
+        'openAiFileIds': response.openAiFileIds,
+      },
+      filePath: response.name,
+    );
+  }
+
+  /// Determines the source type based on file mimetype
+  KnowledgeSourceType _getSourceTypeFromMimetype(String mimetype) {
+    if (mimetype.contains('pdf')) {
+      return KnowledgeSourceType.pdf;
+    } else if (mimetype.contains('word') ||
+        mimetype.contains('docx') ||
+        mimetype.contains('doc')) {
+      return KnowledgeSourceType.docx;
+    } else if (mimetype.contains('csv')) {
+      return KnowledgeSourceType.csv;
+    } else if (mimetype.contains('json')) {
+      return KnowledgeSourceType.json;
+    } else if (mimetype.contains('text')) {
+      return KnowledgeSourceType.text;
+    } else {
+      // Default to PDF for unknown types
+      return KnowledgeSourceType.pdf;
+    }
   }
 }

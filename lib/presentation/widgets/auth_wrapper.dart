@@ -4,6 +4,7 @@ import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';
 import 'package:aichatbot/presentation/bloc/conversation/conversation_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/router/app_router.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
@@ -49,6 +50,10 @@ class AuthWrapper extends StatelessWidget {
           BlocProvider<KnowledgeBloc>.value(
             value: blocManager
                 .getBloc<KnowledgeBloc>(() => di.sl<KnowledgeBloc>()),
+          ),
+          BlocProvider<KnowledgeUnitBloc>.value(
+            value: blocManager
+                .getBloc<KnowledgeUnitBloc>(() => di.sl<KnowledgeUnitBloc>()),
           ),
         ],
         child: MaterialApp.router(

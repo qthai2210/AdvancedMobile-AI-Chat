@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
+import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_list_response.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
+import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
+import 'package:aichatbot/data/models/knowledge/knowledge_units_response.dart';
 
 /// Repository interface for Knowledge-related operations
 abstract class KnowledgeRepository {
@@ -23,4 +28,16 @@ abstract class KnowledgeRepository {
   /// [xJarvisGuid] - Optional GUID for tracking
   /// Returns true if deletion was successful
   Future<bool> deleteKnowledge(String id, {String? xJarvisGuid});
+
+  Future<KnowledgeUnitsResponse> getKnowledgeUnits({
+    required String knowledgeId,
+    required String accessToken,
+  });
+
+  Future<FileUploadResponse> uploadLocalFile({
+    required String knowledgeId,
+    required File file,
+    required String accessToken,
+    String? guid,
+  });
 }
