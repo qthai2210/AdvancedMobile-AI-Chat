@@ -1,3 +1,5 @@
+import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
+import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
@@ -12,20 +14,24 @@ class KnowledgeBloc extends Bloc<KnowledgeEvent, KnowledgeState> {
   final GetKnowledgesUseCase _getKnowledgesUseCase;
   final CreateKnowledgeUseCase _createKnowledgeUseCase;
   final DeleteKnowledgeUseCase _deleteKnowledgeUseCase;
+  final UpdateKnowledgeUseCase _updateKnowledgeUseCase;
 
   KnowledgeBloc({
     required GetKnowledgesUseCase getKnowledgesUseCase,
     required CreateKnowledgeUseCase createKnowledgeUseCase,
     required DeleteKnowledgeUseCase deleteKnowledgeUseCase,
+    required UpdateKnowledgeUseCase updateKnowledgeUseCase,
   })  : _getKnowledgesUseCase = getKnowledgesUseCase,
         _createKnowledgeUseCase = createKnowledgeUseCase,
         _deleteKnowledgeUseCase = deleteKnowledgeUseCase,
+        _updateKnowledgeUseCase = updateKnowledgeUseCase,
         super(KnowledgeInitial()) {
     on<FetchKnowledgesEvent>(_onFetchKnowledges);
     on<FetchMoreKnowledgesEvent>(_onFetchMoreKnowledges);
     on<RefreshKnowledgesEvent>(_onRefreshKnowledges);
     on<CreateKnowledgeEvent>(_onCreateKnowledge);
     on<DeleteKnowledgeEvent>(_onDeleteKnowledge);
+    on<UpdateKnowledgeEvent>(_onUpdateKnowledge);
   }
 
   /// Handles the [FetchKnowledgesEvent] to load initial knowledges
@@ -173,6 +179,53 @@ class KnowledgeBloc extends Bloc<KnowledgeEvent, KnowledgeState> {
     } catch (e) {
       AppLogger.e('Error creating knowledge base: $e');
       emit(KnowledgeError('Failed to create knowledge base: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onUpdateKnowledge(
+    UpdateKnowledgeEvent event,
+    Emitter<KnowledgeState> emit,
+  ) async {
+    try {
+      // First get the current state to later update it with the new knowledge
+      final currentState = state;
+
+      AppLogger.i('Updating knowledge base: ${event.knowledgeName}');
+
+      final updateParams = CreateKnowledgeParams(
+        knowledgeName: event.knowledgeName,
+        description: event.description,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      final updatedKnowledge =
+          await _updateKnowledgeUseCase(event.id, updateParams);
+      AppLogger.i('Knowledge base updated successfully: ${updatedKnowledge}');
+
+      // If we're already in a loaded state, update the knowledge in the list
+      if (currentState is KnowledgeLoaded) {
+        final updatedKnowledges =
+            currentState.knowledges.map<KnowledgeModel>((knowledge) {
+          // Replace the updated knowledge in the list
+          if (knowledge.id == event.id) {
+            return updatedKnowledge;
+          }
+          return knowledge;
+        }).toList();
+
+        emit(KnowledgeLoaded(
+          knowledges: updatedKnowledges,
+          hasReachedMax: currentState.hasReachedMax,
+          currentOffset: currentState.currentOffset,
+          total: currentState.total,
+        ));
+      } else {
+        // If not in a loaded state, trigger a refresh to get the updated list
+        add(const RefreshKnowledgesEvent(limit: 20));
+      }
+    } catch (e) {
+      AppLogger.e('Error updating knowledge base: $e');
+      emit(KnowledgeError('Failed to update knowledge base: ${e.toString()}'));
     }
   }
 

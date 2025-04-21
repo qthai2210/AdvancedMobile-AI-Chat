@@ -29,6 +29,9 @@ abstract class KnowledgeRepository {
   /// Returns true if deletion was successful
   Future<bool> deleteKnowledge(String id, {String? xJarvisGuid});
 
+  Future<KnowledgeModel> updateKnowledge(
+      String id, CreateKnowledgeParams params);
+
   Future<KnowledgeUnitsResponse> getKnowledgeUnits({
     required String knowledgeId,
     required String accessToken,

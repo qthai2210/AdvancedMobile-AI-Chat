@@ -42,6 +42,20 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
   }
 
   @override
+  Future<KnowledgeModel> updateKnowledge(
+      String id, CreateKnowledgeParams params) async {
+    try {
+      AppLogger.d('Creating knowledge with name: ${params.knowledgeName}');
+      final result = await knowledgeApiService.updateKnowledge(id, params);
+      AppLogger.i('Knowledge created successfully: ${result}');
+      return result;
+    } catch (e) {
+      AppLogger.e('Repository error creating knowledge: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<bool> deleteKnowledge(String id, {String? xJarvisGuid}) async {
     try {
       AppLogger.d('Repository deleting knowledge with ID: $id');

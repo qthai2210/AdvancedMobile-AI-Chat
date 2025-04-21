@@ -2,14 +2,8 @@ import 'package:flutter/material.dart';
 
 /// Enum defining the different types of knowledge sources
 enum KnowledgeSourceType {
-  text, // Plain text content
-  url, // Web content via URL
-  pdf, // PDF document
-  docx, // Word document
-  csv, // CSV data file
-  json, // JSON structured data
-  markdown, // Markdown formatted text
-  html, // HTML content
+  local_file, // Any file from local device (includes pdf, docx, text, csv, json, etc.)
+  website, // Web content via URL (includes html)
   googleDrive, // Google Drive file or folder
   slack, // Slack channel or message thread
   confluence, // Confluence page or space
@@ -40,6 +34,7 @@ class KnowledgeSource {
   final IndexingStatus indexingStatus; // Status of indexing for this source
   final IntegrationCredential? credential; // Credential for external sources
   final String? sourceId; // ID for external sources (like Google Drive file ID)
+  final String? fileFormat; // File format for local files (e.g., pdf, docx)
 
   KnowledgeSource({
     required this.id,
@@ -59,27 +54,16 @@ class KnowledgeSource {
     this.indexingStatus = IndexingStatus.notIndexed,
     this.credential,
     this.sourceId,
+    this.fileFormat,
   }) : icon = icon ?? getDefaultIcon(type);
 
   /// Get a default icon based on the knowledge source type
   static IconData getDefaultIcon(KnowledgeSourceType type) {
     switch (type) {
-      case KnowledgeSourceType.text:
-        return Icons.text_snippet;
-      case KnowledgeSourceType.url:
-        return Icons.link;
-      case KnowledgeSourceType.pdf:
-        return Icons.picture_as_pdf;
-      case KnowledgeSourceType.docx:
-        return Icons.description;
-      case KnowledgeSourceType.csv:
-        return Icons.table_chart;
-      case KnowledgeSourceType.json:
-        return Icons.data_object;
-      case KnowledgeSourceType.markdown:
-        return Icons.notes;
-      case KnowledgeSourceType.html:
-        return Icons.html;
+      case KnowledgeSourceType.local_file:
+        return Icons.insert_drive_file;
+      case KnowledgeSourceType.website:
+        return Icons.language;
       case KnowledgeSourceType.googleDrive:
         return Icons.drive_folder_upload;
       case KnowledgeSourceType.slack:
@@ -133,22 +117,10 @@ class KnowledgeSource {
   /// Get an appropriate color for the knowledge source type
   static Color getColorForType(KnowledgeSourceType type) {
     switch (type) {
-      case KnowledgeSourceType.text:
+      case KnowledgeSourceType.local_file:
         return Colors.blue;
-      case KnowledgeSourceType.url:
+      case KnowledgeSourceType.website:
         return Colors.green;
-      case KnowledgeSourceType.pdf:
-        return Colors.red;
-      case KnowledgeSourceType.docx:
-        return Colors.blue.shade800;
-      case KnowledgeSourceType.csv:
-        return Colors.orange;
-      case KnowledgeSourceType.json:
-        return Colors.purple;
-      case KnowledgeSourceType.markdown:
-        return Colors.teal;
-      case KnowledgeSourceType.html:
-        return Colors.amber;
       case KnowledgeSourceType.googleDrive:
         return const Color(0xFF0F9D58); // Google Drive green
       case KnowledgeSourceType.slack:
@@ -161,22 +133,10 @@ class KnowledgeSource {
   /// Get a human-readable name for the knowledge source type
   static String getTypeName(KnowledgeSourceType type) {
     switch (type) {
-      case KnowledgeSourceType.text:
-        return 'Text';
-      case KnowledgeSourceType.url:
-        return 'Website URL';
-      case KnowledgeSourceType.pdf:
-        return 'PDF File';
-      case KnowledgeSourceType.docx:
-        return 'Word Document';
-      case KnowledgeSourceType.csv:
-        return 'CSV File';
-      case KnowledgeSourceType.json:
-        return 'JSON Data';
-      case KnowledgeSourceType.markdown:
-        return 'Markdown';
-      case KnowledgeSourceType.html:
-        return 'HTML';
+      case KnowledgeSourceType.local_file:
+        return 'Local File';
+      case KnowledgeSourceType.website:
+        return 'Website';
       case KnowledgeSourceType.googleDrive:
         return 'Google Drive';
       case KnowledgeSourceType.slack:
@@ -188,10 +148,7 @@ class KnowledgeSource {
 
   /// Check if this source has file content
   bool get isFileType {
-    return type == KnowledgeSourceType.pdf ||
-        type == KnowledgeSourceType.csv ||
-        type == KnowledgeSourceType.json ||
-        type == KnowledgeSourceType.docx;
+    return type == KnowledgeSourceType.local_file;
   }
 
   /// Check if this source requires external authentication
@@ -203,7 +160,7 @@ class KnowledgeSource {
 
   /// Check if the source supports automatic syncing
   bool get supportsSyncing {
-    return type == KnowledgeSourceType.url ||
+    return type == KnowledgeSourceType.website ||
         type == KnowledgeSourceType.googleDrive ||
         type == KnowledgeSourceType.slack ||
         type == KnowledgeSourceType.confluence;
@@ -795,7 +752,7 @@ class KnowledgeBaseFactory {
       id: '${now.millisecondsSinceEpoch}_sample',
       title: 'Sample Text Data',
       description: 'This is a sample text source for your knowledge base',
-      type: KnowledgeSourceType.text,
+      type: KnowledgeSourceType.local_file,
       content:
           'This is sample content for your knowledge base. Replace this with your actual knowledge data.',
       addedAt: now,

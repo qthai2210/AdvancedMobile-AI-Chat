@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
 import 'package:aichatbot/core/network/api_service.dart';
-import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
@@ -10,15 +10,16 @@ import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_units_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_unit_list_response.dart';
-import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 
 /// Service for interacting with Knowledge-related API endpoints
 class KnowledgeApiService {
   final ApiService _apiService;
   final Dio _dio;
+  late final Dio _uploadDio; // New Dio instance specifically for file uploads
 
   /// Creates a new instance of [KnowledgeApiService]
   KnowledgeApiService()
@@ -29,6 +30,14 @@ class KnowledgeApiService {
     AppLogger.e(
         "KnowledgeApiService initialized with base URL: ${_apiService.dio.options.headers}");
     AppLogger.e("12312321: ${_dio.options.baseUrl}");
+
+    // Initialize the upload-specific Dio instance with same baseUrl but clean headers
+    _uploadDio = Dio(BaseOptions(
+      baseUrl: _dio.options.baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+    ));
   }
 
   /// Fetches knowledge items from the API based on the provided parameters
@@ -50,20 +59,35 @@ class KnowledgeApiService {
       //   headers['x-jarvis-guid'] = guid;
       // }
 
-      // Log the request
+      // Log the request with detailed information
+      final endpoint = '/kb-core/v1/knowledge';
+      final url = '${_dio.options.baseUrl}$endpoint';
+
       AppLogger.d(
-          "Fetching knowledges from ${_apiService.dio.options.baseUrl}/kb-core/v1/knowledge");
+          '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Knowledge List');
+      AppLogger.d('│ URL: $url');
+      AppLogger.d('│ Parameters: ${params.toQueryParameters()}');
+      AppLogger.d('│ Headers: ${_dio.options.headers}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Make the API call
       final response = await _dio.get(
-        '/kb-core/v1/knowledge',
+        endpoint,
         //queryParameters: params.toQueryParameters(),
         // options: Options(headers: headers),
       );
 
-      // Log the response
-      AppLogger.i(
-          'Knowledge response received with ${response.data['data']?.length ?? 0} items');
+      // Log the response with detailed information
+      AppLogger.d(
+          '┌── KNOWLEDGE API RESPONSE ─────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Knowledge List');
+      AppLogger.d('│ Status: ${response.statusCode}');
+      AppLogger.d(
+          '│ Data: Knowledge items count: ${response.data['data']?.length ?? 0}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Parse and return the response
       return KnowledgeListResponse.fromJson(response.data);
@@ -106,6 +130,36 @@ class KnowledgeApiService {
     }
   }
 
+  Future<KnowledgeModel> updateKnowledge(
+      String id, CreateKnowledgeParams params) async {
+    try {
+      // Prepare headers for the x-jarvis-guid if provided
+      final headers = <String, dynamic>{};
+      if (params.xJarvisGuid != null && params.xJarvisGuid!.isNotEmpty) {
+        headers['x-jarvis-guid'] = params.xJarvisGuid;
+      }
+
+      // Log the request
+      AppLogger.d('Creating knowledge base with name: ${params.knowledgeName}');
+
+      // Make the API call
+      final response = await _dio.patch(
+        '/kb-core/v1/knowledge/$id',
+        data: params.toJson(),
+        options: Options(headers: headers.isNotEmpty ? headers : null),
+      );
+
+      // Log the response
+      AppLogger.i('Knowledge base updated successfully: ${response.data}');
+
+      // Parse and return the created knowledge model
+      return KnowledgeModel.fromJson(response.data);
+    } catch (e) {
+      AppLogger.e('Error updating knowledge base: $e');
+      rethrow;
+    }
+  }
+
   /// Deletes a knowledge base with the provided ID
   ///
   /// [id] - The ID of the knowledge base to delete
@@ -119,18 +173,33 @@ class KnowledgeApiService {
         headers['x-jarvis-guid'] = xJarvisGuid;
       }
 
-      // Log the request
-      AppLogger.d('Deleting knowledge base with ID: $id');
+      // Log the request with detailed information
+      final endpoint = '/kb-core/v1/knowledge/$id';
+      final url = '${_dio.options.baseUrl}$endpoint';
+
+      AppLogger.d(
+          '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
+      AppLogger.d('│ 🔍 [DELETE] Knowledge');
+      AppLogger.d('│ URL: $url');
+      AppLogger.d('│ Knowledge ID: $id');
+      AppLogger.d(
+          '│ Headers: ${headers.isNotEmpty ? headers : "Default headers"}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Make the API call
       final response = await _dio.delete(
-        '/kb-core/v1/knowledge/$id',
+        endpoint,
         options: Options(headers: headers.isNotEmpty ? headers : null),
       );
 
-      // Log the response
-      AppLogger.i(
-          'Knowledge base deleted successfully, status code: ${response.statusCode}');
+      // Log the response with detailed information
+      AppLogger.d(
+          '┌── KNOWLEDGE API RESPONSE ─────────────────────────────────');
+      AppLogger.d('│ 🔍 [DELETE] Knowledge');
+      AppLogger.d('│ Status: ${response.statusCode}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Return success based on status code (200 is success)
       return response.statusCode == 200;
@@ -160,20 +229,36 @@ class KnowledgeApiService {
         headers['x-jarvis-guid'] = params.xJarvisGuid;
       }
 
-      // Log the request
+      // Log the request with detailed information
+      final endpoint = '/kb-core/v1/knowledge/${params.knowledgeId}/units';
+      final url = '${_dio.options.baseUrl}$endpoint';
+
       AppLogger.d(
-          'Fetching knowledge units for knowledge ID: ${params.knowledgeId}');
+          '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Knowledge Units');
+      AppLogger.d('│ URL: $url');
+      AppLogger.d('│ Knowledge ID: ${params.knowledgeId}');
+      AppLogger.d('│ Parameters: ${params.toQueryParameters()}');
+      AppLogger.d(
+          '│ Headers: ${headers.isNotEmpty ? headers : "Default headers"}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Make the API call
       final response = await _dio.get(
-        '/kb-core/v1/knowledge/${params.knowledgeId}/units',
+        endpoint,
         queryParameters: params.toQueryParameters(),
         options: Options(headers: headers.isNotEmpty ? headers : null),
       );
 
-      // Log the response
-      AppLogger.i(
-          'Knowledge units response received with ${response.data['data']?.length ?? 0} items');
+      // Log the response with detailed information
+      AppLogger.d(
+          '┌── KNOWLEDGE API RESPONSE ─────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Knowledge Units');
+      AppLogger.d('│ Status: ${response.statusCode}');
+      AppLogger.d('│ Data: Units count: ${response.data['data']?.length ?? 0}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Parse and return the response
       return KnowledgeUnitListResponse.fromJson(response.data);
@@ -181,6 +266,35 @@ class KnowledgeApiService {
       AppLogger.e('Error fetching knowledge units: $e');
       rethrow;
     }
+  }
+
+  /// Checks if the given file is of a supported MIME type
+  ///
+  /// Returns the appropriate MIME type if supported, otherwise returns null
+  String? _getSupportedMimeType(File file) {
+    final extension = p.extension(file.path).toLowerCase();
+
+    // Mapping of file extensions to supported MIME types
+    final mimeTypes = {
+      '.c': 'text/x-c',
+      '.cpp': 'text/x-c++',
+      '.docx':
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.html': 'text/html',
+      '.java': 'text/x-java',
+      '.json': 'application/json',
+      '.md': 'text/markdown',
+      '.pdf': 'application/pdf',
+      '.php': 'text/x-php',
+      '.pptx':
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.py': 'text/x-python',
+      '.rb': 'text/x-ruby',
+      '.tex': 'text/x-tex',
+      '.txt': 'text/plain',
+    };
+
+    return mimeTypes[extension];
   }
 
   /// Uploads a local file to the knowledge base
@@ -195,17 +309,28 @@ class KnowledgeApiService {
     String? guid,
   }) async {
     try {
-      // Create form data
+      // Check if the file type is supported
+      final mimeType = _getSupportedMimeType(file);
+      if (mimeType == null) {
+        // If file type is not supported, throw an exception
+        final extension = p.extension(file.path);
+        throw Exception(
+            'Unsupported file type: $extension. Supported file types include: .c, .cpp, .docx, .html, .java, .json, .md, .pdf, .php, .pptx, .py, .rb, .tex, .txt');
+      }
+
+      // Create form data with the file and specify the correct MIME type
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           file.path,
-          filename: file.path.split('/').last,
+          filename: p.basename(file.path),
+          contentType: MediaType.parse(mimeType),
         ),
       });
 
-      // Prepare headers
+      // Prepare headers specifically for this upload request
       final headers = <String, dynamic>{
-        'Authorization': '$accessToken',
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'multipart/form-data',
       };
 
       // Add guid header if provided
@@ -213,25 +338,58 @@ class KnowledgeApiService {
         headers['x-jarvis-guid'] = guid;
       }
 
-      // Log the request
-      AppLogger.d('Uploading file to knowledge base with ID: $knowledgeId');
+      // Log the request with detailed information
+      final endpoint = '/kb-core/v1/knowledge/$knowledgeId/local-file';
+      final url = '${_uploadDio.options.baseUrl}$endpoint';
+      final fileName = file.path.split('/').last;
 
-      // Make the API call
-      final response = await _dio.post(
-        '/kb-core/v1/knowledge/$knowledgeId/local-file',
+      AppLogger.d(
+          '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
+      AppLogger.d('│ 🔍 [POST] Upload File');
+      AppLogger.d('│ URL: $url');
+      AppLogger.d('│ Knowledge ID: $knowledgeId');
+      AppLogger.d('│ File: $fileName');
+      AppLogger.d('│ Headers: $headers');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
+      AppLogger.d('FormData: $formData');
+
+      // Make the API call using the upload-specific Dio instance
+      final response = await _uploadDio.post(
+        endpoint,
         data: formData,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          contentType: 'multipart/form-data',
+        ),
       );
+      // log formdata
 
-      // Log the response
-      AppLogger.i('File uploaded successfully: ${file.path.split('/').last}');
+      // Log the response with detailed information
+      AppLogger.d(
+          '┌── KNOWLEDGE API RESPONSE ─────────────────────────────────');
+      AppLogger.d('│ 🔍 [POST] Upload File');
+      AppLogger.d('│ Status: ${response.statusCode}');
+      AppLogger.d('│ Filename: $fileName');
+      AppLogger.d('│ Response data: ${response.data}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
 
       // Parse and return the response
       return FileUploadResponse.fromJson(response.data);
     } catch (e) {
       // Log the error
       AppLogger.e('Error uploading file: $e');
-
+      AppLogger.e(
+          '┌── KNOWLEDGE API ERROR ───────────────────────────────────');
+      AppLogger.e('│ 🔴 API Call Failed');
+      AppLogger.e('│ Error: $e');
+      if (e is DioException) {
+        AppLogger.e('│ Status Code: ${e.response?.statusCode}');
+        AppLogger.e('│ Response: ${e.response?.data}');
+      }
+      AppLogger.e(
+          '└────────────────────────────────────────────────────────────');
       // Handle specific DioException with more details
       if (e is DioException) {
         throw Exception(

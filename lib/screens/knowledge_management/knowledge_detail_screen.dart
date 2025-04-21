@@ -2,6 +2,9 @@ import 'package:aichatbot/data/datasources/remote/knowledge_api_service.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_units_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
+import 'package:aichatbot/screens/knowledge_management/update_knowledge_screen.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
@@ -228,6 +231,10 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
       title: Text(_knowledgeBase.name),
       actions: [
         IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: _navigateToEditKnowledge,
+        ),
+        IconButton(
           icon: const Icon(Icons.refresh),
           onPressed: _refreshKnowledgeBase,
         ),
@@ -340,15 +347,16 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   Widget _buildSourcesHeader() {
     return BlocBuilder<KnowledgeUnitBloc, KnowledgeUnitState>(
       builder: (context, state) {
-        // Add debug message for all state types
         AppLogger.e(
             "_buildSourcesHeader builder received state: ${state.runtimeType}");
 
-        int totalUnits = 0;
+        String headerText = 'Nguồn dữ liệu';
+
         if (state is KnowledgeUnitLoaded) {
-          totalUnits = state.meta['total'] ?? state.units.length;
-          AppLogger.e(
-              "_buildSourcesHeader: KnowledgeUnitLoaded with ${state.units.length} units");
+          int totalUnits = state.meta['total'] ?? state.units.length;
+          headerText = 'Nguồn dữ liệu ($totalUnits)';
+        } else if (state is KnowledgeUnitError) {
+          headerText = 'Nguồn dữ liệu (0)';
         }
 
         return Padding(
@@ -357,17 +365,16 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Nguồn dữ liệu ($totalUnits)',
+                headerText,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (state is KnowledgeUnitLoaded && state.units.isNotEmpty)
-                TextButton(
-                  onPressed: _refreshKnowledgeBase,
-                  child: const Text('Refresh'),
-                ),
+              TextButton(
+                onPressed: _refreshKnowledgeBase,
+                child: const Text('Refresh'),
+              ),
             ],
           ),
         );
@@ -377,35 +384,39 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
 
   Widget _buildEmptySourcesView() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.source_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Chưa có nguồn dữ liệu nào',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              // In a real app, navigate to add source screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Chức năng thêm nguồn dữ liệu sẽ được triển khai sau',
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Thêm nguồn dữ liệu'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Không có dữ liệu',
+              style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              'Thêm nguồn dữ liệu đầu tiên của bạn bằng cách nhấn vào nút bên dưới',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _navigateToAddSource,
+              icon: const Icon(Icons.add),
+              label: const Text('Thêm nguồn dữ liệu'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -413,7 +424,6 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   Widget _buildSourcesList() {
     return BlocConsumer<KnowledgeUnitBloc, KnowledgeUnitState>(
       listener: (context, state) {
-        // Add debug message for all state types to see what's happening
         AppLogger.e(
             "_buildSourcesList listener received state: ${state.runtimeType}");
 
@@ -422,15 +432,15 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
             _unitsErrorMessage = state.message;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${state.message}')),
+            SnackBar(content: Text('Lỗi: ${state.message}')),
           );
         } else if (state is KnowledgeUnitLoaded) {
-          // Update units list when loaded
+          // Update units list when loaded, even if empty
           AppLogger.e(
               "KnowledgeUnitLoaded: ${state.units.length} units loaded");
-          AppLogger.e("KnowledgeUnitLoaded: ${state.units}");
           setState(() {
             _knowledgeUnits = state.units;
+            _unitsErrorMessage = null; // Clear any previous error
           });
         }
       },
@@ -441,28 +451,6 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
 
         if (state is KnowledgeUnitLoading) {
           return const Center(child: CircularProgressIndicator());
-        }
-
-        if (state is KnowledgeUnitError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, color: Colors.red, size: 60),
-                const SizedBox(height: 16),
-                Text(
-                  state.message,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _fetchKnowledgeUnits,
-                  child: const Text('Retry'),
-                )
-              ],
-            ),
-          );
         }
 
         if (state is KnowledgeUnitLoaded) {
@@ -521,26 +509,26 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
         icon: const Icon(Icons.more_vert),
         onPressed: () => _showUnitOptions(unit),
       ),
-      // children: [
-      //   if (unit.metadata.isNotEmpty)
-      //     Padding(
-      //       padding: const EdgeInsets.all(16.0),
-      //       child: Column(
-      //         crossAxisAlignment: CrossAxisAlignment.start,
-      //         children: [
-      //           const Text(
-      //             'Metadata:',
-      //             style: TextStyle(fontWeight: FontWeight.bold),
-      //           ),
-      //           const SizedBox(height: 8),
-      //           ...unit.metadata.entries
-      //               .map((entry) =>
-      //                   _buildDetailItem(entry.key, entry.value.toString()))
-      //               .toList(),
-      //         ],
-      //       ),
-      //     ),
-      // ],
+      children: [
+        if (unit.metadata.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Metadata:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...unit.metadata.entries
+                    .map((entry) =>
+                        _buildDetailItem(entry.key, entry.value.toString()))
+                    .toList(),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -706,5 +694,154 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _navigateToEditKnowledge() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            UpdateKnowledgeScreen(knowledgeBase: _knowledgeBase),
+      ),
+    ).then((updated) {
+      if (updated == true) {
+        // Refresh to get the updated knowledge base
+        _refreshKnowledgeBase();
+      }
+    });
+  }
+
+  void _showKnowledgeOptions(KnowledgeBase knowledge) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Xem chi tiết'),
+            onTap: () {
+              Navigator.pop(context);
+              _navigateToKnowledgeDetail(knowledge);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Chỉnh sửa'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      UpdateKnowledgeScreen(knowledgeBase: knowledge),
+                ),
+              ).then((updated) {
+                if (updated == true) {
+                  // Refresh the list if updated
+                  context.read<KnowledgeBloc>().add(
+                        const RefreshKnowledgesEvent(limit: 20),
+                      );
+                }
+              });
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Colors.red),
+            title: const Text('Xóa', style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmDeleteKnowledge(knowledge);
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteKnowledge(KnowledgeBase knowledge) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa nguồn tri thức'),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa "${knowledge.name}"? Hành động này không thể hoàn tác và sẽ xóa tất cả nguồn dữ liệu liên quan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+
+              // Get auth token
+              final authState = context.read<AuthBloc>().state;
+              final accessToken = authState.user?.accessToken;
+
+              if (accessToken == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content:
+                          Text('Bạn cần đăng nhập để thực hiện thao tác này')),
+                );
+                return;
+              }
+
+              // Delete knowledge base using bloc
+              context.read<KnowledgeBloc>().add(
+                    DeleteKnowledgeEvent(
+                      id: knowledge.id,
+                      xJarvisGuid: accessToken,
+                    ),
+                  );
+
+              // Navigate back to knowledge list screen
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã xóa nguồn tri thức')),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToKnowledgeDetail(KnowledgeBase knowledge) {
+    // Since we're already in the knowledge detail screen, this method doesn't need to navigate
+    // to a new screen. We can just show a dialog with more details if needed.
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(knowledge.name),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailItem('ID', knowledge.id),
+              _buildDetailItem('Description', knowledge.description),
+              _buildDetailItem(
+                  'Status', knowledge.isEnabled ? 'Active' : 'Inactive'),
+              _buildDetailItem('Sources', '${knowledge.totalSourcesCount}'),
+              _buildDetailItem(
+                  'Active Sources', '${knowledge.activeSourcesCount}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }

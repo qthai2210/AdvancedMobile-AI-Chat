@@ -95,3 +95,21 @@ class DeleteKnowledgeEvent extends KnowledgeEvent {
   @override
   List<Object?> get props => [id, xJarvisGuid];
 }
+
+/// Event khi người dùng cập nhật một knowledge base
+class UpdateKnowledgeEvent extends KnowledgeEvent {
+  final String id;
+  final String knowledgeName;
+  final String description;
+  final String? xJarvisGuid;
+
+  const UpdateKnowledgeEvent({
+    required this.id,
+    required this.knowledgeName,
+    required this.description,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [id, knowledgeName, description, xJarvisGuid];
+}

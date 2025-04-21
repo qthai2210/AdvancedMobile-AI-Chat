@@ -1,19 +1,21 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_event.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_state.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/common_form_fields.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/file_source_form.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/url_source_form.dart';
+import 'package:aichatbot/utils/logger.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/google_drive_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/slack_source_form.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/url_source_form.dart';
+import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Fix import paths by using your actual package name instead of 'aichatbot'
+import 'package:aichatbot/widgets/knowledge/source_forms/common_form_fields.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 /// A screen for adding or editing knowledge sources to a knowledge base.
@@ -55,21 +57,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   bool _isLoading = false;
 
   /// Whether we're editing an existing source
-  bool _isEditing = false;
-
-  // Form controllers
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _urlController = TextEditingController();
-  final _contentController = TextEditingController();
+  final bool _isEditing = false;
 
   // Selected source type
-  KnowledgeSourceType _selectedType = KnowledgeSourceType.text;
+  KnowledgeSourceType _selectedType = KnowledgeSourceType.local_file;
 
   // URL crawling options
   bool _shouldCrawlLinks = true;
   int _maxPagesToCrawl = 10;
   int _crawlDepth = 1;
+
   // Mock file selection
   String? _selectedFileName;
   File? _selectedFile;
@@ -85,13 +82,19 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   String? _confluenceSpaceName;
   String? _confluenceDomainUrl;
   List<String> _selectedConfluencePages = [];
+  Map<String, dynamic>? _fileMetadata;
+
+  // Create a local instance of FileUploadBloc
+  late final FileUploadBloc _fileUploadBloc;
 
   @override
   void initState() {
     super.initState();
-    _isEditing = widget.editSource != null;
 
-    // Initialize tab controller for different source types - now with 5 tabs instead of 3
+    // Initialize FileUploadBloc using dependency injection
+    _fileUploadBloc = di.sl<FileUploadBloc>();
+
+    // Initialize tab controller for different source types
     _tabController = TabController(
       length: 5,
       vsync: this,
@@ -100,7 +103,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
     _tabController.addListener(_handleTabChange);
 
-    if (_isEditing) {
+    if (widget.editSource != null) {
       _loadSourceData();
     }
   }
@@ -111,22 +114,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
     // Set initial tab based on source type if editing
     switch (widget.editSource!.type) {
-      case KnowledgeSourceType.pdf:
-      case KnowledgeSourceType.docx:
-      case KnowledgeSourceType.csv:
-      case KnowledgeSourceType.json:
-      case KnowledgeSourceType.text:
+      case KnowledgeSourceType.local_file:
         return 0; // File tab
-      case KnowledgeSourceType.url:
+      case KnowledgeSourceType.website:
         return 1; // URL tab
       case KnowledgeSourceType.googleDrive:
         return 2; // Google Drive tab
       case KnowledgeSourceType.slack:
         return 3; // Slack tab
       case KnowledgeSourceType.confluence:
-        return 4; // Confluence tab
-      default:
-        return 0;
+        return 4;
     }
   }
 
@@ -137,12 +134,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         // When changing tabs, set the appropriate source type for each tab
         switch (_tabController.index) {
           case 0: // File tab
-            // File type will be determined by the file extension when uploaded
-            _selectedType = KnowledgeSourceType
-                .pdf; // Default type, will be updated on upload
+            _selectedType = KnowledgeSourceType.local_file;
             break;
           case 1: // URL tab
-            _selectedType = KnowledgeSourceType.url;
+            _selectedType = KnowledgeSourceType.website;
             break;
           case 2: // Google Drive tab
             _selectedType = KnowledgeSourceType.googleDrive;
@@ -161,16 +156,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   /// Loads existing source data when in edit mode
   void _loadSourceData() {
     final source = widget.editSource!;
-    _titleController.text = source.title;
-    _descriptionController.text = source.description;
     _selectedType = source.type;
 
     switch (source.type) {
-      case KnowledgeSourceType.text:
-        _contentController.text = source.content;
-        break;
-      case KnowledgeSourceType.url:
-        _urlController.text = source.content;
+      case KnowledgeSourceType.website:
         if (source.metadata != null) {
           try {
             final metadata = WebsiteMetadata.fromJson(source.metadata!);
@@ -182,10 +171,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           }
         }
         break;
-      case KnowledgeSourceType.pdf:
-      case KnowledgeSourceType.docx:
-      case KnowledgeSourceType.csv:
-      case KnowledgeSourceType.json:
+      case KnowledgeSourceType.local_file:
         _selectedFileName = source.filePath ?? "Selected file";
         break;
       case KnowledgeSourceType.googleDrive:
@@ -201,11 +187,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         if (source.metadata != null) {
           try {
             _isSlackConnected = true;
-            _slackWorkspaceName =
-                "Your Workspace"; // This would come from metadata
-            _selectedSlackChannels = [
-              "#general",
-            ]; // This would come from metadata
+            _slackWorkspaceName = "Your Workspace";
+            _selectedSlackChannels = ["#general"];
           } catch (e) {
             // Handle parsing error
           }
@@ -215,19 +198,13 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         if (source.metadata != null) {
           try {
             _isConfluenceConnected = true;
-            _confluenceSpaceName =
-                "Documentation"; // This would come from metadata
-            _confluenceDomainUrl =
-                "your-company.atlassian.net"; // This would come from metadata
-            _selectedConfluencePages = [
-              "Home",
-            ]; // This would come from metadata
+            _confluenceSpaceName = "Documentation";
+            _confluenceDomainUrl = "your-company.atlassian.net";
+            _selectedConfluencePages = ["Home"];
           } catch (e) {
             // Handle parsing error
           }
         }
-        break;
-      default:
         break;
     }
   }
@@ -235,144 +212,63 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _urlController.dispose();
-    _contentController.dispose();
     super.dispose();
   }
 
   /// Saves the source data and updates the knowledge base
-  ///
-  /// Validates form input and creates/updates the source based on
-  /// the selected source type and input data.
   Future<void> _saveSource() async {
-    if (!_formKey.currentState!.validate()) return;
+    AppLogger.d("_saveSource: Method started");
+
+    // Simplified validation - only check if a file is selected
+    if (_selectedFile == null) {
+      AppLogger.d("_saveSource: No file selected, returning early");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a file to upload')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
+      AppLogger.d("_saveSource: Starting to save source");
+
       // For file upload sources, use the FileUploadBloc
-      if ((_selectedType == KnowledgeSourceType.pdf ||
-              _selectedType == KnowledgeSourceType.docx ||
-              _selectedType == KnowledgeSourceType.csv ||
-              _selectedType == KnowledgeSourceType.json ||
-              _selectedType == KnowledgeSourceType.text) &&
-          _selectedFile != null) {
+      if (_selectedFile != null) {
+        AppLogger.d(
+            "_saveSource: File selected, preparing for upload: ${_selectedFile!.path}");
+
         // Get auth token from AuthBloc
         final authState = context.read<AuthBloc>().state;
         final accessToken = authState.user?.accessToken;
+
+        AppLogger.d(
+            "_saveSource: Auth token available: ${accessToken != null}");
 
         if (accessToken == null) {
           throw Exception('Authentication required');
         }
 
-        // Upload the file using FileUploadBloc
-        context.read<FileUploadBloc>().add(
-              UploadLocalFileEvent(
-                knowledgeId: widget.knowledgeBase.id,
-                file: _selectedFile!,
-                accessToken: accessToken,
-              ),
-            );
+        // Use the local instance directly instead of trying to read from context
+        AppLogger.d("_saveSource: Dispatching UploadLocalFileEvent");
+        _fileUploadBloc.add(
+          UploadLocalFileEvent(
+            knowledgeId: widget.knowledgeBase.id,
+            file: _selectedFile!,
+            accessToken: accessToken,
+          ),
+        );
 
+        AppLogger.d("_saveSource: Event dispatched, waiting for BlocListener");
         // The rest will be handled by the BlocListener
         return;
       }
-
-      // Original code for other source types
-      final now = DateTime.now();
-      String content = '';
-      Map<String, dynamic>? metadata;
-      String? filePath;
-
-      // Handle different source types
-      switch (_selectedType) {
-        case KnowledgeSourceType.text:
-          content = _contentController.text.trim();
-          break;
-        case KnowledgeSourceType.url:
-          content = _urlController.text.trim();
-          metadata = WebsiteMetadata(
-            url: content,
-            shouldCrawlLinks: _shouldCrawlLinks,
-            maxPagesToCrawl: _maxPagesToCrawl,
-            crawlDepth: _crawlDepth,
-          ).toJson();
-          break;
-        case KnowledgeSourceType.pdf:
-        case KnowledgeSourceType.docx:
-        case KnowledgeSourceType.csv:
-        case KnowledgeSourceType.json:
-          content = "File content would be processed here";
-          filePath = _selectedFileName;
-          break;
-        case KnowledgeSourceType.googleDrive:
-          content = "Google Drive content would be linked here";
-          metadata = {'filename': _selectedDriveFileName};
-          break;
-        case KnowledgeSourceType.slack:
-          content = "Slack integration content";
-          metadata = {
-            'workspace': _slackWorkspaceName,
-            'channels': _selectedSlackChannels,
-            'isConnected': _isSlackConnected,
-          };
-          break;
-        case KnowledgeSourceType.confluence:
-          content = "Confluence integration content";
-          metadata = {
-            'domain': _confluenceDomainUrl,
-            'space': _confluenceSpaceName,
-            'pages': _selectedConfluencePages,
-            'isConnected': _isConfluenceConnected,
-          };
-          break;
-        default:
-          content = "Unsupported source type";
-      }
-
-      final source = KnowledgeSource(
-        id: _isEditing
-            ? widget.editSource!.id
-            : '${now.millisecondsSinceEpoch}_${_selectedType.toString()}',
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        type: _selectedType,
-        content: content,
-        addedAt: _isEditing ? widget.editSource!.addedAt : now,
-        lastUpdated: now,
-        metadata: metadata,
-        filePath: filePath,
-      );
-
-      // In a real app, you would save to database or API
-      await Future.delayed(
-        const Duration(milliseconds: 800),
-      ); // Simulate network delay
-
-      // Update knowledge base with new source
-      final updatedKnowledgeBase = _isEditing
-          ? widget.knowledgeBase.updateSource(source)
-          : widget.knowledgeBase.addSource(source);
-
+    } catch (e) {
+      AppLogger.e("_saveSource: Error occurred: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditing
-                  ? 'Đã cập nhật nguồn dữ liệu'
-                  : 'Đã thêm nguồn dữ liệu mới',
-            ),
-          ),
+          SnackBar(content: Text('Error: $e')),
         );
-        Navigator.pop(context, updatedKnowledgeBase);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {
@@ -384,41 +280,39 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   /// Select a file from the device storage
   Future<void> _mockSelectFile() async {
     try {
-      // Use file_picker to select a file
+      // Use file_picker to select any file type
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'json', 'csv'],
+        type: FileType.any,
       );
 
       if (result != null && result.files.single.path != null) {
         final fileName = result.files.single.name;
+        final filePath = result.files.single.path!;
+        final fileExtension = fileName.split('.').last.toLowerCase();
 
-        // Determine file type based on extension
-        if (fileName.toLowerCase().endsWith('.pdf')) {
-          _selectedType = KnowledgeSourceType.pdf;
-        } else if (fileName.toLowerCase().endsWith('.doc') ||
-            fileName.toLowerCase().endsWith('.docx')) {
-          _selectedType = KnowledgeSourceType.docx;
-        } else if (fileName.toLowerCase().endsWith('.txt')) {
-          _selectedType = KnowledgeSourceType.text;
-        } else if (fileName.toLowerCase().endsWith('.json')) {
-          _selectedType = KnowledgeSourceType.json;
-        } else if (fileName.toLowerCase().endsWith('.csv')) {
-          _selectedType = KnowledgeSourceType.csv;
-        }
+        // Always use localFile type
+        _selectedType = KnowledgeSourceType.local_file;
+
+        // Store the file format in metadata instead
+        Map<String, dynamic> metadata = {
+          'fileFormat': fileExtension,
+          'originalFileName': fileName,
+          'fileSize': result.files.single.size,
+        };
 
         setState(() {
           _selectedFileName = fileName;
-          _selectedFile = File(result.files.single.path!);
+          _selectedFile = File(filePath);
+          _fileMetadata = metadata;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã chọn tệp: $fileName')),
+          SnackBar(content: Text('Selected file: $fileName')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi chọn tệp: $e')),
+        SnackBar(content: Text('Error selecting file: $e')),
       );
     }
   }
@@ -427,8 +321,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kết nối Google Drive'),
-        content: const Text('Đang mô phỏng đăng nhập vào Google Drive...'),
+        title: const Text('Connect Google Drive'),
+        content: const Text('Simulating login to Google Drive...'),
         actions: [
           TextButton(
             onPressed: () {
@@ -437,10 +331,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 _selectedDriveFileName = "my_document.docx";
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Google Drive')),
+                const SnackBar(content: Text('Connected to Google Drive')),
               );
             },
-            child: const Text('Mô phỏng kết nối thành công'),
+            child: const Text('Simulate successful connection'),
           ),
         ],
       ),
@@ -451,8 +345,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kết nối Slack'),
-        content: const Text('Đang mô phỏng đăng nhập vào Slack...'),
+        title: const Text('Connect Slack'),
+        content: const Text('Simulating login to Slack...'),
         actions: [
           TextButton(
             onPressed: () {
@@ -463,10 +357,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 _selectedSlackChannels = ["#general"];
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Slack')),
+                const SnackBar(content: Text('Connected to Slack')),
               );
             },
-            child: const Text('Mô phỏng kết nối thành công'),
+            child: const Text('Simulate successful connection'),
           ),
         ],
       ),
@@ -479,17 +373,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       _slackWorkspaceName = null;
       _selectedSlackChannels = [];
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đã ngắt kết nối Slack')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Disconnected from Slack')));
   }
 
   void _mockConnectConfluence() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Kết nối Confluence'),
-        content: const Text('Đang mô phỏng đăng nhập vào Confluence...'),
+        title: const Text('Connect Confluence'),
+        content: const Text('Simulating login to Confluence...'),
         actions: [
           TextButton(
             onPressed: () {
@@ -501,10 +394,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 _selectedConfluencePages = ["Home"];
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã kết nối Confluence')),
+                const SnackBar(content: Text('Connected to Confluence')),
               );
             },
-            child: const Text('Mô phỏng kết nối thành công'),
+            child: const Text('Simulate successful connection'),
           ),
         ],
       ),
@@ -518,9 +411,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       _confluenceDomainUrl = null;
       _selectedConfluencePages = [];
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đã ngắt kết nối Confluence')));
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Disconnected from Confluence')));
   }
 
   void _clearSelectedFile() {
@@ -562,10 +454,13 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => di.sl<FileUploadBloc>(),
+    // Use BlocProvider.value to provide the existing bloc instance
+    return BlocProvider.value(
+      value: _fileUploadBloc,
       child: BlocListener<FileUploadBloc, FileUploadState>(
         listener: (context, state) {
+          AppLogger.d("BlocListener: Received state: $state");
+
           if (state is FileUploadLoading) {
             setState(() => _isLoading = true);
           } else if (state is FileUploadSuccess) {
@@ -580,15 +475,15 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                   content: Text(_isEditing
-                      ? 'Đã cập nhật nguồn dữ liệu'
-                      : 'Đã thêm nguồn dữ liệu mới')),
+                      ? 'Source updated successfully'
+                      : 'New source added successfully')),
             );
             Navigator.pop(context, updatedKnowledgeBase);
           } else if (state is FileUploadError) {
             // Handle upload error
             setState(() => _isLoading = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Lỗi: ${state.message}')),
+              SnackBar(content: Text('Error: ${state.message}')),
             );
           }
         },
@@ -602,7 +497,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: Text(_isEditing ? 'Sửa nguồn dữ liệu' : 'Thêm nguồn dữ liệu'),
+      title: Text(_isEditing ? 'Edit Data Source' : 'Add Data Source'),
     );
   }
 
@@ -628,7 +523,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         controller: _tabController,
         isScrollable: true, // Make tabs scrollable to fit all 5
         tabs: const [
-          Tab(text: "Tệp", icon: Icon(Icons.insert_drive_file)),
+          Tab(text: "File", icon: Icon(Icons.insert_drive_file)),
           Tab(text: "Website", icon: Icon(Icons.language)),
           Tab(text: "Google Drive", icon: Icon(Icons.cloud)),
           Tab(text: "Slack", icon: Icon(Icons.forum)),
@@ -650,14 +545,6 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            // Common fields
-            CommonFormFields(
-              titleController: _titleController,
-              descriptionController: _descriptionController,
-              primaryColor: primaryColor,
-            ),
-            const SizedBox(height: 24),
-
             // Source-specific fields based on selected tab
             IndexedStack(
               index: _tabController.index,
@@ -669,7 +556,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Chọn tệp để tải lên",
+                        "Select a file to upload",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -702,7 +589,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                                 icon:
                                     const Icon(Icons.close, color: Colors.grey),
                                 onPressed: _clearSelectedFile,
-                                tooltip: "Xóa tệp đã chọn",
+                                tooltip: "Delete selected file",
                               ),
                             ],
                           ),
@@ -716,7 +603,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                             border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: const Text(
-                            "Chưa chọn tệp nào",
+                            "No file selected",
                             style: TextStyle(color: Colors.grey),
                           ),
                         ),
@@ -725,7 +612,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                       ElevatedButton.icon(
                         onPressed: _mockSelectFile,
                         icon: const Icon(Icons.upload_file),
-                        label: const Text("Chọn tệp"),
+                        label: const Text("Select File"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
@@ -737,7 +624,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        "Định dạng hỗ trợ: PDF, DOCX, TXT, CSV, JSON",
+                        "Supports all file types from your device",
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey,
@@ -750,7 +637,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
                 // URL tab (unchanged)
                 UrlSourceForm(
-                  urlController: _urlController,
+                  urlController: TextEditingController(), // Fix as needed
                   shouldCrawlLinks: _shouldCrawlLinks,
                   maxPagesToCrawl: _maxPagesToCrawl,
                   crawlDepth: _crawlDepth,
@@ -760,7 +647,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Google Drive tab (unchanged)
+                // Google Drive tab
                 GoogleDriveForm(
                   selectedDriveFileName: _selectedDriveFileName,
                   onConnectDrive: _mockConnectGoogleDrive,
@@ -769,7 +656,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Slack tab (unchanged)
+                // Slack tab
                 SlackSourceForm(
                   isConnected: _isSlackConnected,
                   workspaceName: _slackWorkspaceName,
@@ -784,7 +671,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   primaryColor: primaryColor,
                 ),
 
-                // Confluence tab (unchanged)
+                // Confluence tab
                 ConfluenceSourceForm(
                   isConnected: _isConfluenceConnected,
                   spaceName: _confluenceSpaceName,
@@ -823,7 +710,13 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _saveSource,
+        onPressed: _isLoading
+            ? null
+            : () {
+                // Add debug log to confirm button press
+                AppLogger.d("Save button pressed");
+                _saveSource();
+              },
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: Theme.of(context).primaryColor,
@@ -838,7 +731,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                   strokeWidth: 2,
                 ),
               )
-            : Text(_isEditing ? 'Cập nhật' : 'Thêm nguồn dữ liệu'),
+            : Text(_isEditing ? 'Update' : 'Add Data Source'),
       ),
     );
   }
@@ -848,8 +741,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     final now = DateTime.now();
     return KnowledgeSource(
       id: response.id,
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
+      title: response.name, // Use filename as title
+      description: "Uploaded file", // Simple description
       type: _getSourceTypeFromMimetype(response.metadata.mimetype),
       content: response.name,
       addedAt: now,
@@ -865,21 +758,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   /// Determines the source type based on file mimetype
   KnowledgeSourceType _getSourceTypeFromMimetype(String mimetype) {
-    if (mimetype.contains('pdf')) {
-      return KnowledgeSourceType.pdf;
-    } else if (mimetype.contains('word') ||
-        mimetype.contains('docx') ||
-        mimetype.contains('doc')) {
-      return KnowledgeSourceType.docx;
-    } else if (mimetype.contains('csv')) {
-      return KnowledgeSourceType.csv;
-    } else if (mimetype.contains('json')) {
-      return KnowledgeSourceType.json;
-    } else if (mimetype.contains('text')) {
-      return KnowledgeSourceType.text;
-    } else {
-      // Default to PDF for unknown types
-      return KnowledgeSourceType.pdf;
-    }
+    // For unknown types, return the current selected type
+    // This preserves the original file type
+    return _selectedType;
   }
 }

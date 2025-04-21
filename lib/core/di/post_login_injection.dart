@@ -25,6 +25,7 @@ import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/fetch_knowledge_units_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_local_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
@@ -101,6 +102,7 @@ Future<void> initPostLoginServices() async {
   sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
   sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
   sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateKnowledgeUseCase(sl()));
   sl.registerLazySingleton(
       () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
   sl.registerLazySingleton(
@@ -137,6 +139,7 @@ Future<void> initPostLoginServices() async {
         getKnowledgesUseCase: sl(),
         createKnowledgeUseCase: sl(),
         deleteKnowledgeUseCase: sl(),
+        updateKnowledgeUseCase: sl(),
       ));
   sl.registerLazySingleton(() => KnowledgeUnitBloc(
         fetchKnowledgeUnitsUseCase: sl<FetchKnowledgeUnitsUseCase>(),
@@ -204,6 +207,12 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<CreateKnowledgeUseCase>();
     if (sl.isRegistered<DeleteKnowledgeUseCase>())
       sl.resetLazySingleton<DeleteKnowledgeUseCase>();
+    if (sl.isRegistered<UpdateKnowledgeUseCase>())
+      sl.resetLazySingleton<UpdateKnowledgeUseCase>();
+    if (sl.isRegistered<FetchKnowledgeUnitsUseCase>())
+      sl.resetLazySingleton<FetchKnowledgeUnitsUseCase>();
+    if (sl.isRegistered<UploadLocalFileUseCase>())
+      sl.resetLazySingleton<UploadLocalFileUseCase>();
 
     // Reset Repositories
     if (sl.isRegistered<AssistantRepository>())
