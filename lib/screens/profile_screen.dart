@@ -149,13 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {
-                  // Handle upgrade plan
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Upgrade Plan feature coming soon')),
-                  );
-                },
+                onPressed: () => context.go('/purchase'),
                 child: const Text('Upgrade Plan'),
               ),
             ),

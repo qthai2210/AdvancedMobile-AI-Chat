@@ -29,6 +29,7 @@ dependencies:
   file_picker: ^10.1.2
   google_mobile_ads: ^4.0.0
   firebase_core: ^2.24.2
+  in_app_purchase: ^3.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,4 @@
-package com.example.aichatbot
+package com.advancedmobile.aichatbot
 
 import io.flutter.embedding.android.FlutterActivity
 
