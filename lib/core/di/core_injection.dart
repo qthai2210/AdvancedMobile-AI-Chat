@@ -1,6 +1,7 @@
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:aichatbot/core/network/token_refresh_interceptor.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
+import 'package:aichatbot/core/services/in_app_purchase_service.dart';
 import 'package:aichatbot/data/datasources/remote/auth_api_service.dart';
 import 'package:aichatbot/data/repositories/auth_repository_impl.dart';
 import 'package:aichatbot/domain/repositories/auth_repository.dart';
@@ -38,6 +39,8 @@ Future<void> initCoreServices() async {
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
   sl.registerLazySingleton(() => LogoutUsecase(sl()));
+  // In-App Purchase service
+  sl.registerLazySingleton(() => InAppPurchaseService());
 
   // Auth Bloc (needed for login flow)
   sl.registerLazySingleton(() => AuthBloc(

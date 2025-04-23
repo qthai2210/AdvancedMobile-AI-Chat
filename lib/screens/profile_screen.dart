@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:go_router/go_router.dart';
+import 'package:aichatbot/presentation/widgets/banner_ad_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -29,7 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'tokensUsed': 246578,
     'tokensRemaining': 753422,
   };
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,18 +48,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTabSelected: (index) => navigation_utils
             .handleDrawerNavigation(context, index, currentIndex: 2),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildProfileHeader(),
-                  _buildAccountDetails(),
-                  _buildUsageStatistics(),
-                  _buildSettingsSection(),
-                ],
-              ),
-            ),
+      body: Column(
+        children: [
+          // Main content
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildProfileHeader(),
+                        _buildAccountDetails(),
+                        _buildUsageStatistics(),
+                        _buildSettingsSection(),
+                      ],
+                    ),
+                  ),
+          ),
+
+          // Banner ad at the bottom
+          const SizedBox(
+            height: 60,
+            width: double.infinity,
+            child: BannerAdWidget(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -135,13 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {
-                  // Handle upgrade plan
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Upgrade Plan feature coming soon')),
-                  );
-                },
+                onPressed: () => context.go('/purchase'),
                 child: const Text('Upgrade Plan'),
               ),
             ),

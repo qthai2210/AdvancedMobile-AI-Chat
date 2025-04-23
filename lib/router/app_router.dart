@@ -1,4 +1,5 @@
 import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
+import 'package:aichatbot/presentation/screens/purchase_screen.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
@@ -68,6 +69,12 @@ class AppRouter {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      // Route for purchase screen
+      GoRoute(
+        path: '/purchase',
+        name: 'purchase',
+        builder: (context, state) => const PurchaseScreen(),
       ),
       GoRoute(
         path: '/prompts',

@@ -4,12 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
+import 'package:aichatbot/core/services/ad_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize dependency injection
   await di.init();
+
+  // Initialize Google Mobile Ads SDK
+  await AdService().initialize();
+
   // remove debug banner
   // debugPaintSizeEnabled = false;
   runApp(const MyApp());

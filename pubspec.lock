@@ -297,6 +297,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.3+4"
+  firebase_core:
+    dependency: "direct main"
+    description:
+      name: firebase_core
+      sha256: "26de145bb9688a90962faec6f838247377b0b0d32cc0abecd9a4e43525fc856c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.32.0"
+  firebase_core_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_core_platform_interface
+      sha256: d7253d255ff10f85cfd2adaba9ac17bae878fa3ba577462451163bd9f1d1f0bf
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.4.0"
+  firebase_core_web:
+    dependency: transitive
+    description:
+      name: firebase_core_web
+      sha256: "129a34d1e0fb62e2b488d988a1fc26cc15636357e50944ffee2862efe8929b23"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.22.0"
   fixnum:
     dependency: transitive
     description:
@@ -385,13 +409,21 @@ packages:
     source: hosted
     version: "9.1.1"
   google_identity_services_web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: google_identity_services_web
       sha256: "5d187c46dc59e02646e10fe82665fc3884a9b71bc1c90c2b8b749316d33ee454"
       url: "https://pub.dev"
     source: hosted
     version: "0.3.3+1"
+  google_mobile_ads:
+    dependency: "direct main"
+    description:
+      name: google_mobile_ads
+      sha256: a4f59019f2c32769fb6c60ed8aa321e9c21a36297e2c4f23452b3e779a3e7a26
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
   google_sign_in:
     dependency: "direct main"
     description:
@@ -536,6 +568,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1+1"
+  in_app_purchase:
+    dependency: "direct main"
+    description:
+      name: in_app_purchase
+      sha256: "11a40f148eeb4f681a0572003e2b33432e110c90c1bbb4f9ef83b81ec0c4f737"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.1"
+  in_app_purchase_android:
+    dependency: transitive
+    description:
+      name: in_app_purchase_android
+      sha256: "475b6c6541b54e6878263270d291ca8d5d7ef044263115bdec45e1e59737e3ad"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0+1"
+  in_app_purchase_platform_interface:
+    dependency: transitive
+    description:
+      name: in_app_purchase_platform_interface
+      sha256: "1d353d38251da5b9fea6635c0ebfc6bb17a2d28d0e86ea5e083bf64244f1fb4c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  in_app_purchase_storekit:
+    dependency: transitive
+    description:
+      name: in_app_purchase_storekit
+      sha256: "6ce1361278cacc0481508989ba419b2c9f46a2b0dc54b3fe54f5ee63c2718fef"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.22+1"
   intl:
     dependency: "direct main"
     description:
@@ -989,6 +1053,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
+  webview_flutter:
+    dependency: transitive
+    description:
+      name: webview_flutter
+      sha256: caf0f5a1012aa3c2d33c4215adc72dc1194bb59a2d3ed901f457965626805e66
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.11.0"
+  webview_flutter_android:
+    dependency: transitive
+    description:
+      name: webview_flutter_android
+      sha256: "5c3b6f992d123084903ec091b84f021c413a92a9af49038e4564a1b26c8452cf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.4.1"
+  webview_flutter_platform_interface:
+    dependency: transitive
+    description:
+      name: webview_flutter_platform_interface
+      sha256: "18b1640839cf6546784a524c72aded5b6e86b23e7167dc2311cc96f7658b64bd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.11.0"
+  webview_flutter_wkwebview:
+    dependency: transitive
+    description:
+      name: webview_flutter_wkwebview
+      sha256: c9f9be526fa0d3347374ceaa05c4b3acb85f4f112abd62f7d74b7d301fa515ff
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.20.0"
   win32:
     dependency: transitive
     description:
