@@ -400,4 +400,122 @@ class KnowledgeApiService {
       rethrow;
     }
   }
+
+  /// Uploads a Google Drive file to the knowledge base
+  ///
+  /// [knowledgeId] - The ID of the knowledge base
+  /// [accessToken] - The user's access token for authentication
+  /// [formData] - multipart/form-data with required fields
+  Future<FileUploadResponse> uploadGoogleDriveFile({
+    required String knowledgeId,
+    required String id,
+    required String name,
+    required bool status,
+    required String userId,
+    required String createdAt,
+    String? updatedAt,
+    String? createdBy,
+    String? updatedBy,
+    String? accessToken,
+  }) async {
+    final url = '/kb-core/v1/knowledge/$knowledgeId/google-drive';
+
+    try {
+      final formData = FormData.fromMap({
+        'id': id,
+        'name': name,
+        'status': status,
+        'userId': userId,
+        'knowledgeId': knowledgeId,
+        'createdAt': createdAt,
+        if (updatedAt != null) 'updatedAt': updatedAt,
+        if (createdBy != null) 'createdBy': createdBy,
+        if (updatedBy != null) 'updatedBy': updatedBy,
+      });
+
+      final headers = <String, dynamic>{
+        if (accessToken != null && accessToken.isNotEmpty)
+          'x-jarvis-guid': accessToken,
+        if (accessToken != null && accessToken.isNotEmpty)
+          'Authorization': 'Bearer $accessToken',
+      };
+
+      final response = await _uploadDio.post(
+        url,
+        data: formData,
+        options: Options(
+          headers: headers,
+        ),
+      );
+
+      return FileUploadResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Failed to upload Google Drive file: $e');
+    }
+  }
+
+  /// Uploads a Slack source to the knowledge base
+  Future<FileUploadResponse> uploadSlackSource({
+    required String knowledgeId,
+    required String unitName,
+    required String slackWorkspace,
+    required String slackBotToken,
+    String? accessToken,
+  }) async {
+    final url = '/kb-core/v1/knowledge/$knowledgeId/slack';
+
+    final body = {
+      'unitName': unitName,
+      'slackWorkspace': slackWorkspace,
+      'slackBotToken': slackBotToken,
+    };
+
+    final headers = <String, dynamic>{
+      if (accessToken != null && accessToken.isNotEmpty)
+        'x-jarvis-guid': accessToken,
+      if (accessToken != null && accessToken.isNotEmpty)
+        'Authorization': 'Bearer $accessToken',
+    };
+
+    final response = await _uploadDio.post(
+      url,
+      data: body,
+      options: Options(headers: headers),
+    );
+
+    return FileUploadResponse.fromJson(response.data);
+  }
+
+  /// Uploads a Confluence source to the knowledge base
+  Future<FileUploadResponse> uploadConfluenceSource({
+    required String knowledgeId,
+    required String unitName,
+    required String wikiPageUrl,
+    required String confluenceUsername,
+    required String confluenceAccessToken,
+    String? accessToken,
+  }) async {
+    final url = '/kb-core/v1/knowledge/$knowledgeId/confluence';
+
+    final body = {
+      'unitName': unitName,
+      'wikiPageUrl': wikiPageUrl,
+      'confluenceUsername': confluenceUsername,
+      'confluenceAccessToken': confluenceAccessToken,
+    };
+
+    final headers = <String, dynamic>{
+      if (accessToken != null && accessToken.isNotEmpty)
+        'x-jarvis-guid': accessToken,
+      if (accessToken != null && accessToken.isNotEmpty)
+        'Authorization': 'Bearer $accessToken',
+    };
+
+    final response = await _uploadDio.post(
+      url,
+      data: body,
+      options: Options(headers: headers),
+    );
+    return FileUploadResponse.fromJson(response.data);
+  }
 }

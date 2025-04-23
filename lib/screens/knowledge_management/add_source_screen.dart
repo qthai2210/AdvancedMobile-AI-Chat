@@ -5,32 +5,25 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_event.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_state.dart';
+import 'package:aichatbot/utils/google_auth_client.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/google_drive_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/slack_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/url_source_form.dart';
+import 'package:aichatbot/widgets/knowledge/source_preview_card.dart';
+import 'package:aichatbot/widgets/knowledge/source_forms/source_type_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// Fix import paths by using your actual package name instead of 'aichatbot'
 import 'package:aichatbot/widgets/knowledge/source_forms/common_form_fields.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:http/http.dart' as http;
 
-/// A screen for adding or editing knowledge sources to a knowledge base.
-///
-/// Supports multiple source types including:
-/// * File uploads (PDF, DOCX, CSV, JSON, Text)
-/// * Website URLs with crawling options
-/// * Google Drive integration
-/// * Slack integration
-/// * Confluence integration
 class AddSourceScreen extends StatefulWidget {
-  /// The knowledge base to add the source to
   final KnowledgeBase knowledgeBase;
-
-  /// Optional existing source for editing mode
   final KnowledgeSource? editSource;
 
   const AddSourceScreen({
@@ -43,109 +36,83 @@ class AddSourceScreen extends StatefulWidget {
   State<AddSourceScreen> createState() => _AddSourceScreenState();
 }
 
-/// State management for the [AddSourceScreen].
-/// Handles form input, validation, and source creation/editing.
 class _AddSourceScreenState extends State<AddSourceScreen>
     with SingleTickerProviderStateMixin {
-  /// Form key for validation
   final _formKey = GlobalKey<FormState>();
-
-  /// Controller for source type tabs
   late TabController _tabController;
-
-  /// Loading state for async operations
   bool _isLoading = false;
-
-  /// Whether we're editing an existing source
   final bool _isEditing = false;
-
-  // Selected source type
   KnowledgeSourceType _selectedType = KnowledgeSourceType.local_file;
-
-  // URL crawling options
   bool _shouldCrawlLinks = true;
   int _maxPagesToCrawl = 10;
   int _crawlDepth = 1;
-
-  // Mock file selection
   String? _selectedFileName;
   File? _selectedFile;
   String? _selectedDriveFileName;
-
-  // Slack options
+  String? _selectedDriveFileId;
   bool _isSlackConnected = false;
   String? _slackWorkspaceName;
   List<String> _selectedSlackChannels = [];
-
-  // Confluence options
   bool _isConfluenceConnected = false;
   String? _confluenceSpaceName;
   String? _confluenceDomainUrl;
   List<String> _selectedConfluencePages = [];
   Map<String, dynamic>? _fileMetadata;
-
-  // Create a local instance of FileUploadBloc
   late final FileUploadBloc _fileUploadBloc;
+  late GoogleSignIn _googleSignIn;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize FileUploadBloc using dependency injection
+    _googleSignIn = GoogleSignIn(
+      scopes: [drive.DriveApi.driveReadonlyScope],
+    );
     _fileUploadBloc = di.sl<FileUploadBloc>();
-
-    // Initialize tab controller for different source types
     _tabController = TabController(
       length: 5,
       vsync: this,
       initialIndex: _getInitialTabIndex(),
     );
-
     _tabController.addListener(_handleTabChange);
-
     if (widget.editSource != null) {
       _loadSourceData();
     }
   }
 
-  /// Gets the initial tab index based on source type when editing
   int _getInitialTabIndex() {
-    if (!_isEditing) return 0; // Default to file tab
+    if (!_isEditing) return 0;
 
-    // Set initial tab based on source type if editing
     switch (widget.editSource!.type) {
       case KnowledgeSourceType.local_file:
-        return 0; // File tab
+        return 0;
       case KnowledgeSourceType.website:
-        return 1; // URL tab
+        return 1;
       case KnowledgeSourceType.googleDrive:
-        return 2; // Google Drive tab
+        return 2;
       case KnowledgeSourceType.slack:
-        return 3; // Slack tab
+        return 3;
       case KnowledgeSourceType.confluence:
         return 4;
     }
   }
 
-  /// Handles source type changes when switching tabs
   void _handleTabChange() {
     if (_tabController.indexIsChanging) {
       setState(() {
-        // When changing tabs, set the appropriate source type for each tab
         switch (_tabController.index) {
-          case 0: // File tab
+          case 0:
             _selectedType = KnowledgeSourceType.local_file;
             break;
-          case 1: // URL tab
+          case 1:
             _selectedType = KnowledgeSourceType.website;
             break;
-          case 2: // Google Drive tab
+          case 2:
             _selectedType = KnowledgeSourceType.googleDrive;
             break;
-          case 3: // Slack tab
+          case 3:
             _selectedType = KnowledgeSourceType.slack;
             break;
-          case 4: // Confluence tab
+          case 4:
             _selectedType = KnowledgeSourceType.confluence;
             break;
         }
@@ -153,7 +120,6 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
-  /// Loads existing source data when in edit mode
   void _loadSourceData() {
     final source = widget.editSource!;
     _selectedType = source.type;
@@ -215,42 +181,60 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     super.dispose();
   }
 
-  /// Saves the source data and updates the knowledge base
   Future<void> _saveSource() async {
     AppLogger.d("_saveSource: Method started");
 
-    // Simplified validation - only check if a file is selected
-    if (_selectedFile == null) {
-      AppLogger.d("_saveSource: No file selected, returning early");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file to upload')),
-      );
-      return;
+    switch (_selectedType) {
+      case KnowledgeSourceType.local_file:
+        if (_selectedFile == null) {
+          AppLogger.d("_saveSource: No file selected, returning early");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a file to upload')),
+          );
+          return;
+        }
+        _uploadLocalFile();
+        break;
+      case KnowledgeSourceType.googleDrive:
+        _saveGoogleDriveSource();
+        break;
+      case KnowledgeSourceType.website:
+        _saveWebsiteSource();
+        break;
+      case KnowledgeSourceType.slack:
+        _saveSlackSource();
+        break;
+      case KnowledgeSourceType.confluence:
+        _saveConfluenceSource();
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Select a valid source type')),
+        );
     }
+  }
 
+  Future<void> _uploadLocalFile() async {
     setState(() => _isLoading = true);
 
     try {
-      AppLogger.d("_saveSource: Starting to save source");
+      AppLogger.d("_uploadLocalFile: Starting to upload local file");
 
-      // For file upload sources, use the FileUploadBloc
       if (_selectedFile != null) {
         AppLogger.d(
-            "_saveSource: File selected, preparing for upload: ${_selectedFile!.path}");
+            "_uploadLocalFile: File selected, preparing for upload: ${_selectedFile!.path}");
 
-        // Get auth token from AuthBloc
         final authState = context.read<AuthBloc>().state;
         final accessToken = authState.user?.accessToken;
 
         AppLogger.d(
-            "_saveSource: Auth token available: ${accessToken != null}");
+            "_uploadLocalFile: Auth token available: ${accessToken != null}");
 
         if (accessToken == null) {
           throw Exception('Authentication required');
         }
 
-        // Use the local instance directly instead of trying to read from context
-        AppLogger.d("_saveSource: Dispatching UploadLocalFileEvent");
+        AppLogger.d("_uploadLocalFile: Dispatching UploadLocalFileEvent");
         _fileUploadBloc.add(
           UploadLocalFileEvent(
             knowledgeId: widget.knowledgeBase.id,
@@ -259,28 +243,46 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           ),
         );
 
-        AppLogger.d("_saveSource: Event dispatched, waiting for BlocListener");
-        // The rest will be handled by the BlocListener
-        return;
+        AppLogger.d(
+            "_uploadLocalFile: Event dispatched, waiting for BlocListener");
       }
     } catch (e) {
-      AppLogger.e("_saveSource: Error occurred: $e");
+      AppLogger.e("_uploadLocalFile: Error occurred: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
   }
 
-  /// Select a file from the device storage
+// Add these placeholder methods for other source types
+  Future<void> _saveWebsiteSource() async {
+    // Implement website source upload
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Website source upload not implemented yet')),
+    );
+  }
+
+  Future<void> _saveSlackSource() async {
+    // Implement Slack source upload
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Slack source upload not implemented yet')),
+    );
+  }
+
+  Future<void> _saveConfluenceSource() async {
+    // Implement Confluence source upload
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Confluence source upload not implemented yet')),
+    );
+  }
+
   Future<void> _mockSelectFile() async {
     try {
-      // Use file_picker to select any file type
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
       );
@@ -290,10 +292,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         final filePath = result.files.single.path!;
         final fileExtension = fileName.split('.').last.toLowerCase();
 
-        // Always use localFile type
         _selectedType = KnowledgeSourceType.local_file;
 
-        // Store the file format in metadata instead
         Map<String, dynamic> metadata = {
           'fileFormat': fileExtension,
           'originalFileName': fileName,
@@ -317,28 +317,95 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     }
   }
 
-  void _mockConnectGoogleDrive() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Connect Google Drive'),
-        content: const Text('Simulating login to Google Drive...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedDriveFileName = "my_document.docx";
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Connected to Google Drive')),
-              );
-            },
-            child: const Text('Simulate successful connection'),
+  Future<void> _pickDriveFile() async {
+    setState(() => _isLoading = true);
+    try {
+      // 1. Sign in (hoặc lấy lại token nếu đã connect)
+      final account = await _googleSignIn.signIn();
+      if (account == null) throw Exception('Chưa sign in Google');
+      final authHeaders = await account.authHeaders;
+      final client = GoogleAuthClient(authHeaders);
+
+      // 2. Tạo Drive API client và list file
+      final driveApi = drive.DriveApi(client);
+      final fileList = await driveApi.files.list(
+        pageSize: 20,
+        $fields: 'files(id,name,mimeType)',
+      );
+
+      // 3. Hiển thị dialog để chọn file
+      final picked = await showDialog<drive.File>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Select a Google Drive file'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: fileList.files!
+                  .map((f) => ListTile(
+                        leading: const Icon(Icons.insert_drive_file),
+                        title: Text(f.name ?? ''),
+                        subtitle: Text(f.mimeType ?? ''),
+                        onTap: () => Navigator.pop(context, f),
+                      ))
+                  .toList(),
+            ),
           ),
-        ],
-      ),
-    );
+        ),
+      );
+
+      if (picked != null) {
+        setState(() {
+          _selectedDriveFileId = picked.id;
+          _selectedDriveFileName = picked.name;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Selected: ${picked.name}')),
+        );
+      }
+    } catch (e) {
+      AppLogger.e("Google Picker error: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveGoogleDriveSource() async {
+    if (_selectedDriveFileId == null || _selectedDriveFileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn phải chọn file trước')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final auth = context.read<AuthBloc>().state;
+      final token = auth.user?.accessToken;
+      final userId = auth.user?.id;
+      if (token == null || userId == null) throw Exception('Chưa login');
+
+      final now = DateTime.now().toIso8601String();
+
+      _fileUploadBloc.add(
+        UploadGoogleDriveEvent(
+          knowledgeId: widget.knowledgeBase.id,
+          id: _selectedDriveFileId!,
+          name: _selectedDriveFileName!,
+          status: true,
+          userId: userId,
+          createdAt: now,
+          accessToken: token,
+        ),
+      );
+    } catch (e) {
+      AppLogger.e("Lỗi upload Drive: $e");
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   void _mockConnectSlack() {
@@ -425,6 +492,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   void _clearSelectedDriveFile() {
     setState(() {
       _selectedDriveFileName = null;
+      _selectedDriveFileId = null;
     });
   }
 
@@ -454,17 +522,13 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Use BlocProvider.value to provide the existing bloc instance
     return BlocProvider.value(
       value: _fileUploadBloc,
       child: BlocListener<FileUploadBloc, FileUploadState>(
         listener: (context, state) {
-          AppLogger.d("BlocListener: Received state: $state");
-
           if (state is FileUploadLoading) {
             setState(() => _isLoading = true);
           } else if (state is FileUploadSuccess) {
-            // Handle successful upload
             setState(() => _isLoading = false);
             final updatedKnowledgeBase = _isEditing
                 ? widget.knowledgeBase
@@ -472,19 +536,14 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 : widget.knowledgeBase
                     .addSource(_createSourceFromUpload(state.response));
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(_isEditing
-                      ? 'Source updated successfully'
-                      : 'New source added successfully')),
-            );
+            _showSuccessSnackbar(_isEditing
+                ? 'Source updated successfully'
+                : 'New source added successfully');
+
             Navigator.pop(context, updatedKnowledgeBase);
           } else if (state is FileUploadError) {
-            // Handle upload error
             setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${state.message}')),
-            );
+            _showErrorSnackbar(state.message);
           }
         },
         child: Scaffold(
@@ -495,254 +554,481 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.green[700],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Error: $message')),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: Text(_isEditing ? 'Edit Data Source' : 'Add Data Source'),
+      elevation: 0,
+      centerTitle: true,
+      backgroundColor: Theme.of(context).primaryColor,
+      foregroundColor: Colors.white,
+      bottom: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        indicatorColor: Colors.white,
+        indicatorWeight: 3,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withOpacity(0.7),
+        tabs: [
+          Tab(icon: Icon(Icons.insert_drive_file), text: "File"),
+          Tab(icon: Icon(Icons.language), text: "Website"),
+          Tab(icon: Icon(Icons.cloud), text: "Google Drive"),
+          Tab(icon: Icon(Icons.forum), text: "Slack"),
+          Tab(icon: Icon(Icons.book_online), text: "Confluence"),
+        ],
+      ),
     );
   }
 
   Widget _buildLoadingIndicator() {
-    return const Center(child: CircularProgressIndicator());
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).primaryColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _isEditing ? "Updating source..." : "Adding source...",
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  /// Builds the main form layout including tabs and content
   Widget _buildForm() {
     return Form(
       key: _formKey,
       child: Column(
-        children: [_buildTabBar(), _buildFormContent(), _buildSaveButton()],
-      ),
-    );
-  }
-
-  /// Builds the tab bar for different source types
-  Widget _buildTabBar() {
-    return Material(
-      color: Theme.of(context).primaryColor,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true, // Make tabs scrollable to fit all 5
-        tabs: const [
-          Tab(text: "File", icon: Icon(Icons.insert_drive_file)),
-          Tab(text: "Website", icon: Icon(Icons.language)),
-          Tab(text: "Google Drive", icon: Icon(Icons.cloud)),
-          Tab(text: "Slack", icon: Icon(Icons.forum)),
-          Tab(text: "Confluence", icon: Icon(Icons.book_online)),
-        ],
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white70,
-        indicatorColor: Colors.white,
-      ),
-    );
-  }
-
-  /// Builds the form content based on selected source type
-  Widget _buildFormContent() {
-    final primaryColor = Theme.of(context).primaryColor;
-
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            // Source-specific fields based on selected tab
-            IndexedStack(
-              index: _tabController.index,
+        children: [
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
               children: [
-                // File tab - simplified to only show file picker and upload button
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Select a file to upload",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Selected file info
-                      if (_selectedFileName != null)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.insert_drive_file,
-                                  color: Colors.blue),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _selectedFileName!,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                              ),
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.close, color: Colors.grey),
-                                onPressed: _clearSelectedFile,
-                                tooltip: "Delete selected file",
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: const Text(
-                            "No file selected",
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-                      // File picker button
-                      ElevatedButton.icon(
-                        onPressed: _mockSelectFile,
-                        icon: const Icon(Icons.upload_file),
-                        label: const Text("Select File"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Supports all file types from your device",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // URL tab (unchanged)
-                UrlSourceForm(
-                  urlController: TextEditingController(), // Fix as needed
-                  shouldCrawlLinks: _shouldCrawlLinks,
-                  maxPagesToCrawl: _maxPagesToCrawl,
-                  crawlDepth: _crawlDepth,
-                  onCrawlLinksChanged: _onCrawlLinksChanged,
-                  onMaxPagesChanged: _onMaxPagesChanged,
-                  onCrawlDepthChanged: _onCrawlDepthChanged,
-                  primaryColor: primaryColor,
-                ),
-
-                // Google Drive tab
-                GoogleDriveForm(
-                  selectedDriveFileName: _selectedDriveFileName,
-                  onConnectDrive: _mockConnectGoogleDrive,
-                  onClearSelection: _clearSelectedDriveFile,
-                  onSelectDifferent: _mockConnectGoogleDrive,
-                  primaryColor: primaryColor,
-                ),
-
-                // Slack tab
-                SlackSourceForm(
-                  isConnected: _isSlackConnected,
-                  workspaceName: _slackWorkspaceName,
-                  selectedChannels: _selectedSlackChannels,
-                  onConnect: _mockConnectSlack,
-                  onDisconnect: _mockDisconnectSlack,
-                  onChannelsSelected: (channels) {
-                    setState(() {
-                      _selectedSlackChannels = channels;
-                    });
-                  },
-                  primaryColor: primaryColor,
-                ),
-
-                // Confluence tab
-                ConfluenceSourceForm(
-                  isConnected: _isConfluenceConnected,
-                  spaceName: _confluenceSpaceName,
-                  domainUrl: _confluenceDomainUrl,
-                  selectedPages: _selectedConfluencePages,
-                  onConnect: _mockConnectConfluence,
-                  onDisconnect: _mockDisconnectConfluence,
-                  onPagesSelected: (pages) {
-                    setState(() {
-                      _selectedConfluencePages = pages;
-                    });
-                  },
-                  primaryColor: primaryColor,
-                ),
+                _buildFileUploadTab(),
+                _buildWebsiteTab(),
+                _buildGoogleDriveTab(),
+                _buildSlackTab(),
+                _buildConfluenceTab(),
               ],
+            ),
+          ),
+          _buildSaveButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileUploadTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title and description
+          _buildSectionHeader(
+            "Upload a File",
+            "Add documents like PDFs, Word files, or text files to your knowledge base",
+            Icons.cloud_upload,
+          ),
+          const SizedBox(height: 24),
+
+          // File preview card
+          SourcePreviewCard(
+            fileName: _selectedFileName,
+            onClear: _clearSelectedFile,
+            fileIcon: _getFileIcon(),
+            iconColor: _getFileIconColor(),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Upload button
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: _mockSelectFile,
+              icon: const Icon(Icons.upload_file),
+              label: Text(
+                  _selectedFileName == null ? "Select File" : "Change File"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Supported file formats
+          _buildSupportInfo(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 40),
+          child: Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Divider(),
+      ],
+    );
+  }
+
+  IconData _getFileIcon() {
+    if (_selectedFileName == null) return Icons.insert_drive_file;
+
+    final extension = _selectedFileName!.split('.').last.toLowerCase();
+
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Icons.image;
+      case 'txt':
+        return Icons.text_snippet;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  Color _getFileIconColor() {
+    if (_selectedFileName == null) return Colors.blue;
+
+    final extension = _selectedFileName!.split('.').last.toLowerCase();
+
+    switch (extension) {
+      case 'pdf':
+        return Colors.red;
+      case 'doc':
+      case 'docx':
+        return Colors.blue;
+      case 'xls':
+      case 'xlsx':
+        return Colors.green;
+      case 'ppt':
+      case 'pptx':
+        return Colors.orange;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Colors.purple;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Widget _buildSupportInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              Text(
+                "Supported File Types",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildFileTypeChip("PDF", Colors.red),
+          _buildFileTypeChip("Word Documents", Colors.blue),
+          _buildFileTypeChip("Excel Spreadsheets", Colors.green),
+          _buildFileTypeChip("PowerPoint", Colors.orange),
+          _buildFileTypeChip("Text Files", Colors.grey),
+          _buildFileTypeChip("CSV", Colors.purple),
+          _buildFileTypeChip("JSON", Colors.amber),
+        ],
       ),
     );
   }
 
-  /// Builds the bottom save button with loading state
+  Widget _buildFileTypeChip(String label, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebsiteTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: UrlSourceForm(
+        urlController: TextEditingController(),
+        shouldCrawlLinks: _shouldCrawlLinks,
+        maxPagesToCrawl: _maxPagesToCrawl,
+        crawlDepth: _crawlDepth,
+        onCrawlLinksChanged: _onCrawlLinksChanged,
+        onMaxPagesChanged: _onMaxPagesChanged,
+        onCrawlDepthChanged: _onCrawlDepthChanged,
+        primaryColor: Theme.of(context).primaryColor,
+      ),
+    );
+  }
+
+  Widget _buildGoogleDriveTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            "Google Drive",
+            "Chọn file từ Google Drive của bạn",
+            Icons.cloud,
+          ),
+          const SizedBox(height: 24),
+
+          // nếu đã chọn file
+          if (_selectedDriveFileName != null && _selectedDriveFileId != null)
+            Row(
+              children: [
+                Expanded(
+                    child: Text(_selectedDriveFileName!,
+                        style: const TextStyle(fontSize: 16))),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() {
+                    _selectedDriveFileName = null;
+                    _selectedDriveFileId = null;
+                  }),
+                )
+              ],
+            )
+          else
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _pickDriveFile,
+                icon: const Icon(Icons.drive_file_rename_outline),
+                label: const Text("Select from Drive"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+
+          const Spacer(),
+
+          // Nút Lưu/Upload
+          ElevatedButton(
+            onPressed:
+                _selectedDriveFileId == null ? null : _saveGoogleDriveSource,
+            child: const Text("Upload to Knowledge"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlackTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: SlackSourceForm(
+        isConnected: _isSlackConnected,
+        workspaceName: _slackWorkspaceName,
+        selectedChannels: _selectedSlackChannels,
+        onConnect: _mockConnectSlack,
+        onDisconnect: _mockDisconnectSlack,
+        onChannelsSelected: (channels) {
+          setState(() {
+            _selectedSlackChannels = channels;
+          });
+        },
+        primaryColor: Theme.of(context).primaryColor,
+      ),
+    );
+  }
+
+  Widget _buildConfluenceTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: ConfluenceSourceForm(
+        isConnected: _isConfluenceConnected,
+        spaceName: _confluenceSpaceName,
+        domainUrl: _confluenceDomainUrl,
+        selectedPages: _selectedConfluencePages,
+        onConnect: _mockConnectConfluence,
+        onDisconnect: _mockDisconnectConfluence,
+        onPagesSelected: (pages) {
+          setState(() {
+            _selectedConfluencePages = pages;
+          });
+        },
+        primaryColor: Theme.of(context).primaryColor,
+      ),
+    );
+  }
+
   Widget _buildSaveButton() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
+            blurRadius: 8,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading
-            ? null
-            : () {
-                // Add debug log to confirm button press
-                AppLogger.d("Save button pressed");
-                _saveSource();
-              },
+        onPressed: _isLoading ? null : _saveSource,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
         ),
         child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(_isEditing ? 'Updating...' : 'Adding...'),
+                ],
               )
-            : Text(_isEditing ? 'Update' : 'Add Data Source'),
+            : Text(_isEditing ? 'Update Source' : 'Add Data Source'),
       ),
     );
   }
 
-  /// Creates a KnowledgeSource from a successful file upload response
   KnowledgeSource _createSourceFromUpload(FileUploadResponse response) {
     final now = DateTime.now();
     return KnowledgeSource(
       id: response.id,
-      title: response.name, // Use filename as title
-      description: "Uploaded file", // Simple description
+      title: response.name,
+      description: "Uploaded file",
       type: _getSourceTypeFromMimetype(response.metadata.mimetype),
       content: response.name,
       addedAt: now,
@@ -756,10 +1042,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
-  /// Determines the source type based on file mimetype
   KnowledgeSourceType _getSourceTypeFromMimetype(String mimetype) {
-    // For unknown types, return the current selected type
-    // This preserves the original file type
     return _selectedType;
   }
 }

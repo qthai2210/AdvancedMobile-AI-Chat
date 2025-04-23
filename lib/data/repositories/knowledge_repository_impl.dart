@@ -199,4 +199,67 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
       guid: guid,
     );
   }
+
+  @override
+  Future<FileUploadResponse> uploadGoogleDriveFile({
+    required String knowledgeId,
+    required String id,
+    required String name,
+    required bool status,
+    required String userId,
+    required String createdAt,
+    String? updatedAt,
+    String? createdBy,
+    String? updatedBy,
+    String? accessToken,
+  }) {
+    return knowledgeApiService.uploadGoogleDriveFile(
+      knowledgeId: knowledgeId,
+      id: id,
+      name: name,
+      status: status,
+      userId: userId,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      createdBy: createdBy,
+      updatedBy: updatedBy,
+      accessToken: accessToken,
+    );
+  }
+
+  @override
+  Future<FileUploadResponse> uploadSlackSource({
+    required String knowledgeId,
+    required String unitName,
+    required String slackWorkspace,
+    required String slackBotToken,
+    String? accessToken,
+  }) {
+    return knowledgeApiService.uploadSlackSource(
+      knowledgeId: knowledgeId,
+      unitName: unitName,
+      slackWorkspace: slackWorkspace,
+      slackBotToken: slackBotToken,
+      accessToken: accessToken,
+    );
+  }
+
+  @override
+  Future<FileUploadResponse> uploadConfluenceSource({
+    required String knowledgeId,
+    required String unitName,
+    required String wikiPageUrl,
+    required String confluenceUsername,
+    required String confluenceAccessToken,
+    String? accessToken,
+  }) {
+    return knowledgeApiService.uploadConfluenceSource(
+      knowledgeId: knowledgeId,
+      unitName: unitName,
+      wikiPageUrl: wikiPageUrl,
+      confluenceUsername: confluenceUsername,
+      confluenceAccessToken: confluenceAccessToken,
+      accessToken: accessToken,
+    );
+  }
 }

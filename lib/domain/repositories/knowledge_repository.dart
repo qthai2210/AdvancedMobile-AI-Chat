@@ -43,4 +43,34 @@ abstract class KnowledgeRepository {
     required String accessToken,
     String? guid,
   });
+
+  Future<FileUploadResponse> uploadGoogleDriveFile({
+    required String knowledgeId,
+    required String id,
+    required String name,
+    required bool status,
+    required String userId,
+    required String createdAt,
+    String? updatedAt,
+    String? createdBy,
+    String? updatedBy,
+    String? accessToken,
+  });
+
+  Future<FileUploadResponse> uploadSlackSource({
+    required String knowledgeId,
+    required String unitName,
+    required String slackWorkspace,
+    required String slackBotToken,
+    String? accessToken,
+  });
+
+  Future<FileUploadResponse> uploadConfluenceSource({
+    required String knowledgeId,
+    required String unitName,
+    required String wikiPageUrl,
+    required String confluenceUsername,
+    required String confluenceAccessToken,
+    String? accessToken,
+  });
 }

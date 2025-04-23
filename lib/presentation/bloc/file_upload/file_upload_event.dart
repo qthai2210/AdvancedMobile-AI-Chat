@@ -6,7 +6,7 @@ abstract class FileUploadEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Event to upload a local file to the knowledge base
+/// Upload a local file
 class UploadLocalFileEvent extends FileUploadEvent {
   final String knowledgeId;
   final File file;
@@ -21,8 +21,103 @@ class UploadLocalFileEvent extends FileUploadEvent {
   });
 
   @override
-  List<Object?> get props => [knowledgeId, file, accessToken, guid];
+  List<Object?> get props => [knowledgeId, file.path, accessToken, guid];
 }
 
-/// Event to reset the upload state
+/// Upload a Google Drive "file" (metadata only)
+class UploadGoogleDriveEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String id;
+  final String name;
+  final bool status;
+  final String userId;
+  final String createdAt;
+  final String? updatedAt;
+  final String? createdBy;
+  final String? updatedBy;
+  final String? accessToken;
+
+  UploadGoogleDriveEvent({
+    required this.knowledgeId,
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.userId,
+    required this.createdAt,
+    this.updatedAt,
+    this.createdBy,
+    this.updatedBy,
+    this.accessToken,
+  });
+
+  @override
+  List<Object?> get props => [
+        knowledgeId,
+        id,
+        name,
+        status,
+        userId,
+        createdAt,
+        updatedAt,
+        createdBy,
+        updatedBy,
+        accessToken,
+      ];
+}
+
+class UploadSlackEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String unitName;
+  final String slackWorkspace;
+  final String slackBotToken;
+  final String? accessToken;
+
+  UploadSlackEvent({
+    required this.knowledgeId,
+    required this.unitName,
+    required this.slackWorkspace,
+    required this.slackBotToken,
+    this.accessToken,
+  });
+
+  @override
+  List<Object?> get props => [
+        knowledgeId,
+        unitName,
+        slackWorkspace,
+        slackBotToken,
+        accessToken,
+      ];
+}
+
+/// Upload a Confluence source
+class UploadConfluenceEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String unitName;
+  final String wikiPageUrl;
+  final String confluenceUsername;
+  final String confluenceAccessToken;
+  final String? accessToken;
+
+  UploadConfluenceEvent({
+    required this.knowledgeId,
+    required this.unitName,
+    required this.wikiPageUrl,
+    required this.confluenceUsername,
+    required this.confluenceAccessToken,
+    this.accessToken,
+  });
+
+  @override
+  List<Object?> get props => [
+        knowledgeId,
+        unitName,
+        wikiPageUrl,
+        confluenceUsername,
+        confluenceAccessToken,
+        accessToken,
+      ];
+}
+
+/// Reset to initial state
 class ResetUploadEvent extends FileUploadEvent {}

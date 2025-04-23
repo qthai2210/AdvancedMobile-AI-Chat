@@ -27,7 +27,10 @@ import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dar
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/fetch_knowledge_units_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_confluence_file_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_google_drive_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_local_file_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_slack_use_case.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
@@ -107,6 +110,12 @@ Future<void> initPostLoginServices() async {
       () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
   sl.registerLazySingleton(
       () => UploadLocalFileUseCase(fileRepository: sl<KnowledgeRepository>()));
+  sl.registerLazySingleton(
+      () => UploadGoogleDriveFileUseCase(sl<KnowledgeRepository>()));
+  sl.registerLazySingleton(
+      () => UploadSlackFileUseCase(sl<KnowledgeRepository>()));
+  sl.registerLazySingleton(
+      () => UploadConfluenceFileUseCase(sl<KnowledgeRepository>()));
 
   // Blocs
   sl.registerLazySingleton(() => PromptBloc(
@@ -147,6 +156,9 @@ Future<void> initPostLoginServices() async {
 
   sl.registerLazySingleton(() => FileUploadBloc(
         uploadLocalFileUseCase: sl<UploadLocalFileUseCase>(),
+        uploadGoogleDriveFileUseCase: sl<UploadGoogleDriveFileUseCase>(),
+        uploadSlackFileUseCase: sl<UploadSlackFileUseCase>(),
+        uploadConfluenceFileUseCase: sl<UploadConfluenceFileUseCase>(),
       ));
 
   _postLoginServicesInitialized = true;
