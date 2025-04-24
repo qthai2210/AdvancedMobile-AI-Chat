@@ -545,36 +545,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  void _navigateToTab(int index) {
-    // Navigate to the selected tab
-    if (index == 0) {
-      // Chat tab
-      context.go('/chat');
-    } else if (index == 1) {
-      // Bots tab
-      context.go('/chat');
-      // Need to set the current index in the ChatAIScreen
-      // This will require state management like Provider/Bloc
-    } else if (index == 2) {
-      // Knowledge Base tab
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const KnowledgeManagementScreen(),
-        ),
-      );
-    } else if (index == 3) {
-      // History tab
-      context.go('/chat');
-    } else if (index == 4) {
-      // Profile tab
-      context.go('/chat');
-    } else if (index == 5) {
-      // Settings tab
-      context.go('/chat');
-    }
-  }
-
   Future<void> _loadRecentPrompts() async {
     setState(() => _isLoadingPrompts = true);
 
@@ -1431,10 +1401,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   id: promptModel.id,
                   title: promptModel.title,
                   content: promptModel.content,
-                  description: promptModel.description ?? '',
-                  useCount: promptModel.useCount ?? 0,
+                  description: promptModel.description,
+                  useCount: promptModel.useCount,
                   category: promptModel.category ?? 'Other',
-                  createdAt: promptModel.createdAt ?? DateTime.now(),
+                  createdAt: promptModel.createdAt,
                 ))
             .toList();
 

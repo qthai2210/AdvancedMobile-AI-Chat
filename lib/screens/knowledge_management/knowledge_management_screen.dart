@@ -319,7 +319,6 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
           icon: const Icon(Icons.tune, color: Colors.white),
           tooltip: 'Lọc',
           onPressed: () {
-            // TODO: Implement filtering options
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                   content: Text('Tính năng lọc sẽ có trong thời gian tới')),

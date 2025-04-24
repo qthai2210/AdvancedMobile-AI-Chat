@@ -1,5 +1,4 @@
 import 'package:aichatbot/core/network/api_service.dart';
-import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/data/models/assistant/assistant_list_response.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';

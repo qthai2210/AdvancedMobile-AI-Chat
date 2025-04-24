@@ -1,4 +1,3 @@
-import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:dio/dio.dart';

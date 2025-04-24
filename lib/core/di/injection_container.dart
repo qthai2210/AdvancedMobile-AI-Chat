@@ -1,5 +1,4 @@
 import 'package:aichatbot/core/di/core_injection.dart';
-import 'package:aichatbot/core/di/post_login_injection.dart';
 import 'package:aichatbot/utils/logger.dart';
 
 /// Export important functions and variables for use in the app

@@ -1,5 +1,3 @@
-import 'package:json_annotation/json_annotation.dart';
-
 /// Model that represents a single conversation item in the response
 class ConversationModel {
   /// Unique identifier for the conversation

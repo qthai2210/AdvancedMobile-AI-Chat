@@ -1,5 +1,4 @@
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
-import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
@@ -7,7 +6,6 @@ import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
 import 'package:aichatbot/screens/prompts/edit_prompt_screen.dart';
-import 'package:aichatbot/screens/prompts/widgets/empty_state.dart';
 import 'package:aichatbot/screens/prompts/widgets/loading_state_view.dart';
 import 'package:aichatbot/screens/prompts/widgets/prompt_detail_sheet.dart';
 import 'package:aichatbot/screens/prompts/widgets/private_prompt_item.dart';
@@ -16,7 +14,6 @@ import 'package:aichatbot/screens/prompts/widgets/private_prompts_empty_state.da
 import 'package:aichatbot/utils/build_context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aichatbot/utils/date_formatter.dart';
 
 class PrivatePromptsScreen extends StatefulWidget {

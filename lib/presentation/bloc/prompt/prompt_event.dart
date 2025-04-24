@@ -1,5 +1,3 @@
-import 'package:aichatbot/domain/entities/prompt.dart';
-
 abstract class PromptEvent {
   const PromptEvent();
 }

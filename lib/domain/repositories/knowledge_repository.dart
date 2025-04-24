@@ -5,7 +5,6 @@ import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_list_response.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
-import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_units_response.dart';
 
 /// Repository interface for Knowledge-related operations

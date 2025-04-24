@@ -93,9 +93,10 @@ class PromptListItem extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              if (prompt.description != null && prompt.description!.isNotEmpty)
+              //if (prompt.description != null && prompt.description!.isNotEmpty)
+              if (prompt.description.isNotEmpty)
                 Text(
-                  prompt.description!,
+                  prompt.description,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[800],

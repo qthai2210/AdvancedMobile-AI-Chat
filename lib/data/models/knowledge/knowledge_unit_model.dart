@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 class KnowledgeUnitModel {
   final String id;
   final String name;

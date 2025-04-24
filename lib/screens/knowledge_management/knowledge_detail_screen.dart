@@ -4,7 +4,6 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/screens/knowledge_management/update_knowledge_screen.dart';
-import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_detail_header.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
@@ -14,7 +13,6 @@ import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_event.dart';
 import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_state.dart';
-import 'package:aichatbot/widgets/knowledge/knowledge_header_card.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_unit_card.dart';
 import 'package:aichatbot/widgets/knowledge/empty_knowledge_view.dart';
 

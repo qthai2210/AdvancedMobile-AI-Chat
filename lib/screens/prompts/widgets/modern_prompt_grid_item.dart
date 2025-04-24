@@ -98,18 +98,18 @@ class ModernPromptGridItem extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Description
-                    if (prompt.description != null)
-                      Expanded(
-                        child: Text(
-                          prompt.description!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[800],
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
+                    // if (prompt.description != null)
+                    Expanded(
+                      child: Text(
+                        prompt.description!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[800],
                         ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
 
                     // Category chip
                     if (prompt.category != null)

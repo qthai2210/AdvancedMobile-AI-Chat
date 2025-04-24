@@ -1,4 +1,3 @@
-import 'package:aichatbot/data/models/chat/conversation_request_params.dart';
 import 'package:equatable/equatable.dart';
 
 /// Model class for a custom bot message request

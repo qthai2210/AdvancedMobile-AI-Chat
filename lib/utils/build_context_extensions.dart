@@ -14,11 +14,11 @@ extension BuildContextExtensions on BuildContext {
     // Kiểm tra xem BuildContext có còn hợp lệ không
     if (!mounted) return; // Đảm bảo context còn hợp lệ
 
-    final VoidCallback defaultAction = () {
+    defaultAction() {
       if (Navigator.canPop(this)) {
         Navigator.of(this).pop();
       }
-    };
+    }
 
     // Using the new SuccessDialog instead of SnackBar
     try {
@@ -47,11 +47,11 @@ extension BuildContextExtensions on BuildContext {
   }) {
     if (!mounted) return; // Đảm bảo context còn hợp lệ
 
-    final VoidCallback defaultAction = () {
+    defaultAction() {
       if (Navigator.canPop(this)) {
         Navigator.of(this).pop();
       }
-    };
+    }
 
     try {
       ErrorDialog.show(

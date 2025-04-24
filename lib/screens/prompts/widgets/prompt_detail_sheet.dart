@@ -107,8 +107,7 @@ class PromptDetailSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   children: [
                     // Description
-                    if (prompt.description != null &&
-                        prompt.description!.isNotEmpty) ...[
+                    if (prompt.description.isNotEmpty) ...[
                       const Text(
                         'Description',
                         style: TextStyle(
@@ -118,7 +117,7 @@ class PromptDetailSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        prompt.description!,
+                        prompt.description,
                         style: TextStyle(
                           fontSize: 15,
                           color: Colors.grey[800],

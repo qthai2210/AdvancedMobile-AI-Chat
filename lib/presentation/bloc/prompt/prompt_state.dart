@@ -1,6 +1,5 @@
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/data/models/prompt/prompt_list_model.dart';
-import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/domain/repositories/prompt_repository.dart';
 import 'package:equatable/equatable.dart';
 

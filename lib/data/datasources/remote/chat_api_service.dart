@@ -2,7 +2,6 @@ import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/core/network/api_service_factory.dart';
 import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:dio/dio.dart';
-import 'package:aichatbot/core/config/api_config.dart';
 import 'package:aichatbot/core/errors/exceptions.dart';
 import 'package:aichatbot/core/network/api_service.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart';

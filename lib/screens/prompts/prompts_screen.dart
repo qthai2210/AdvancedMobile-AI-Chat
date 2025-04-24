@@ -11,7 +11,6 @@ import 'package:aichatbot/screens/prompts/widgets/prompt_grid_item.dart';
 import 'package:aichatbot/screens/prompts/widgets/prompt_list_item.dart';
 import 'package:aichatbot/screens/prompts/widgets/search_filter_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
@@ -25,7 +24,6 @@ import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart'
     show LoadMorePrompts;
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
-import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 

@@ -21,7 +21,7 @@ class ChatAIScreen extends StatefulWidget {
 class _ChatAIScreenState extends State<ChatAIScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _currentIndex = 0;
+  final int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -54,24 +54,6 @@ class _ChatAIScreenState extends State<ChatAIScreen>
   //     _currentIndex = index;
   //   });
   // }
-
-  void _navigateToTab(int index) {
-    // Handle the special case for Knowledge Base tab
-    if (index == 2) {
-      // Knowledge Base index
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const KnowledgeManagementScreen(),
-        ),
-      );
-    } else {
-      // Adjust index if it's greater than Knowledge Base index (which isn't in bottom nav)
-      setState(() {
-        _currentIndex = index > 2 ? index - 1 : index;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

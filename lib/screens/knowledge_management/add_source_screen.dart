@@ -8,19 +8,15 @@ import 'package:aichatbot/presentation/bloc/file_upload/file_upload_state.dart';
 import 'package:aichatbot/utils/google_auth_client.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/google_drive_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/slack_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/url_source_form.dart';
 import 'package:aichatbot/widgets/knowledge/source_preview_card.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/source_type_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:aichatbot/widgets/knowledge/source_forms/common_form_fields.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
-import 'package:http/http.dart' as http;
 
 class AddSourceScreen extends StatefulWidget {
   final KnowledgeBase knowledgeBase;
@@ -602,7 +598,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         indicatorWeight: 3,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withOpacity(0.7),
-        tabs: [
+        tabs: const [
           Tab(icon: Icon(Icons.insert_drive_file), text: "File"),
           Tab(icon: Icon(Icons.language), text: "Website"),
           Tab(icon: Icon(Icons.cloud), text: "Google Drive"),
@@ -1006,7 +1002,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(

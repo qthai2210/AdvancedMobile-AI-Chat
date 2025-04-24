@@ -47,7 +47,6 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
     try {
       AppLogger.d('Creating knowledge with name: ${params.knowledgeName}');
       final result = await knowledgeApiService.updateKnowledge(id, params);
-      AppLogger.i('Knowledge created successfully: ${result}');
       return result;
     } catch (e) {
       AppLogger.e('Repository error creating knowledge: $e');

@@ -8,8 +8,6 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // ...existing classpaths...
-        classpath("com.google.gms:google-services:4.3.15")
     }
 
     extra.apply {

@@ -7,7 +7,6 @@ import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
 import 'package:aichatbot/widgets/social_login_button.dart';
 import 'package:aichatbot/widgets/custom_button.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
-import 'package:aichatbot/widgets/error_dialog.dart';
 import 'package:aichatbot/utils/build_context_extensions.dart';
 
 class RegisterScreen extends StatefulWidget {

@@ -8,10 +8,7 @@ import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/utils/logger.dart';
-import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
-import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dart';
-import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
-import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
+
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 
 class AIAgentSelector extends StatefulWidget {

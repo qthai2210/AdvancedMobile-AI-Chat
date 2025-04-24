@@ -85,14 +85,14 @@ class PromptCard extends StatelessWidget {
                     _buildCategoryChip(prompt.category!),
                   const Spacer(),
                   // Created date
-                  if (prompt.createdAt != null)
-                    Text(
-                      _formatDate(prompt.createdAt),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                  //if (prompt.createdAt != null)
+                  Text(
+                    _formatDate(prompt.createdAt),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
                     ),
+                  ),
                 ],
               ),
             ],

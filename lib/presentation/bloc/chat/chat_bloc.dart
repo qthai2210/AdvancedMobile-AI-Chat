@@ -5,9 +5,7 @@ import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
 import 'package:aichatbot/data/models/chat/message_response_model.dart';
 import 'package:aichatbot/core/errors/failures.dart';
-import 'package:aichatbot/utils/token_management_service.dart';
 import 'package:aichatbot/utils/logger.dart';
-import 'dart:convert';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessageUseCase sendMessageUseCase;

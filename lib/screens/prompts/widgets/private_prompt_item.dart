@@ -95,17 +95,18 @@ class PrivatePromptItem extends StatelessWidget {
                   ),
 
                   // Description
-                  if (prompt.description != null &&
-                      prompt.description!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 12),
-                      child: Text(
-                        prompt.description!,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  // if (prompt.description != null &&
+                  //     prompt.description!.isNotEmpty)
+
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 12),
+                    child: Text(
+                      prompt.description,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
 
                   // Creation date and other info
                   Row(

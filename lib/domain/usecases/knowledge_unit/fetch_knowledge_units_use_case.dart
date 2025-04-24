@@ -1,4 +1,3 @@
-import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_units_response.dart';
 import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 

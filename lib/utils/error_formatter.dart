@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:aichatbot/core/errors/auth_exception.dart';
 import 'package:flutter/material.dart';
 
