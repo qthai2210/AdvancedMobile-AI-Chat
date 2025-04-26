@@ -1,3 +1,7 @@
+import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
+import 'package:aichatbot/screens/chat_detail_screen.dart';
+import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
+import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aichatbot/models/ai_agent_model.dart';

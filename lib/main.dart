@@ -1,39 +1,38 @@
-import 'package:aichatbot/presentation/widgets/auth_wrapper.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
-import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
-import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/core/services/ad_service.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aichatbot/presentation/widgets/auth_wrapper.dart';
+import 'package:firebase_analytics/observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize dependency injection
   await di.init();
-
-  // Initialize Google Mobile Ads SDK
   await AdService().initialize();
+  await Firebase.initializeApp();
 
-  // remove debug banner
-  // debugPaintSizeEnabled = false;
-  runApp(const MyApp());
+  final analytics = FirebaseAnalytics.instance;
+  await analytics.setAnalyticsCollectionEnabled(true);
+
+  runApp(MyApp(analytics: analytics));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final FirebaseAnalytics analytics;
+  const MyApp({Key? key, required this.analytics}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Get BlocManager instance
-    final blocManager = di.sl<BlocManager>();
-
-    // Only provide the AuthBloc at the root level
-    // Post-login blocs will be provided by AuthWrapper based on auth state
     return BlocProvider<AuthBloc>.value(
-      value: blocManager.getBloc<AuthBloc>(() => di.sl<AuthBloc>()),
-      // Use AuthWrapper which will manage providing the correct blocs based on auth state
-      child: const AuthWrapper(),
+      // nếu bạn chưa có BlocManager, khởi trực tiếp AuthBloc từ DI:
+      value: di.sl<AuthBloc>(),
+      child: AuthWrapper(
+        analytics: analytics,
+        navigatorObserver: FirebaseAnalyticsObserver(analytics: analytics),
+      ),
     );
   }
 }

@@ -42,6 +42,7 @@ import 'package:aichatbot/services/prompt_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final bool isNewChat;
@@ -62,6 +63,8 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  late final FirebaseAnalytics _analytics;
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -102,7 +105,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    print("ChatDetailScreen initialized");
+    _analytics = FirebaseAnalytics.instance;
+    // 1️⃣ track screen view
+    _analytics.logEvent(
+      name: 'screen_view',
+      parameters: {'screen_name': 'ChatDetailScreen'},
+    );
 
     // Thêm listener để theo dõi khi người dùng nhập "/"
     _messageController.addListener(_checkForPromptCommand);
@@ -225,6 +233,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _pickImageFromGallery() async {
+    _analytics.logEvent(name: 'image_pick_gallery');
     final XFile? image =
         await _imagePicker.pickImage(source: ImageSource.gallery);
     if (image != null) {
@@ -236,6 +245,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _takePhoto() async {
+    _analytics.logEvent(name: 'image_take_photo');
     final XFile? photo =
         await _imagePicker.pickImage(source: ImageSource.camera);
     if (photo != null) {
@@ -247,6 +257,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _captureScreenshot() {
+    _analytics.logEvent(name: 'image_capture_screenshot');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
           content: Text('Screenshot feature will be implemented soon')),
@@ -262,7 +273,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
+  // 2️⃣ track khi user bấm nút Send
   Future<void> _sendMessage() async {
+    _analytics.logEvent(
+      name: 'chat_send_button_tapped',
+      parameters: {
+        'threadId': widget.threadId ?? 'new',
+        'messageText': _messageController.text.trim(),
+      },
+    );
     final message = _messageController.text.trim();
 
     if (message.isEmpty && _selectedImage == null) return;
@@ -433,7 +452,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
+  // 9️⃣ track agent selector
   void _changeAIAgent() {
+    _analytics.logEvent(
+      name: 'agent_selector_tapped',
+      parameters: {'selectedAgent': _selectedAgent.name},
+    );
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -487,12 +511,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  // 🔟 track history toggle
   void _toggleHistoryView() {
-    setState(() {
-      _showHistory = !_showHistory;
-    });
+    IconButton(
+      icon: Icon(_showHistory ? Icons.history : Icons.history_outlined),
+      onPressed: () {
+        _analytics.logEvent(
+            name: 'history_toggled',
+            parameters: {'show': _showHistory ? 'off' : 'on'});
+        _toggleHistoryView();
+      },
+    );
   }
 
+  // 1️⃣1️⃣ track chọn thread trong lịch sử
   void _selectThreadFromHistory(ChatThread thread) {
     setState(() {
       _showHistory = false;
@@ -938,14 +970,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             // Prompt button
                             IconButton(
                               icon: const Icon(Icons.psychology_outlined),
-                              onPressed: _showPromptSelector,
+                              onPressed: () {
+                                _analytics.logEvent(
+                                    name: 'prompt_button_tapped');
+                                _showPromptSelector();
+                              },
                               tooltip: 'Use a prompt',
                             ),
 
                             // Image button
                             IconButton(
                               icon: const Icon(Icons.image),
-                              onPressed: _toggleImageOptions,
+                              onPressed: () {
+                                _analytics.logEvent(
+                                    name: 'image_button_tapped');
+                                _toggleImageOptions();
+                              },
                               tooltip: 'Add image',
                             ),
 
@@ -1033,22 +1073,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       actions: [
         IconButton(
           icon: Icon(_showHistory ? Icons.history : Icons.history_outlined),
-          color: _showHistory ? Theme.of(context).primaryColor : null,
-          onPressed: _toggleHistoryView,
+          onPressed: () {
+            _analytics.logEvent(
+                name: 'history_toggled',
+                parameters: {'show': _showHistory ? 'off' : 'on'});
+            _toggleHistoryView();
+          },
         ),
         // Add a new action button to create a new chat thread
         IconButton(
           icon: const Icon(Icons.add_comment),
           tooltip: 'New Chat',
           onPressed: () {
-            // Navigate to a new chat thread
-            // context.go('/chat/detail/new');
+            _analytics.logEvent(name: 'new_chat_started');
             _startNewChat();
           },
         ),
         ChatOptionsMenu(
-          onRename: _showRenameDialog,
-          onDelete: _showDeleteConfirmation,
+          onRename: () {
+            _analytics.logEvent(name: 'chat_rename_tapped');
+            _showRenameDialog();
+          },
+          onDelete: () {
+            _analytics.logEvent(name: 'chat_delete_tapped');
+            _showDeleteConfirmation();
+          },
         ),
       ],
     );
@@ -1124,7 +1173,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                onTap: () => _selectThreadFromHistory(thread),
+                                onTap: () {
+                                  _analytics.logEvent(
+                                    name: 'history_thread_selected',
+                                    parameters: {
+                                      'threadId': thread.id,
+                                      'threadTitle': thread.title
+                                    },
+                                  );
+                                  _selectThreadFromHistory(thread);
+                                },
                               );
                             },
                           ),

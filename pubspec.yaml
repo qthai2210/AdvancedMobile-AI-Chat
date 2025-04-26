@@ -28,11 +28,12 @@ dependencies:
   dartz: ^0.10.1
   file_picker: ^10.1.2
   google_mobile_ads: ^6.0.0
-  firebase_core: ^2.24.2
+  firebase_core: ^2.32.0
   in_app_purchase: ^3.2.1
   google_sign_in: ^6.3.0
   googleapis: ^14.0.0
   google_identity_services_web: ^0.3.3+1
+  firebase_analytics: ^10.10.7
 
 dev_dependencies:
   flutter_test:

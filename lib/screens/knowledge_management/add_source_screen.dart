@@ -17,6 +17,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class AddSourceScreen extends StatefulWidget {
   final KnowledgeBase knowledgeBase;
@@ -56,6 +58,11 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   Map<String, dynamic>? _fileMetadata;
   late final FileUploadBloc _fileUploadBloc;
   late GoogleSignIn _googleSignIn;
+
+  String? _selectedSlackFileId;
+  String? _selectedSlackFileName;
+  bool _isSlackLoading = false;
+  String? _slackBotToken; // lấy từ AuthBloc hoặc form Slack connect
 
   @override
   void initState() {
@@ -262,11 +269,92 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
+  Future<void> _pickSlackFile() async {
+    setState(() => _isSlackLoading = true);
+    try {
+      if (_slackBotToken == null) throw Exception('Chưa kết nối Slack');
+      final authState = context.read<AuthBloc>().state;
+      final resp = await http.get(
+        Uri.parse('https://slack.com/api/files.list?count=20'),
+        headers: {
+          'Authorization': 'Bearer $_slackBotToken',
+          'x-jarvis-guid': authState.user?.accessToken ?? '',
+        },
+      );
+      final jsonBody = json.decode(resp.body);
+      if (jsonBody['ok'] != true) throw Exception(jsonBody['error']);
+      final files = (jsonBody['files'] as List)
+          .map((f) => {'id': f['id'], 'name': f['name']})
+          .toList();
+      final picked = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Select a Slack file'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: files.length,
+              itemBuilder: (_, i) {
+                final f = files[i];
+                return ListTile(
+                  leading: const Icon(Icons.insert_drive_file),
+                  title: Text(f['name']!),
+                  onTap: () => Navigator.pop(context, f),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      if (picked != null) {
+        setState(() {
+          _selectedSlackFileId = picked['id'];
+          _selectedSlackFileName = picked['name'];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Selected: ${picked['name']}')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading Slack files: $e')),
+      );
+    } finally {
+      setState(() => _isSlackLoading = false);
+    }
+  }
+
   Future<void> _saveSlackSource() async {
-    // Implement Slack source upload
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Slack source upload not implemented yet')),
-    );
+    if (_selectedSlackFileId == null || _selectedSlackFileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn phải chọn file Slack trước')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final authState = context.read<AuthBloc>().state;
+      final accessToken = authState.user?.accessToken;
+      if (_slackBotToken == null || accessToken == null) {
+        throw Exception('Chưa kết nối Slack hoặc chưa login');
+      }
+
+      _fileUploadBloc.add(
+        UploadSlackEvent(
+          knowledgeId: widget.knowledgeBase.id,
+          unitName: _selectedSlackFileName!,
+          slackWorkspace: _slackWorkspaceName!,
+          slackBotToken: _slackBotToken!,
+          accessToken: accessToken,
+        ),
+      );
+    } catch (e) {
+      AppLogger.e("Lỗi upload Slack: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _saveConfluenceSource() async {
@@ -405,28 +493,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   }
 
   void _mockConnectSlack() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Connect Slack'),
-        content: const Text('Simulating login to Slack...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isSlackConnected = true;
-                _slackWorkspaceName = "Your Workspace";
-                _selectedSlackChannels = ["#general"];
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Connected to Slack')),
-              );
-            },
-            child: const Text('Simulate successful connection'),
-          ),
-        ],
-      ),
+    setState(() {
+      _isSlackConnected = true;
+      _slackWorkspaceName = 'Jarvis';
+      _selectedSlackChannels = [];
+      // Gán token OAuth bot bạn vừa tạo
+      _slackBotToken =
+          'xoxb-8791657246691-8799983218929-qxXkSQIaMQZMOoNIZB3jdENH';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Connected to Slack workspace')),
     );
   }
 
@@ -937,18 +1013,54 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   Widget _buildSlackTab() {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: SlackSourceForm(
-        isConnected: _isSlackConnected,
-        workspaceName: _slackWorkspaceName,
-        selectedChannels: _selectedSlackChannels,
-        onConnect: _mockConnectSlack,
-        onDisconnect: _mockDisconnectSlack,
-        onChannelsSelected: (channels) {
-          setState(() {
-            _selectedSlackChannels = channels;
-          });
-        },
-        primaryColor: Theme.of(context).primaryColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            "Slack",
+            "Chọn file từ Slack để upload vào knowledge base",
+            Icons.forum,
+          ),
+          const SizedBox(height: 24),
+
+          // nút chọn hoặc preview
+          if (_selectedSlackFileName != null)
+            Row(
+              children: [
+                Expanded(
+                    child: Text(_selectedSlackFileName!,
+                        style: const TextStyle(fontSize: 16))),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() {
+                    _selectedSlackFileId = null;
+                    _selectedSlackFileName = null;
+                  }),
+                )
+              ],
+            )
+          else
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _isSlackLoading ? null : _pickSlackFile,
+                icon: const Icon(Icons.drive_file_rename_outline),
+                label:
+                    Text(_isSlackLoading ? 'Loading...' : 'Select from Slack'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+
+          const Spacer(),
+
+          // nút upload
+          ElevatedButton(
+            onPressed: (_selectedSlackFileId == null) ? null : _saveSlackSource,
+            child: const Text("Upload to Knowledge"),
+          ),
+        ],
       ),
     );
   }
