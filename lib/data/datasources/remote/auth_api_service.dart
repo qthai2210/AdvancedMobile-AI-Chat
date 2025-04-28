@@ -58,16 +58,11 @@ class AuthApiService {
             // Lưu access token và refresh token vào secure storage
             AppLogger.i(
                 'Login successful, saving tokens to secure storage: ${data['access_token']}, ${data['refresh_token']}');
-            final secureStorageUtil = sl.get<SecureStorageUtil>();            secureStorageUtil.writeSecureData(
+            final secureStorageUtil = sl.get<SecureStorageUtil>();
+            secureStorageUtil.writeSecureData(
                 accessToken: data['access_token'],
                 refreshToken: data['refresh_token']);
-                
-            // First update the core API service
-            await _apiService.addAuthHeader();
-            
-            // Then refresh all API services to ensure they have valid tokens
-            await refreshAllApiServices();
-            
+            _apiService.addAuthHeader();
             return UserModel.fromJson(data, email);
           },
         );
