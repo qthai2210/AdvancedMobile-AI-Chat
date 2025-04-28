@@ -11,7 +11,7 @@ extension BuildContextExtensions on BuildContext {
     VoidCallback? onAction,
     String? actionLabel,
     Duration duration = const Duration(seconds: 3),
-  }) {
+  }) async {
     // Kiểm tra xem BuildContext có còn hợp lệ không
     if (!mounted) return; // Đảm bảo context còn hợp lệ
 
