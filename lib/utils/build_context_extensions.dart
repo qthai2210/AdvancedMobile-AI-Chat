@@ -3,6 +3,7 @@ import 'package:aichatbot/widgets/app_notification.dart';
 import 'package:aichatbot/utils/error_formatter.dart';
 import 'package:aichatbot/widgets/error_dialog.dart';
 import 'package:aichatbot/widgets/success_dialog.dart';
+import 'package:go_router/go_router.dart';
 
 extension BuildContextExtensions on BuildContext {
   void showSuccessNotification(
@@ -149,7 +150,7 @@ extension BuildContextExtensions on BuildContext {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
               if (onCancel != null) onCancel();
             },
             child: Text(
@@ -161,7 +162,7 @@ extension BuildContextExtensions on BuildContext {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
               onConfirm();
             },
             style: ElevatedButton.styleFrom(

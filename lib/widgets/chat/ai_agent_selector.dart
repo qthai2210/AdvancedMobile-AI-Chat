@@ -10,6 +10,7 @@ import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/utils/logger.dart';
 
 import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:go_router/go_router.dart';
 
 class AIAgentSelector extends StatefulWidget {
   final AIAgent selectedAgent;
@@ -211,14 +212,11 @@ class _AIAgentSelectorState extends State<AIAgentSelector> {
       subtitle: const Text('Customize your own AI assistant'),
       onTap: () {
         // Close the current sheet
-        Navigator.pop(context);
+        context.pop();
 
         // Navigate to CreateBotScreen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CreateBotScreen(),
-          ),
+        context.pushNamed(
+          'createAssistant',
         );
       },
     );

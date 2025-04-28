@@ -10,6 +10,7 @@ import 'package:aichatbot/screens/prompts/widgets/section_title.dart';
 import 'package:aichatbot/screens/prompts/widgets/category_selector.dart';
 import 'package:aichatbot/screens/prompts/widgets/privacy_toggle.dart';
 import 'package:aichatbot/screens/prompts/widgets/submit_button.dart';
+import 'package:go_router/go_router.dart';
 
 class CreatePromptScreen extends StatefulWidget {
   const CreatePromptScreen({Key? key}) : super(key: key);
@@ -45,7 +46,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
             state.newPrompt != null) {
           _isSubmitting = false;
           context.showSuccessNotification('Prompt đã được tạo thành công!');
-          Navigator.of(context).pop(true);
+          context.pop(true);
         } else if (state.status == PromptStatus.failure && _isSubmitting) {
           _isSubmitting = false;
           context.showApiErrorNotification(
@@ -269,7 +270,7 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         context.showWarningNotification(
           'Bạn cần đăng nhập để tạo prompt',
           actionLabel: 'Đăng nhập',
-          onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+          onAction: () => context.pushReplacementNamed('/login'),
         );
         return;
       }

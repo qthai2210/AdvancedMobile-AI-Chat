@@ -4,6 +4,7 @@ import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/widgets/knowledge/update_knowledge_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class UpdateKnowledgeScreen extends StatefulWidget {
   final KnowledgeBase knowledgeBase;
@@ -65,11 +66,11 @@ class _UpdateKnowledgeScreenState extends State<UpdateKnowledgeScreen> {
                 'Bạn đã thực hiện thay đổi. Bạn có chắc chắn muốn hủy không?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.pop(false),
                 child: const Text('Tiếp tục chỉnh sửa'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.pop(true),
                 child: const Text('Hủy thay đổi',
                     style: TextStyle(color: Colors.red)),
               ),
@@ -107,7 +108,7 @@ class _UpdateKnowledgeScreenState extends State<UpdateKnowledgeScreen> {
             ),
           );
 
-          Navigator.pop(context, true); // Return success
+          context.pop(true); // Return success
         }
       });
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
+import 'package:go_router/go_router.dart';
 
 class CreateBotScreen extends StatefulWidget {
   final AIBot? editBot;
@@ -112,7 +113,7 @@ class _CreateBotScreenState extends State<CreateBotScreen> {
                   ? 'Bot updated successfully'
                   : 'Bot created successfully')),
         );
-        Navigator.pop(context, bot);
+        context.pop(bot);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,13 +135,13 @@ class _CreateBotScreenState extends State<CreateBotScreen> {
             'Bạn có chắc muốn xóa bot này? Hành động này không thể hoàn tác.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context,
+              context.pop(); // Close dialog
+              context.pop(
                   'delete'); // Return to previous screen with delete signal
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

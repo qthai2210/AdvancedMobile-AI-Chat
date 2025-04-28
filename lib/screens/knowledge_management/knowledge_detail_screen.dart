@@ -15,6 +15,7 @@ import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_event.
 import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_state.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_unit_card.dart';
 import 'package:aichatbot/widgets/knowledge/empty_knowledge_view.dart';
+import 'package:go_router/go_router.dart';
 
 class KnowledgeDetailScreen extends StatefulWidget {
   final KnowledgeBase knowledgeBase;
@@ -132,7 +133,7 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Close'),
           ),
         ],
@@ -150,12 +151,12 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.pop();
               // Delete implementation here
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -167,13 +168,14 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   }
 
   void _navigateToAddSource() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddSourceScreen(knowledgeBase: _knowledgeBase),
-      ),
-    ).then((updatedBase) {
-      if (updatedBase != null && updatedBase is KnowledgeBase) {
+    context
+        .pushNamed(
+      'addSource',
+      pathParameters: {'id': _knowledgeBase.id},
+      extra: _knowledgeBase,
+    )
+        .then((updatedBase) {
+      if (updatedBase is KnowledgeBase) {
         setState(() {
           _knowledgeBase = updatedBase;
         });
@@ -182,15 +184,14 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   }
 
   void _navigateToEditKnowledge() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            UpdateKnowledgeScreen(knowledgeBase: _knowledgeBase),
-      ),
-    ).then((updated) {
+    context
+        .pushNamed(
+      'editKnowledge',
+      pathParameters: {'id': _knowledgeBase.id},
+      extra: _knowledgeBase,
+    )
+        .then((updated) {
       if (updated == true) {
-        // Refresh to get the updated knowledge base
         _refreshKnowledgeBase();
       }
     });
@@ -206,12 +207,12 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.pop();
 
               // Get auth token
               final authState = context.read<AuthBloc>().state;
@@ -235,7 +236,7 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
                   );
 
               // Navigate back to knowledge list screen
-              Navigator.pop(context);
+              context.pop();
 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

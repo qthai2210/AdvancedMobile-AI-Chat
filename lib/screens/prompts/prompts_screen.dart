@@ -208,14 +208,13 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
       // Delay navigation slightly to allow notification to show
       Future.delayed(const Duration(milliseconds: 100), () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChatDetailScreen(
-              initialPrompt: prompt.content,
-              isNewChat: true,
-              setCursorToEnd: true,
-            ),
-          ),
+        context.pushNamed(
+          'chatDetail',
+          pathParameters: {'threadId': 'new'},
+          extra: <String, dynamic>{
+            'initialPrompt': prompt.content,
+            'setCursorToEnd': true,
+          },
         );
       });
     } catch (e) {
@@ -249,10 +248,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
   }
 
   void _navigateToPrivatePrompts() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PrivatePromptsScreen()),
-    );
+    context.pushNamed('privatePrompts');
   }
 
   void _toggleCategorySelection(String category) {
@@ -348,7 +344,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                 );
               } else if (state.status == PromptStatus.success &&
                   state.deletedPromptId != null) {
-                Navigator.of(context).pop();
+                context.pop();
                 context.showSuccessNotification('Đã xóa prompt thành công');
               }
             },
@@ -619,12 +615,13 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   // Thêm phương thức xử lý sự kiện chỉnh sửa prompt
   void _editPrompt(PromptModel prompt) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditPromptScreen(prompt: prompt),
-      ),
-    ).then((result) {
+    context
+        .pushNamed(
+      'editPrompt',
+      pathParameters: {'id': prompt.id},
+      extra: prompt,
+    )
+        .then((result) {
       // Thêm log xác nhận quay lại từ màn hình edit
       debugPrint(
           'Prompts screen: Returned from edit screen with result: $result');
@@ -725,7 +722,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => context.pop(dialogContext),
               style: TextButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -758,7 +755,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
                     ));
 
                 // Đóng dialog ngay lập tức
-                Navigator.pop(dialogContext);
+                context.pop(dialogContext);
 
                 // Hiển thị loading indicator trong khi chờ xóa
                 showDialog(
@@ -770,13 +767,13 @@ class _PromptsScreenState extends State<PromptsScreen> {
                         if (state.status == PromptStatus.success &&
                             state.deletedPromptId == prompt.id) {
                           // Đóng loading dialog
-                          Navigator.pop(loadingContext);
+                          context.pop(loadingContext);
                           // Hiển thị thông báo thành công
                           context.showSuccessNotification(
                               'Đã xóa prompt thành công');
                         } else if (state.status == PromptStatus.failure) {
                           // Đóng loading dialog
-                          Navigator.pop(loadingContext);
+                          context.pop(loadingContext);
                           // Hiển thị lỗi
                           context.showApiErrorNotification(
                             ErrorFormatter.formatPromptError(
@@ -855,7 +852,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
         context.showWarningNotification(
           'Bạn cần đăng nhập để tìm kiếm prompts',
           actionLabel: 'Đăng nhập',
-          onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+          onAction: () => context.pushReplacementNamed('/login'),
         );
       }
       return;
@@ -895,10 +892,7 @@ class _PromptsScreenState extends State<PromptsScreen> {
 
   // Phương thức điều hướng tạo prompt mới
   void _navigateToCreatePrompt() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
-    ).then((result) {
+    context.pushNamed('createPrompt').then((result) {
       if (result == true) {
         _loadPrompts();
         context.showSuccessNotification('Tạo prompt thành công');

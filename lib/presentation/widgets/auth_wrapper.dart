@@ -17,11 +17,9 @@ import 'package:aichatbot/core/di/injection_container.dart' as di;
 /// Wrapper widget that listens to auth state and provides appropriate blocs
 class AuthWrapper extends StatelessWidget {
   final FirebaseAnalytics analytics;
-  final NavigatorObserver navigatorObserver;
   const AuthWrapper({
     Key? key,
     required this.analytics,
-    required this.navigatorObserver,
   }) : super(key: key);
 
   @override
@@ -62,6 +60,7 @@ class AuthWrapper extends StatelessWidget {
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
           routerConfig: AppRouter.router,
+          debugShowCheckedModeBanner: false,
           // MaterialApp.router không hỗ trợ navigatorObservers ở phiên bản này
           // Nếu dùng go_router, gán observer trong router config thay vì ở đây
         ),

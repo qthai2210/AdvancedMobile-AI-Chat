@@ -57,10 +57,10 @@ class ChatTab extends StatelessWidget {
                       padding: EdgeInsets.only(bottom: bottomPadding),
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) =>
-                                const ChatDetailScreen(isNewChat: true),
-                          ));
+                          context.pushNamed(
+                            'chatDetail',
+                            pathParameters: {'threadId': 'new'},
+                          );
                         },
                         icon: const Icon(Icons.add_circle_outline),
                         label: const Text('Tạo cuộc trò chuyện mới'),
@@ -187,13 +187,9 @@ class ChatThreadItem extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         onTap: () {
           // Navigate to chat detail screen
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ChatDetailScreen(
-                threadId: thread.id,
-                isNewChat: false,
-              ),
-            ),
+          context.pushNamed(
+            'chatDetail',
+            pathParameters: {'threadId': thread.id},
           );
         },
         leading: CircleAvatar(

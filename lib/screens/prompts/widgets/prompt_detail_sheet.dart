@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
+import 'package:go_router/go_router.dart';
 
 class PromptDetailSheet extends StatelessWidget {
   final PromptModel prompt;
@@ -91,7 +92,7 @@ class PromptDetailSheet extends StatelessWidget {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => context.pop(),
                     ),
                   ],
                 ),
@@ -284,7 +285,7 @@ class PromptDetailSheet extends StatelessWidget {
                           label: prompt.isFavorite ? 'Remove' : 'Favorite',
                           onPressed: () {
                             onToggleFavorite(prompt);
-                            Navigator.pop(context);
+                            context.pop();
                           },
                           backgroundColor: prompt.isFavorite
                               ? Colors.red[50]!
@@ -305,7 +306,7 @@ class PromptDetailSheet extends StatelessWidget {
                             label: 'Save Copy',
                             onPressed: () {
                               onSaveAsPrivate(prompt);
-                              Navigator.pop(context);
+                              context.pop();
                             },
                             backgroundColor: Colors.blue[50]!,
                             textColor: Colors.blue,
@@ -321,7 +322,7 @@ class PromptDetailSheet extends StatelessWidget {
                             icon: Icons.edit_outlined,
                             label: 'Edit',
                             onPressed: () {
-                              Navigator.pop(context);
+                              context.pop();
                               onEdit(prompt);
                             },
                             backgroundColor: Colors.blue[50]!,
@@ -338,7 +339,7 @@ class PromptDetailSheet extends StatelessWidget {
                             icon: Icons.delete_outline,
                             label: 'Delete',
                             onPressed: () {
-                              Navigator.pop(context);
+                              context.pop();
                               onDelete(context, prompt);
                             },
                             backgroundColor: Colors.red[50]!,

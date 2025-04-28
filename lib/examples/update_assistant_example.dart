@@ -4,6 +4,7 @@ import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
+import 'package:go_router/go_router.dart';
 
 class UpdateAssistantExample extends StatefulWidget {
   final AssistantModel assistant;
@@ -82,7 +83,8 @@ class _UpdateAssistantExampleState extends State<UpdateAssistantExample> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Assistant updated successfully')),
             );
-            Navigator.pop(context, state.assistant);
+            //Navigator.pop(context, state.assistant);
+            context.pop(state.assistant);
           } else if (state is AssistantUpdateFailed) {
             // Update failed
             setState(() => _isLoading = false);

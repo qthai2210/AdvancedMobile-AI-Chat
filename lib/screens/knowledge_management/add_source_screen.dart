@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
+import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'dart:convert';
@@ -300,7 +301,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 return ListTile(
                   leading: const Icon(Icons.insert_drive_file),
                   title: Text(f['name']!),
-                  onTap: () => Navigator.pop(context, f),
+                  onTap: () => context.pop(f),
                 );
               },
             ),
@@ -431,7 +432,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                         leading: const Icon(Icons.insert_drive_file),
                         title: Text(f.name ?? ''),
                         subtitle: Text(f.mimeType ?? ''),
-                        onTap: () => Navigator.pop(context, f),
+                        onTap: () => context.pop(f),
                       ))
                   .toList(),
             ),
@@ -525,7 +526,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.pop();
               setState(() {
                 _isConfluenceConnected = true;
                 _confluenceSpaceName = "Documentation";
@@ -612,7 +613,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 ? 'Source updated successfully'
                 : 'New source added successfully');
 
-            Navigator.pop(context, updatedKnowledgeBase);
+            context.pop(updatedKnowledgeBase);
           } else if (state is FileUploadError) {
             setState(() => _isLoading = false);
             _showErrorSnackbar(state.message);

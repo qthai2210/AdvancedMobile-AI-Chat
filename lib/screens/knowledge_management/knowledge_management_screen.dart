@@ -11,6 +11,7 @@ import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:aichatbot/widgets/knowledge/empty_knowledge_view.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_base_card.dart';
 import 'package:aichatbot/widgets/knowledge/add_knowledge_form.dart';
+import 'package:go_router/go_router.dart';
 
 class KnowledgeManagementScreen extends StatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -170,13 +171,13 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () {
               // Close the dialog
-              Navigator.of(context).pop();
+              context.pop();
               // Delete the knowledge base
               _deleteKnowledgeBase(knowledge.id!);
             },
@@ -438,12 +439,7 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     );
 
     // Navigate to detail screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            KnowledgeDetailScreen(knowledgeBase: knowledgeBase),
-      ),
-    );
+    context.push('/knowledge/${knowledgeBase.id}/add_source',
+        extra: knowledgeBase);
   }
 }

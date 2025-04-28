@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             try {
               context.go('/chat/detail/${state.user?.id}');
             } catch (_) {
-              Navigator.of(context).pushReplacementNamed('/chat');
+              context.push('/chat');
             }
           });
         }
