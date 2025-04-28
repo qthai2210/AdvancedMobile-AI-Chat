@@ -72,8 +72,6 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
           hasMore: result.hasMore, // Use has_more from API response
           nextCursor: result.cursor,
         ));
-        AppLogger.e(
-            "first conversation: ${conversations.first.title} - ${conversations.first.createdAt}");
       } catch (parseError) {
         AppLogger.e("Error parsing conversation data: $parseError");
         emit(ConversationError(

@@ -513,15 +513,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // 🔟 track history toggle
   void _toggleHistoryView() {
-    IconButton(
-      icon: Icon(_showHistory ? Icons.history : Icons.history_outlined),
-      onPressed: () {
-        _analytics.logEvent(
-            name: 'history_toggled',
-            parameters: {'show': _showHistory ? 'off' : 'on'});
-        _toggleHistoryView();
-      },
-    );
+    _analytics.logEvent(
+        name: 'history_toggled',
+        parameters: {'show': _showHistory ? 'off' : 'on'});
+    setState(() {
+      _showHistory = !_showHistory;
+    });
   }
 
   // 1️⃣1️⃣ track chọn thread trong lịch sử
