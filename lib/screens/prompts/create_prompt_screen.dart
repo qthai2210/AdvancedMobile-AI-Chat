@@ -45,8 +45,10 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
         } else if (state.status == PromptStatus.success &&
             state.newPrompt != null) {
           _isSubmitting = false;
-          context.showSuccessNotification('Prompt đã được tạo thành công!');
-          context.pop(true);
+          // show dialog, rồi pop page khi user confirm
+          context.showSuccessNotification(
+            'Prompt đã được tạo thành công!',
+          );
         } else if (state.status == PromptStatus.failure && _isSubmitting) {
           _isSubmitting = false;
           context.showApiErrorNotification(
