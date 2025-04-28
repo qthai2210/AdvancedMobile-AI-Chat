@@ -12,6 +12,7 @@ import 'package:aichatbot/screens/prompts/widgets/prompt_header_info.dart';
 import 'package:aichatbot/screens/prompts/widgets/category_selector.dart';
 import 'package:aichatbot/screens/prompts/widgets/privacy_toggle.dart';
 import 'package:aichatbot/screens/prompts/widgets/submit_button.dart';
+import 'package:go_router/go_router.dart';
 
 class EditPromptScreen extends StatefulWidget {
   final PromptModel prompt;
@@ -60,7 +61,7 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
           });
           context.showSuccessNotification('Cập nhật prompt thành công');
           Future.delayed(const Duration(milliseconds: 500), () {
-            Navigator.of(context).pop(true);
+            context.pop(true);
           });
         } else if (state.status == PromptStatus.failure) {
           setState(() {
@@ -317,7 +318,7 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
         context.showWarningNotification(
           'Bạn cần đăng nhập để cập nhật prompt',
           actionLabel: 'Đăng nhập',
-          onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+          onAction: () => context.pushReplacementNamed('/login'),
         );
       }
     }

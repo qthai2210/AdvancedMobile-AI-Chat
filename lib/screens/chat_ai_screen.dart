@@ -8,6 +8,7 @@ import 'package:aichatbot/screens/tabs/history_tab.dart';
 import 'package:aichatbot/screens/tabs/settings_tab.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
+import 'package:go_router/go_router.dart';
 
 class ChatAIScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -82,13 +83,12 @@ class _ChatAIScreenState extends State<ChatAIScreen>
           if (_currentIndex == 0) // Only show on Chat tab
             IconButton(
               icon: const Icon(Icons.add),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed('/chat/detail/new'),
+              onPressed: () => context.push('/chat/detail/new'),
             ),
           if (_currentIndex == 1) // Only show on Bots tab
             IconButton(
               icon: const Icon(Icons.add),
-              onPressed: () => Navigator.of(context).pushNamed('/bots/create'),
+              onPressed: () => context.push('/bots/create'),
             ),
         ],
       ),

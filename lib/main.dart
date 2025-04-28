@@ -1,3 +1,4 @@
+import 'package:aichatbot/firebase_options.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await di.init();
   await AdService().initialize();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final analytics = FirebaseAnalytics.instance;
   await analytics.setAnalyticsCollectionEnabled(true);
@@ -31,7 +32,6 @@ class MyApp extends StatelessWidget {
       value: di.sl<AuthBloc>(),
       child: AuthWrapper(
         analytics: analytics,
-        navigatorObserver: FirebaseAnalyticsObserver(analytics: analytics),
       ),
     );
   }

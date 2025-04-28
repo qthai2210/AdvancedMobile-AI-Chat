@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:go_router/go_router.dart';
+
 enum NotificationType { success, error, warning, info }
 
 class AppNotification extends StatelessWidget {
@@ -144,7 +146,7 @@ class AppNotification extends StatelessWidget {
                 if (onAction != null && actionLabel != null)
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).pop();
+                      context.pop();
                       onAction!();
                     },
                     style: TextButton.styleFrom(
@@ -155,7 +157,7 @@ class AppNotification extends StatelessWidget {
                     child: Text(actionLabel!),
                   ),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => context.pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _iconColor,
                     foregroundColor: Colors.white,

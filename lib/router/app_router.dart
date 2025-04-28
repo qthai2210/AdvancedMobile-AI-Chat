@@ -1,3 +1,5 @@
+import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
 import 'package:aichatbot/presentation/screens/purchase_screen.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
@@ -5,10 +7,14 @@ import 'package:aichatbot/screens/chat_ai_screen.dart';
 import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/home_screen.dart';
+import 'package:aichatbot/screens/knowledge_management/add_source_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
+import 'package:aichatbot/screens/knowledge_management/update_knowledge_screen.dart';
 import 'package:aichatbot/screens/login_screen.dart';
 import 'package:aichatbot/screens/profile_screen.dart';
 import 'package:aichatbot/screens/prompts/create_prompt_screen.dart';
+import 'package:aichatbot/screens/prompts/edit_prompt_screen.dart';
+import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 import 'package:aichatbot/screens/register_screen.dart';
 import 'package:aichatbot/screens/splash_screen.dart';
@@ -95,17 +101,54 @@ class AppRouter {
           }),
       // Updated route for chat detail to handle deep linking
       GoRoute(
+        path: '/knowledge/:id/add_source',
+        name: 'addSource',
+        builder: (ctx, state) {
+          final kb = state.extra as KnowledgeBase;
+          return AddSourceScreen(knowledgeBase: kb);
+        },
+      ),
+      GoRoute(
+        path: '/knowledge/:id/edit',
+        name: 'editKnowledge',
+        builder: (ctx, state) {
+          final kb = state.extra as KnowledgeBase;
+          return UpdateKnowledgeScreen(knowledgeBase: kb);
+        },
+      ),
+      GoRoute(
+        path: '/prompts/:id/edit',
+        name: 'editPrompt',
+        builder: (ctx, state) {
+          final prompt = state.extra as PromptModel;
+          return EditPromptScreen(prompt: prompt);
+        },
+      ),
+      GoRoute(
         path: '/chat/detail/:threadId',
         name: 'chatDetail',
-        parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
-          final threadId = state.pathParameters['threadId'];
+          final threadId = state.pathParameters['threadId']!;
           final isNew = threadId == 'new';
+          final extra = state.extra;
+          final initial = (extra is Map<String, dynamic>)
+              ? extra['initialPrompt'] as String?
+              : null;
+          final toEnd = (extra is Map<String, dynamic>)
+              ? extra['setCursorToEnd'] as bool?
+              : false;
           return ChatDetailScreen(
             isNewChat: isNew,
             threadId: isNew ? null : threadId,
+            initialPrompt: initial,
+            setCursorToEnd: toEnd ?? false,
           );
         },
+      ),
+      GoRoute(
+        path: '/prompts/private',
+        name: 'privatePrompts',
+        builder: (context, state) => const PrivatePromptsScreen(),
       ),
     ],
     // ② thêm observer ở GoRouter

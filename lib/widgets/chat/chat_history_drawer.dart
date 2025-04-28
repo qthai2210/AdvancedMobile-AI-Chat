@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:aichatbot/models/chat_thread.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatHistoryDrawer extends StatefulWidget {
   final Function(ChatThread) onThreadSelected;
@@ -175,7 +176,7 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
           onTap: () {
-            Navigator.pop(context); // Close drawer
+            context.pop(); // Close drawer
             widget.onThreadSelected(thread);
           },
         );
@@ -188,7 +189,7 @@ class _ChatHistoryDrawerState extends State<ChatHistoryDrawer> {
       padding: const EdgeInsets.all(16.0),
       child: ElevatedButton.icon(
         onPressed: () {
-          Navigator.pop(context); // Close drawer
+          context.pop(); // Close drawer
           widget.onNewChatRequested();
         },
         icon: const Icon(Icons.add),

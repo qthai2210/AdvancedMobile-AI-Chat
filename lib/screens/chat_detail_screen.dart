@@ -503,7 +503,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 // Scroll to the latest message
                 _scrollToBottom();
               }
-              Navigator.pop(context);
+              context.pop(); // Close the bottom sheet
             },
           ),
         ),
@@ -570,7 +570,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     // Close drawer if it's open
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 
@@ -639,20 +639,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        onTap: () => Navigator.pop(context, prompt),
+                        onTap: () => context.pop(prompt),
                       );
                     },
                   ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () {
             // Navigate to the prompts screen to browse all prompts
-            Navigator.pop(context);
+            context.pop();
             context.push('/prompts');
           },
           child: const Text('Browse All Prompts'),
@@ -1245,10 +1245,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       context: context,
       builder: (context) => DeleteConfirmationDialog(
         onConfirm: () {
-          Navigator.pop(context);
-          if (Navigator.of(context).canPop()) {
-            Navigator.pop(context);
+          context.pop();
+          // Nếu còn route để pop (chẳng hạn back từ ChatDetail → Chat List)
+          if (GoRouter.of(context).canPop()) {
+            context.pop();
           } else {
+            // Ngược lại quay về Chat List
             context.go('/chat');
           }
         },

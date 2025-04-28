@@ -15,6 +15,7 @@ import 'package:aichatbot/utils/build_context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/utils/date_formatter.dart';
+import 'package:go_router/go_router.dart';
 
 class PrivatePromptsScreen extends StatefulWidget {
   const PrivatePromptsScreen({Key? key}) : super(key: key);
@@ -80,7 +81,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
       context.showWarningNotification(
         'Bạn cần đăng nhập để xem prompts riêng tư',
         actionLabel: 'Đăng nhập',
-        onAction: () => Navigator.of(context).pushReplacementNamed('/login'),
+        onAction: () => context.pushReplacementNamed('/login'),
       );
       return;
     }
@@ -122,12 +123,13 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
   }
 
   void _editPrompt(PromptModel prompt) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditPromptScreen(prompt: prompt),
-      ),
-    ).then((result) {
+    context
+        .pushNamed(
+      'editPrompt',
+      pathParameters: {'id': prompt.id},
+      extra: prompt,
+    )
+        .then((result) {
       if (result == true) {
         _loadPrivatePrompts();
       }
@@ -141,14 +143,13 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
 
       // Delay navigation slightly to allow notification to show
       Future.delayed(const Duration(milliseconds: 100), () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChatDetailScreen(
-              initialPrompt: prompt.content,
-              isNewChat: true,
-              setCursorToEnd: true,
-            ),
-          ),
+        context.pushNamed(
+          'chatDetail',
+          pathParameters: {'threadId': 'new'},
+          extra: <String, dynamic>{
+            'initialPrompt': prompt.content,
+            'setCursorToEnd': true,
+          },
         );
       });
     } catch (e) {
@@ -218,7 +219,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => context.pop(dialogContext),
               style: TextButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -243,7 +244,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
               onPressed: () {
-                Navigator.pop(dialogContext);
+                context.pop(dialogContext);
                 _deletePrompt(prompt);
               },
               style: TextButton.styleFrom(
@@ -281,11 +282,11 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
             listener: (context, state) {
               if (state.status == PromptStatus.success &&
                   state.deletedPromptId == prompt.id) {
-                Navigator.pop(loadingContext);
+                context.pop(loadingContext);
                 context.showSuccessNotification('Đã xóa prompt thành công');
                 _loadPrivatePrompts(); // Reload danh sách sau khi xóa
               } else if (state.status == PromptStatus.failure) {
-                Navigator.pop(loadingContext);
+                context.pop(loadingContext);
                 context.showErrorNotification(
                   'Lỗi: ${state.errorMessage ?? "Không thể xóa prompt"}',
                 );
@@ -355,10 +356,7 @@ class _PrivatePromptsScreenState extends State<PrivatePromptsScreen> {
   }
 
   void _navigateToCreatePrompt() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreatePromptScreen()),
-    ).then((result) {
+    context.push('/prompts/create').then((result) {
       if (result == true) {
         _loadPrivatePrompts();
         context.showSuccessNotification('Tạo prompt thành công');

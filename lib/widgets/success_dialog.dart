@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// A custom success dialog for displaying success messages.
 ///
@@ -36,7 +37,7 @@ class SuccessDialog extends StatelessWidget {
           title: title,
           message: message,
           buttonText: buttonText,
-          onButtonPressed: onButtonPressed ?? () => Navigator.of(context).pop(),
+          onButtonPressed: onButtonPressed ?? () => context.pop(),
         );
       },
     );
@@ -83,7 +84,7 @@ class SuccessDialog extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(right: 16, bottom: 16),
           child: ElevatedButton(
-            onPressed: onButtonPressed ?? () => Navigator.of(context).pop(),
+            onPressed: onButtonPressed ?? () => context.pop(),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,

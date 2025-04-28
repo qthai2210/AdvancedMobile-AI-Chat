@@ -435,7 +435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -445,7 +445,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _userData['email'] = emailController.text;
               });
 
-              Navigator.pop(context);
+              context.pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Profile updated successfully')),
               );
@@ -501,13 +501,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               // Password validation logic would go here
-              Navigator.pop(context);
+              context.pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Password changed successfully')),
               );

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 void handleDrawerNavigation(BuildContext context, int index,
     {required int currentIndex}) {
   // Đóng drawer trước khi điều hướng
-  Navigator.pop(context);
+  context.pop();
 
   // Nếu đang ở màn hình hiện tại, không làm gì cả
   if (index == currentIndex) {

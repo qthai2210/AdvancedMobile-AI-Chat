@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_event.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_state.dart';
+import 'package:go_router/go_router.dart';
 
 class MainAppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -130,7 +131,7 @@ class MainAppDrawer extends StatelessWidget {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.pop(dialogContext);
+                              context.pop(dialogContext);
                               context
                                   .read<AuthBloc>()
                                   .add(LogoutRequested(context: context));

@@ -340,7 +340,7 @@ class _BotListScreenState extends State<BotListScreen> {
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(dialogContext),
+                        onPressed: () => context.pop(dialogContext),
                         color: Colors.grey,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -364,7 +364,7 @@ class _BotListScreenState extends State<BotListScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
+                        onPressed: () => context.pop(dialogContext),
                         child: const Text('CANCEL'),
                       ),
                       const SizedBox(width: 16),
@@ -475,7 +475,7 @@ class _BotListScreenState extends State<BotListScreen> {
           );
         } else if (state is AssistantUpdated) {
           // Close the dialog when update is successful
-          Navigator.of(dialogContext).pop();
+          dialogContext.pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -613,12 +613,12 @@ class _BotListScreenState extends State<BotListScreen> {
         content: Text('Are you sure you want to delete "${bot.name}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('CANCEL'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.pop();
               // Set deleting flag to true
               setState(() {
                 _isDeletingAssistant = true;

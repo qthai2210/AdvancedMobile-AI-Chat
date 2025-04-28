@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class RenameDialogWidget extends StatelessWidget {
   final TextEditingController controller;
@@ -23,13 +24,13 @@ class RenameDialogWidget extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
           child: const Text('Hủy'),
         ),
         TextButton(
           onPressed: () {
             onSave(controller.text);
-            Navigator.pop(context);
+            context.pop();
           },
           child: const Text('Lưu'),
         ),
@@ -97,7 +98,7 @@ class DeleteConfirmationDialog extends StatelessWidget {
       actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(

@@ -58,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               context.go('/login');
             } catch (_) {
               // Fallback cho Navigation 1.0 nếu GoRouter gặp lỗi
-              Navigator.of(context).pushReplacementNamed('/login');
+              context.push('/login');
             }
           });
         }
