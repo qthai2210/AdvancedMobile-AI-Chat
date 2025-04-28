@@ -32,35 +32,50 @@ class MessageRequestModel {
 
 class MessageMetadata {
   final Conversation conversation;
-
+  final String? id;
   MessageMetadata({
     required this.conversation,
+    this.id,
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       'conversation': conversation.toJson(),
     };
+
+    // Include the id in the JSON if it's not null
+    if (id != null) {
+      data['id'] = id;
+    }
+
+    return data;
   }
 }
 
 class Conversation {
-  //final List<ChatMessage> messages;
+  final List<ChatMessage>? messages;
   final String id;
   final String title;
   final DateTime createdAt;
+
   Conversation({
-    //required this.messages,
+    this.messages,
     required this.id,
     required this.title,
     required this.createdAt,
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      //'messages': messages.map((message) => message.toJson()).toList(),
+    final Map<String, dynamic> data = {
+      'id': id,
       'title': title,
     };
+
+    if (messages != null && messages!.isNotEmpty) {
+      data['messages'] = messages!.map((message) => message.toJson()).toList();
+    }
+
+    return data;
   }
 }
 

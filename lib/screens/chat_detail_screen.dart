@@ -1,10 +1,10 @@
+import 'dart:convert';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
 import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/domain/entities/prompt.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
-import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/chat/ai_agent_selector.dart';
 import 'package:aichatbot/widgets/chat/chat_dialogs.dart';
@@ -86,6 +86,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final int _selectedTabIndex =
       0; // Track the currently selected tab for the drawer
   String _currentThreadTitle = '';
+  String _currentThreadId = '';
   AIAgent _selectedAgent = AIAgents.agents.first;
   List<Message> _messages = [];
   bool _isTyping = false;
@@ -383,15 +384,49 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               .add(SendCustomBotMessageEvent(request: customBotRequest));
         } else {
           // Use regular ChatBloc to send the message for standard bots
+          AppLogger.e(
+              "current Thread id: $_currentThreadId"); // Create the conversation ID correctly
+          final conversationId = _currentThreadId.isNotEmpty
+              ? _currentThreadId
+              : (widget.threadId != null && widget.threadId != 'new'
+                  ? widget.threadId!
+                  : 'new_conversation'); // Add ! to force non-nullable
+
+          // Format previous messages for the conversation history
+          List<msg_model.ChatMessage> messageHistory = _messages.map((msg) {
+            return msg_model.ChatMessage(
+              role: msg.isUser ? 'user' : 'model',
+              content: msg.text,
+              files: const [],
+              // assistant: !msg.isUser
+              //     ? msg_model.AssistantModel(
+              //         model: "dify",
+              //         name: _selectedAgent.name,
+              //         id: _selectedAgent.id,
+              //       )
+              //     : null,
+              assistant: msg_model.AssistantModel(
+                model: "dify",
+                name: _selectedAgent.name,
+                id: _selectedAgent.id,
+              ),
+            );
+          }).toList();
+
+          AppLogger.e(
+              "Message history for API: ${messageHistory.length} messages");
+
           final requestModel = msg_model.MessageRequestModel(
             content: message,
             files: [],
             metadata: msg_model.MessageMetadata(
               conversation: msg_model.Conversation(
-                id: widget.threadId ?? 'new_conversation',
+                id: conversationId,
                 title: _currentThreadTitle,
                 createdAt: DateTime.now(),
+                messages: messageHistory, // Include the conversation history
               ),
+              id: conversationId, // Set the ID here too
             ),
             assistant: msg_model.AssistantModel(
               model: "dify",
@@ -400,7 +435,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ); // Check if we're using a custom bot
           AppLogger.w("Selected agent: $_selectedAgent");
-          AppLogger.w("Regular bot request: $requestModel");
+          AppLogger.w("Using conversation ID: $conversationId");
+          AppLogger.w("Using conversation title: $_currentThreadTitle");
+          AppLogger.w("Metadata in request: ${requestModel.metadata.toJson()}");
+          AppLogger.w(
+              "Full request JSON: ${jsonEncode(requestModel.toJson())}");
           context.read<ChatBloc>().add(SendMessageEvent(request: requestModel));
         }
       } catch (error) {
@@ -523,9 +562,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // 1️⃣1️⃣ track chọn thread trong lịch sử
   void _selectThreadFromHistory(ChatThread thread) {
+    AppLogger.e("Chat Thread $thread");
+    AppLogger.e("Chat Thread information: ${thread.id} ");
     setState(() {
       _showHistory = false;
       _currentThreadTitle = thread.title;
+      _currentThreadId = thread.id;
       _messages = []; // Clear existing messages
       _isTyping = true; // Show loading state
     });
@@ -749,21 +791,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     timestamp: conv.createdAt,
                     agentType: 'AI Assistant',
                   ))
-              .toList();
-
-          // If there's a specific conversation to display
-          if (widget.threadId != null && state.conversations.isNotEmpty) {
-            final conversation = state.conversations.firstWhere(
+              .toList(); // If there's a specific conversation to display
+          if (widget.threadId != null &&
+              widget.threadId != 'new' &&
+              state.conversations.isNotEmpty) {
+            final matchingConversation = state.conversations.firstWhere(
               (conv) => conv.id == widget.threadId,
               orElse: () => state.conversations.first,
             );
-            // final conversation = state.conversations.firstWhere(
-            //   (conv) => conv.id == widget.threadId,
-            //   orElse: () => state.conversations.first,
-            // );
 
-            //_currentThreadTitle = conversation.title ?? 'Conversation';
-            _currentThreadTitle = 'Conversation';
+            // Set the current conversation ID and title
+            _currentThreadId = matchingConversation.id;
+            _currentThreadTitle = matchingConversation.title ?? 'Conversation';
 
             // Convert conversation messages to UI Message model
             _messages = [];
