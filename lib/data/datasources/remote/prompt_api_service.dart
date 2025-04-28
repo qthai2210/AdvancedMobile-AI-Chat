@@ -14,6 +14,18 @@ class PromptApiService {
     // Set the base URL for the Dio instance
     // _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
+  
+  /// Refreshes the authentication header for this service
+  Future<void> refreshAuthHeader() async {
+    try {
+      final authHeader = await _apiService.createAuthHeader();
+      _dio.options.headers.addAll(authHeader);
+      debugPrint('PromptApiService auth headers refreshed');
+    } catch (e) {
+      debugPrint('Error refreshing PromptApiService auth headers: $e');
+    }
+  }
+
   // Phương thức lấy danh sách prompts
   Future<Map<String, dynamic>> getPrompts({
     required String accessToken,
@@ -561,16 +573,6 @@ class PromptApiService {
         throw {
           'code': 'UNAUTHORIZED',
           'error': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
-        };
-      }
-
-      // Xử lý lỗi 404 - Not found
-      if (e.response?.statusCode == 404) {
-        debugPrint('PromptApiService: Not found error (404)');
-        debugPrint('=================================================');
-        throw {
-          'code': 'NOT_FOUND',
-          'error': 'Không tìm thấy prompt này hoặc đã bị xóa trước đó',
         };
       }
 

@@ -59,107 +59,195 @@ Future<void> initPostLoginServices() async {
   }
 
   AppLogger.i('Initializing post-login services...');
+
   // API Services (initialize on demand after login)
-  sl.registerLazySingleton(() => AssistantApiService());
-  sl.registerLazySingleton(() => ChatApiService());
-  sl.registerLazySingleton(() => ConversationApiService());
-  sl.registerLazySingleton(() => KnowledgeApiService());
-  sl.registerLazySingleton(() => PromptApiService());
+  // Register each service only if it's not already registered
+  if (!sl.isRegistered<AssistantApiService>()) {
+    sl.registerLazySingleton(() => AssistantApiService());
+  }
 
+  if (!sl.isRegistered<ChatApiService>()) {
+    sl.registerLazySingleton(() => ChatApiService());
+  }
+
+  if (!sl.isRegistered<ConversationApiService>()) {
+    sl.registerLazySingleton(() => ConversationApiService());
+  }
+
+  if (!sl.isRegistered<KnowledgeApiService>()) {
+    sl.registerLazySingleton(() => KnowledgeApiService());
+  }
+
+  if (!sl.isRegistered<PromptApiService>()) {
+    sl.registerLazySingleton(() => PromptApiService());
+  }
   // Repositories
-  sl.registerLazySingleton<AssistantRepository>(
-    () => AssistantRepositoryImpl(assistantApiService: sl()),
-  );
-  sl.registerLazySingleton<ChatRepository>(
-    () => ChatRepositoryImpl(chatApiService: sl()),
-  );
-  sl.registerLazySingleton<ConversationRepository>(
-    () => ConversationRepositoryImpl(conversationApiService: sl()),
-  );
-  sl.registerLazySingleton<KnowledgeRepository>(
-    () => KnowledgeRepositoryImpl(knowledgeApiService: sl()),
-  );
-  sl.registerLazySingleton<PromptRepository>(
-    () => PromptRepositoryImpl(promptApiService: sl()),
-  );
+  if (!sl.isRegistered<AssistantRepository>()) {
+    sl.registerLazySingleton<AssistantRepository>(
+      () => AssistantRepositoryImpl(assistantApiService: sl()),
+    );
+  }
 
-  // Use cases
-  sl.registerLazySingleton(() => GetPromptsUsecase(sl()));
-  sl.registerLazySingleton(() => CreatePromptUsecase(sl()));
-  sl.registerLazySingleton(() => AddFavoriteUsecase(sl()));
-  sl.registerLazySingleton(() => RemoveFavoriteUsecase(sl()));
-  sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
-  sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
+  if (!sl.isRegistered<ChatRepository>()) {
+    sl.registerLazySingleton<ChatRepository>(
+      () => ChatRepositoryImpl(chatApiService: sl()),
+    );
+  }
 
-  sl.registerLazySingleton(() => SendMessageUseCase(sl()));
-  sl.registerLazySingleton(() => SendCustomBotMessageUseCase(sl()));
+  if (!sl.isRegistered<ConversationRepository>()) {
+    sl.registerLazySingleton<ConversationRepository>(
+      () => ConversationRepositoryImpl(conversationApiService: sl()),
+    );
+  }
 
-  sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
-  sl.registerLazySingleton(() => GetConversationHistoryUsecase(sl()));
+  if (!sl.isRegistered<KnowledgeRepository>()) {
+    sl.registerLazySingleton<KnowledgeRepository>(
+      () => KnowledgeRepositoryImpl(knowledgeApiService: sl()),
+    );
+  }
 
-  sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
-  sl.registerLazySingleton(() => CreateAssistantUseCase(sl()));
-  sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
-  sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
+  if (!sl.isRegistered<PromptRepository>()) {
+    sl.registerLazySingleton<PromptRepository>(
+      () => PromptRepositoryImpl(promptApiService: sl()),
+    );
+  }
+  // Use cases - Only register if not already registered
+  // Prompt use cases
+  if (!sl.isRegistered<GetPromptsUsecase>())
+    sl.registerLazySingleton(() => GetPromptsUsecase(sl()));
 
-  sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
-  sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
-  sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
-  sl.registerLazySingleton(() => UpdateKnowledgeUseCase(sl()));
-  sl.registerLazySingleton(
-      () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
-  sl.registerLazySingleton(
-      () => UploadLocalFileUseCase(fileRepository: sl<KnowledgeRepository>()));
-  sl.registerLazySingleton(
-      () => UploadGoogleDriveFileUseCase(sl<KnowledgeRepository>()));
-  sl.registerLazySingleton(
-      () => UploadSlackFileUseCase(sl<KnowledgeRepository>()));
-  sl.registerLazySingleton(
-      () => UploadConfluenceFileUseCase(sl<KnowledgeRepository>()));
+  if (!sl.isRegistered<CreatePromptUsecase>())
+    sl.registerLazySingleton(() => CreatePromptUsecase(sl()));
 
-  // Blocs
-  sl.registerLazySingleton(() => PromptBloc(
-        getPromptsUsecase: sl(),
-        createPromptUsecase: sl(),
-        addFavoriteUsecase: sl(),
-        removeFavoriteUsecase: sl(),
-        updatePromptUsecase: sl(),
-        deletePromptUsecase: sl(),
-      ));
+  if (!sl.isRegistered<AddFavoriteUsecase>())
+    sl.registerLazySingleton(() => AddFavoriteUsecase(sl()));
 
-  sl.registerLazySingleton(() => ConversationBloc(
-        getConversationsUsecase: sl(),
-        getConversationHistoryUsecase: sl(),
-      ));
+  if (!sl.isRegistered<RemoveFavoriteUsecase>())
+    sl.registerLazySingleton(() => RemoveFavoriteUsecase(sl()));
 
-  sl.registerLazySingleton(() => ChatBloc(
-        sendMessageUseCase: sl(),
-        sendCustomBotMessageUseCase: sl(),
-      ));
+  if (!sl.isRegistered<UpdatePromptUsecase>())
+    sl.registerLazySingleton(() => UpdatePromptUsecase(sl()));
 
-  sl.registerLazySingleton(() => BotBloc(
-        getAssistantsUseCase: sl(),
-        createAssistantUseCase: sl(),
-        updateAssistantUseCase: sl(),
-        deleteAssistantUseCase: sl(),
-      ));
+  if (!sl.isRegistered<DeletePromptUsecase>())
+    sl.registerLazySingleton(() => DeletePromptUsecase(sl()));
 
-  sl.registerLazySingleton(() => KnowledgeBloc(
-        getKnowledgesUseCase: sl(),
-        createKnowledgeUseCase: sl(),
-        deleteKnowledgeUseCase: sl(),
-        updateKnowledgeUseCase: sl(),
-      ));
-  sl.registerLazySingleton(() => KnowledgeUnitBloc(
-        fetchKnowledgeUnitsUseCase: sl<FetchKnowledgeUnitsUseCase>(),
-      ));
+  // Chat use cases
+  if (!sl.isRegistered<SendMessageUseCase>())
+    sl.registerLazySingleton(() => SendMessageUseCase(sl()));
 
-  sl.registerLazySingleton(() => FileUploadBloc(
-        uploadLocalFileUseCase: sl<UploadLocalFileUseCase>(),
-        uploadGoogleDriveFileUseCase: sl<UploadGoogleDriveFileUseCase>(),
-        uploadSlackFileUseCase: sl<UploadSlackFileUseCase>(),
-        uploadConfluenceFileUseCase: sl<UploadConfluenceFileUseCase>(),
-      ));
+  if (!sl.isRegistered<SendCustomBotMessageUseCase>())
+    sl.registerLazySingleton(() => SendCustomBotMessageUseCase(sl()));
+
+  // Conversation use cases
+  if (!sl.isRegistered<GetConversationsUsecase>())
+    sl.registerLazySingleton(() => GetConversationsUsecase(sl()));
+
+  if (!sl.isRegistered<GetConversationHistoryUsecase>())
+    sl.registerLazySingleton(() => GetConversationHistoryUsecase(sl()));
+
+  // Assistant use cases
+  if (!sl.isRegistered<GetAssistantsUseCase>())
+    sl.registerLazySingleton(() => GetAssistantsUseCase(sl()));
+
+  if (!sl.isRegistered<CreateAssistantUseCase>())
+    sl.registerLazySingleton(() => CreateAssistantUseCase(sl()));
+
+  if (!sl.isRegistered<UpdateAssistantUseCase>())
+    sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
+
+  if (!sl.isRegistered<DeleteAssistantUseCase>())
+    sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
+
+  // Knowledge use cases
+  if (!sl.isRegistered<GetKnowledgesUseCase>())
+    sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
+
+  if (!sl.isRegistered<CreateKnowledgeUseCase>())
+    sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
+
+  if (!sl.isRegistered<DeleteKnowledgeUseCase>())
+    sl.registerLazySingleton(() => DeleteKnowledgeUseCase(sl()));
+
+  if (!sl.isRegistered<UpdateKnowledgeUseCase>())
+    sl.registerLazySingleton(() => UpdateKnowledgeUseCase(sl()));
+
+  if (!sl.isRegistered<FetchKnowledgeUnitsUseCase>())
+    sl.registerLazySingleton(
+        () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<UploadLocalFileUseCase>())
+    sl.registerLazySingleton(() =>
+        UploadLocalFileUseCase(fileRepository: sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<UploadGoogleDriveFileUseCase>())
+    sl.registerLazySingleton(
+        () => UploadGoogleDriveFileUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<UploadSlackFileUseCase>())
+    sl.registerLazySingleton(
+        () => UploadSlackFileUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<UploadConfluenceFileUseCase>())
+    sl.registerLazySingleton(
+        () => UploadConfluenceFileUseCase(sl<KnowledgeRepository>()));
+  // Blocs - Only register if not already registered
+  if (!sl.isRegistered<PromptBloc>()) {
+    sl.registerLazySingleton(() => PromptBloc(
+          getPromptsUsecase: sl(),
+          createPromptUsecase: sl(),
+          addFavoriteUsecase: sl(),
+          removeFavoriteUsecase: sl(),
+          updatePromptUsecase: sl(),
+          deletePromptUsecase: sl(),
+        ));
+  }
+
+  if (!sl.isRegistered<ConversationBloc>()) {
+    sl.registerLazySingleton(() => ConversationBloc(
+          getConversationsUsecase: sl(),
+          getConversationHistoryUsecase: sl(),
+        ));
+  }
+
+  if (!sl.isRegistered<ChatBloc>()) {
+    sl.registerLazySingleton(() => ChatBloc(
+          sendMessageUseCase: sl(),
+          sendCustomBotMessageUseCase: sl(),
+        ));
+  }
+
+  if (!sl.isRegistered<BotBloc>()) {
+    sl.registerLazySingleton(() => BotBloc(
+          getAssistantsUseCase: sl(),
+          createAssistantUseCase: sl(),
+          updateAssistantUseCase: sl(),
+          deleteAssistantUseCase: sl(),
+        ));
+  }
+
+  if (!sl.isRegistered<KnowledgeBloc>()) {
+    sl.registerLazySingleton(() => KnowledgeBloc(
+          getKnowledgesUseCase: sl(),
+          createKnowledgeUseCase: sl(),
+          deleteKnowledgeUseCase: sl(),
+          updateKnowledgeUseCase: sl(),
+        ));
+  }
+
+  if (!sl.isRegistered<KnowledgeUnitBloc>()) {
+    sl.registerLazySingleton(() => KnowledgeUnitBloc(
+          fetchKnowledgeUnitsUseCase: sl<FetchKnowledgeUnitsUseCase>(),
+        ));
+  }
+
+  if (!sl.isRegistered<FileUploadBloc>()) {
+    sl.registerLazySingleton(() => FileUploadBloc(
+          uploadLocalFileUseCase: sl<UploadLocalFileUseCase>(),
+          uploadGoogleDriveFileUseCase: sl<UploadGoogleDriveFileUseCase>(),
+          uploadSlackFileUseCase: sl<UploadSlackFileUseCase>(),
+          uploadConfluenceFileUseCase: sl<UploadConfluenceFileUseCase>(),
+        ));
+  }
 
   _postLoginServicesInitialized = true;
   AppLogger.i('Post-login services initialized successfully');
@@ -238,17 +326,46 @@ Future<void> resetPostLoginServices() async {
     if (sl.isRegistered<PromptRepository>())
       sl.resetLazySingleton<PromptRepository>();
 
-    // Reset API Services last
-    if (sl.isRegistered<AssistantApiService>())
-      sl.resetLazySingleton<AssistantApiService>();
-    if (sl.isRegistered<ChatApiService>())
-      sl.resetLazySingleton<ChatApiService>();
-    if (sl.isRegistered<ConversationApiService>())
-      sl.resetLazySingleton<ConversationApiService>();
-    if (sl.isRegistered<KnowledgeApiService>())
-      sl.resetLazySingleton<KnowledgeApiService>();
-    if (sl.isRegistered<PromptApiService>())
-      sl.resetLazySingleton<PromptApiService>();
+    // Reset API Services last    // Reset API Services using resetLazySingleton instead of unregister
+    try {
+      if (sl.isRegistered<AssistantApiService>()) {
+        sl.resetLazySingleton<AssistantApiService>();
+      }
+    } catch (e) {
+      AppLogger.e('Error resetting AssistantApiService: $e');
+    }
+
+    try {
+      if (sl.isRegistered<ChatApiService>()) {
+        sl.resetLazySingleton<ChatApiService>();
+      }
+    } catch (e) {
+      AppLogger.e('Error resetting ChatApiService: $e');
+    }
+
+    try {
+      if (sl.isRegistered<ConversationApiService>()) {
+        sl.resetLazySingleton<ConversationApiService>();
+      }
+    } catch (e) {
+      AppLogger.e('Error resetting ConversationApiService: $e');
+    }
+
+    try {
+      if (sl.isRegistered<KnowledgeApiService>()) {
+        sl.resetLazySingleton<KnowledgeApiService>();
+      }
+    } catch (e) {
+      AppLogger.e('Error resetting KnowledgeApiService: $e');
+    }
+
+    try {
+      if (sl.isRegistered<PromptApiService>()) {
+        sl.resetLazySingleton<PromptApiService>();
+      }
+    } catch (e) {
+      AppLogger.e('Error resetting PromptApiService: $e');
+    }
 
     // Mark services as uninitialized
     _postLoginServicesInitialized = false;
