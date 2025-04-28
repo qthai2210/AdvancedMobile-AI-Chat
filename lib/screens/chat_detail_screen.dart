@@ -792,40 +792,42 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     agentType: 'AI Assistant',
                   ))
               .toList(); // If there's a specific conversation to display
-          if (widget.threadId != null &&
-              widget.threadId != 'new' &&
-              state.conversations.isNotEmpty) {
-            final matchingConversation = state.conversations.firstWhere(
-              (conv) => conv.id == widget.threadId,
-              orElse: () => state.conversations.first,
-            );
 
-            // Set the current conversation ID and title
-            _currentThreadId = matchingConversation.id;
-            _currentThreadTitle = matchingConversation.title ?? 'Conversation';
+          _currentThreadTitle = 'New Conversation';
+          // if (widget.threadId != null &&
+          //     widget.threadId != 'new' &&
+          //     state.conversations.isNotEmpty) {
+          //   final matchingConversation = state.conversations.firstWhere(
+          //     (conv) => conv.id == widget.threadId,
+          //     orElse: () => state.conversations.first,
+          //   );
 
-            // Convert conversation messages to UI Message model
-            _messages = [];
+          //   // Set the current conversation ID and title
+          //   _currentThreadId = matchingConversation.id;
+          //   _currentThreadTitle = matchingConversation.title ?? 'Conversation';
 
-            // for (var msg in conversation.messages) {
-            //   _messages.add(
-            //     Message(
-            //       text: msg.content ?? '',
-            //       isUser: msg.role == 'user',
-            //       //   timestamp: msg.createdAt ?? DateTime.now(),
-            //       timestamp: DateTime.now(),
+          //   // Convert conversation messages to UI Message model
+          //   _messages = [];
 
-            //       agent: msg.role == 'user' ? null : _selectedAgent,
-            //     ),
-            //   );
-            // }
+          //   // for (var msg in conversation.messages) {
+          //   //   _messages.add(
+          //   //     Message(
+          //   //       text: msg.content ?? '',
+          //   //       isUser: msg.role == 'user',
+          //   //       //   timestamp: msg.createdAt ?? DateTime.now(),
+          //   //       timestamp: DateTime.now(),
 
-            // Scroll to bottom after loading messages
-            _scrollToBottom();
-          }
+          //   //       agent: msg.role == 'user' ? null : _selectedAgent,
+          //   //     ),
+          //   //   );
+          //   // }
 
-          // Store cursor for pagination if available
-          _nextCursor = state.nextCursor;
+          //   // Scroll to bottom after loading messages
+          //   _scrollToBottom();
+          // }
+
+          // // Store cursor for pagination if available
+          // _nextCursor = state.nextCursor;
         }
       });
     } else if (state is ConversationError) {
