@@ -25,6 +25,9 @@ class ErrorFormatter {
       if (errorString.contains('EMAIL_PASSWORD_MISMATCH')) {
         return 'Email hoặc mật khẩu không đúng, vui lòng kiểm tra lại';
       }
+      else if (errorString.contains('USER_EMAIL_ALREADY_EXISTS')) {
+        return 'Email này đã được sử dụng, vui lòng thử email khác';
+      }
       return 'Đã xảy ra lỗi, vui lòng thử lại sau';
     }
 
@@ -33,6 +36,8 @@ class ErrorFormatter {
 
     // Căn cứ vào error code để return message phù hợp
     switch (errorCode) {
+      case 'USER_EMAIL_ALREADY_EXISTS':
+        return 'Email này đã được sử dụng, vui lòng thử email khác';
       case 'EMAIL_PASSWORD_MISMATCH':
         return 'Email hoặc mật khẩu không đúng, vui lòng kiểm tra lại';
       case 'USER_NOT_FOUND':

@@ -139,6 +139,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
 
+      await initPostLoginServices();
+
       // Emit registrationSuccess thay vì success
       emit(state.copyWith(
         status: AuthStatus.success,
