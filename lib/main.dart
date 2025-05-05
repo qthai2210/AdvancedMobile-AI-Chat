@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart' as di;
 import 'package:aichatbot/core/services/ad_service.dart';
+import 'package:aichatbot/core/services/in_app_purchase_service.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/widgets/auth_wrapper.dart';
 import 'package:firebase_analytics/observer.dart';
@@ -14,6 +15,10 @@ void main() async {
   await di.init();
   await AdService().initialize();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize in-app purchase service
+  final iapService = di.sl<InAppPurchaseService>();
+  await iapService.initialize();
 
   final analytics = FirebaseAnalytics.instance;
   await analytics.setAnalyticsCollectionEnabled(true);

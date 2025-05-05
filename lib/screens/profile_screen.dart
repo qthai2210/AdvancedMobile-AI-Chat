@@ -149,7 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => context.go('/purchase'),
+                onPressed: () => context.push('/purchase'),
                 child: const Text('Upgrade Plan'),
               ),
             ),
