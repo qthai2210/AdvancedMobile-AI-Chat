@@ -34,8 +34,7 @@ class InAppPurchaseService {
 
   // Product IDs - Replace with your actual product IDs from Google Play/App Store
   static const String _premiumSubscriptionMonthly = 'month_subscription';
-  static const String _premiumSubscriptionYearly =
-      'com.advancedmobile.aichatbot.premium_yearly';
+  static const String _premiumSubscriptionYearly = 'year_subscription';
   static const String _consumableCredits50 =
       'com.advancedmobile.aichatbot.credits_50';
   static const String _consumableCredits100 =
