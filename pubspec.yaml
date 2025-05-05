@@ -2,7 +2,7 @@ name: aichatbot
 description: AI Chat Bot Application
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.0+6
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -30,6 +30,8 @@ dependencies:
   google_mobile_ads: ^6.0.0
   firebase_core: ^2.32.0
   in_app_purchase: ^3.2.1
+  in_app_purchase_android: ^0.4.0 # For Android platform
+  in_app_purchase_storekit: ^0.3.9 # For iOS platform
   google_sign_in: ^6.3.0
   googleapis: ^14.0.0
   google_identity_services_web: ^0.3.3+1

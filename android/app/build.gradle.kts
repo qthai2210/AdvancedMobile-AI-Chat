@@ -65,3 +65,9 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Google Play Billing Library with Kotlin extensions and coroutines support
+    val billingVersion = "7.1.1"
+    implementation("com.android.billingclient:billing-ktx:$billingVersion")
+}
