@@ -8,6 +8,7 @@ import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
 import 'package:aichatbot/screens/home_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/add_source_screen.dart';
+import 'package:aichatbot/screens/knowledge_management/knowledge_detail_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_management_screen.dart';
 import 'package:aichatbot/screens/knowledge_management/update_knowledge_screen.dart';
 import 'package:aichatbot/screens/login_screen.dart';
@@ -100,6 +101,15 @@ class AppRouter {
             return const KnowledgeManagementScreen();
           }),
       // Updated route for chat detail to handle deep linking
+      GoRoute(
+          path: '/knowledge/:id/detail',
+          name: 'knowledgeDetail',
+          builder: (context, state) {
+            final kb = state.extra as KnowledgeBase;
+            return KnowledgeDetailScreen(
+              knowledgeBase: kb,
+            );
+          }),
       GoRoute(
         path: '/knowledge/:id/add_source',
         name: 'addSource',

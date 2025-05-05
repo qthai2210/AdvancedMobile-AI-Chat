@@ -261,4 +261,19 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
       accessToken: accessToken,
     );
   }
+
+  @override
+  Future<FileUploadResponse> uploadWebsiteSource({
+    required String knowledgeId,
+    required String unitName,
+    required String webUrl,
+    required String accessToken,
+  }) {
+    return knowledgeApiService.uploadWebSource(
+      knowledgeId: knowledgeId,
+      unitName: unitName,
+      webUrl: webUrl,
+      accessToken: accessToken,
+    );
+  }
 }

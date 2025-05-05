@@ -518,4 +518,32 @@ class KnowledgeApiService {
     );
     return FileUploadResponse.fromJson(response.data);
   }
+
+  Future<FileUploadResponse> uploadWebSource({
+    required String knowledgeId,
+    required String unitName,
+    required String webUrl,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/web';
+    final body = {
+      'unitName': unitName,
+      'webUrl': webUrl,
+    };
+    final headers = {
+      'x-jarvis-guid': accessToken,
+      'Authorization': 'Bearer $accessToken',
+      'Content-Type': 'application/json',
+    };
+    final response = await _dio.post(
+      endpoint,
+      data: body,
+      options: Options(headers: headers),
+    );
+    if (response.statusCode == 201) {
+      return FileUploadResponse.fromJson(response.data);
+    } else {
+      throw Exception('Upload website failed: ${response.statusCode}');
+    }
+  }
 }

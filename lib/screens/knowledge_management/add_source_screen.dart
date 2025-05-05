@@ -5,6 +5,8 @@ import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_event.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_state.dart';
+import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_bloc.dart';
+import 'package:aichatbot/utils/build_context_extensions.dart';
 import 'package:aichatbot/utils/google_auth_client.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/widgets/knowledge/source_forms/confluence_source_form.dart';
@@ -64,6 +66,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   String? _selectedSlackFileName;
   bool _isSlackLoading = false;
   String? _slackBotToken; // lấy từ AuthBloc hoặc form Slack connect
+
+  final TextEditingController _webUrlController = TextEditingController();
+  final TextEditingController _unitNameController = TextEditingController();
 
   @override
   void initState() {
@@ -263,11 +268,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
 // Add these placeholder methods for other source types
   Future<void> _saveWebsiteSource() async {
-    // Implement website source upload
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Website source upload not implemented yet')),
-    );
+    final auth = context.read<AuthBloc>().state.user;
+    if (auth?.accessToken == null) return;
+    context.read<FileUploadBloc>().add(
+          UploadWebEvent(
+            knowledgeId: widget.knowledgeBase.id,
+            unitName: _unitNameController.text.trim(),
+            webUrl: _webUrlController.text.trim(),
+            accessToken: auth!.accessToken!,
+          ),
+        );
   }
 
   Future<void> _pickSlackFile() async {
@@ -609,11 +619,16 @@ class _AddSourceScreenState extends State<AddSourceScreen>
                 : widget.knowledgeBase
                     .addSource(_createSourceFromUpload(state.response));
 
-            _showSuccessSnackbar(_isEditing
-                ? 'Source updated successfully'
-                : 'New source added successfully');
-
-            context.pop(updatedKnowledgeBase);
+            // hiện Success Dialog thay vì SnackBar
+            context.showSuccessNotification(
+              _isEditing
+                  ? 'Nguồn đã được cập nhật thành công.'
+                  : 'Nguồn mới đã được thêm thành công.',
+              onAction: () {
+                // đóng dialog và pop page với kết quả
+                context.pop(updatedKnowledgeBase);
+              },
+            );
           } else if (state is FileUploadError) {
             setState(() => _isLoading = false);
             _showErrorSnackbar(state.message);
@@ -939,15 +954,42 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   Widget _buildWebsiteTab() {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: UrlSourceForm(
-        urlController: TextEditingController(),
-        shouldCrawlLinks: _shouldCrawlLinks,
-        maxPagesToCrawl: _maxPagesToCrawl,
-        crawlDepth: _crawlDepth,
-        onCrawlLinksChanged: _onCrawlLinksChanged,
-        onMaxPagesChanged: _onMaxPagesChanged,
-        onCrawlDepthChanged: _onCrawlDepthChanged,
-        primaryColor: Theme.of(context).primaryColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _unitNameController,
+            decoration: const InputDecoration(
+              labelText: 'Unit Name',
+              hintText: 'Nhập tên nguồn (ví dụ: Jarvis website)',
+            ),
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Vui lòng nhập tên nguồn'
+                : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _webUrlController,
+            decoration: const InputDecoration(
+              labelText: 'Website URL',
+              hintText: 'https://example.com',
+            ),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Vui lòng nhập URL' : null,
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  _saveWebsiteSource();
+                }
+              },
+              child: const Text('Upload Website'),
+            ),
+          ),
+        ],
       ),
     );
   }

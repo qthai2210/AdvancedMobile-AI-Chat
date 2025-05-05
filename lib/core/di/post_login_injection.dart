@@ -31,6 +31,7 @@ import 'package:aichatbot/domain/usecases/knowledge_unit/upload_confluence_file_
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_google_drive_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_local_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_slack_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_web_use_case.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/create_prompt_usecase.dart';
 import 'package:aichatbot/domain/usecases/prompt/delete_prompt_usecase.dart';
@@ -190,6 +191,10 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<UploadConfluenceFileUseCase>())
     sl.registerLazySingleton(
         () => UploadConfluenceFileUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<UploadWebUseCase>())
+    sl.registerLazySingleton(() => UploadWebUseCase(sl<KnowledgeRepository>()));
+
   // Blocs - Only register if not already registered
   if (!sl.isRegistered<PromptBloc>()) {
     sl.registerLazySingleton(() => PromptBloc(
@@ -246,6 +251,7 @@ Future<void> initPostLoginServices() async {
           uploadGoogleDriveFileUseCase: sl<UploadGoogleDriveFileUseCase>(),
           uploadSlackFileUseCase: sl<UploadSlackFileUseCase>(),
           uploadConfluenceFileUseCase: sl<UploadConfluenceFileUseCase>(),
+          uploadWebUseCase: sl<UploadWebUseCase>(),
         ));
   }
 
@@ -313,6 +319,16 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<FetchKnowledgeUnitsUseCase>();
     if (sl.isRegistered<UploadLocalFileUseCase>())
       sl.resetLazySingleton<UploadLocalFileUseCase>();
+    if (sl.isRegistered<UploadGoogleDriveFileUseCase>())
+      sl.resetLazySingleton<UploadGoogleDriveFileUseCase>();
+    if (sl.isRegistered<UploadSlackFileUseCase>())
+      sl.resetLazySingleton<UploadSlackFileUseCase>();
+    if (sl.isRegistered<UploadConfluenceFileUseCase>())
+      sl.resetLazySingleton<UploadConfluenceFileUseCase>();
+    if (sl.isRegistered<UploadWebUseCase>())
+      sl.resetLazySingleton<UploadWebUseCase>();
+    if (sl.isRegistered<FetchKnowledgeUnitsUseCase>())
+      sl.resetLazySingleton<FetchKnowledgeUnitsUseCase>();
 
     // Reset Repositories
     if (sl.isRegistered<AssistantRepository>())

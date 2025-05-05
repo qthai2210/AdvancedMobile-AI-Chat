@@ -72,4 +72,11 @@ abstract class KnowledgeRepository {
     required String confluenceAccessToken,
     String? accessToken,
   });
+
+  Future<FileUploadResponse> uploadWebsiteSource({
+    required String knowledgeId,
+    required String unitName,
+    required String webUrl,
+    required String accessToken,
+  });
 }

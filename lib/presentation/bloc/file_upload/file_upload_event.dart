@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_event.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class FileUploadEvent extends Equatable {
@@ -117,6 +118,24 @@ class UploadConfluenceEvent extends FileUploadEvent {
         confluenceAccessToken,
         accessToken,
       ];
+}
+
+/// Event đẩy lên khi upload từ Web URL
+class UploadWebEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String unitName;
+  final String webUrl;
+  final String accessToken;
+
+  UploadWebEvent({
+    required this.knowledgeId,
+    required this.unitName,
+    required this.webUrl,
+    required this.accessToken,
+  });
+
+  @override
+  List<Object?> get props => [knowledgeId, unitName, webUrl, accessToken];
 }
 
 /// Reset to initial state

@@ -439,7 +439,6 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     );
 
     // Navigate to detail screen
-    context.push('/knowledge/${knowledgeBase.id}/add_source',
-        extra: knowledgeBase);
+    context.push('/knowledge/${knowledgeBase.id}/detail', extra: knowledgeBase);
   }
 }
