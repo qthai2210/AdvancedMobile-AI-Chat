@@ -9,6 +9,7 @@ import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_unit_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_units_response.dart';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
 import 'package:aichatbot/domain/repositories/knowledge_repository.dart';
 import 'package:aichatbot/utils/logger.dart';
 
@@ -275,5 +276,45 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
       webUrl: webUrl,
       accessToken: accessToken,
     );
+  }
+
+  @override
+  Future<UploadedFile> uploadRawFile(
+      {required File file, required String accessToken}) {
+    return knowledgeApiService.uploadRawFile(
+        file: file, accessToken: accessToken);
+  }
+
+  @override
+  Future<FileUploadResponse> attachDatasource({
+    required String knowledgeId,
+    required String fileId,
+    required String fileName,
+    required String accessToken,
+  }) {
+    return knowledgeApiService.attachDatasource(
+      knowledgeId: knowledgeId,
+      fileId: fileId,
+      fileName: fileName,
+      accessToken: accessToken,
+    );
+  }
+
+  @override
+  Future<FileUploadResponse> attachFile({
+    required String knowledgeId,
+    required String fileId,
+    required String accessToken,
+  }) async {
+    try {
+      return await knowledgeApiService.attachFileToKnowledge(
+        knowledgeId: knowledgeId,
+        fileId: fileId,
+        accessToken: accessToken,
+      );
+    } catch (e) {
+      AppLogger.e('Repository error attaching file: $e');
+      rethrow;
+    }
   }
 }

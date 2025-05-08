@@ -70,12 +70,11 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   final TextEditingController _webUrlController = TextEditingController();
   final TextEditingController _unitNameController = TextEditingController();
 
+  String? _uploadedFileId; // ← thêm biến này
+
   @override
   void initState() {
     super.initState();
-    _googleSignIn = GoogleSignIn(
-      scopes: [drive.DriveApi.driveReadonlyScope],
-    );
     _fileUploadBloc = di.sl<FileUploadBloc>();
     _tabController = TabController(
       length: 5,
@@ -603,35 +602,112 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     });
   }
 
+  /// Thay thế phương thức chọn file:
+  Future<void> _pickLocalFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.any);
+      if (result == null) return;
+
+      final path = result.files.single.path!;
+      final file = File(path);
+      final name = result.files.single.name;
+
+      setState(() {
+        _selectedFile = file;
+        _selectedFileName = name;
+      });
+
+      // Lấy token và dispatch event ngay
+      final token = context.read<AuthBloc>().state.user?.accessToken;
+      if (token == null) {
+        throw Exception('Chưa login');
+      }
+      _fileUploadBloc.add(
+        UploadRawFileEvent(
+          file,
+          token,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error selecting file: $e')));
+      }
+    }
+  }
+
+  // helper cho header của mỗi tab
+  Widget _buildSectionHeader(String title, String subtitle, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 28, color: Theme.of(context).primaryColor),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(subtitle,
+                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Bước 2: attach file vào KB
+  Future<void> _importToKnowledge() async {
+    final token = context.read<AuthBloc>().state.user?.accessToken;
+    if (token == null || _uploadedFileId == null) return;
+    setState(() => _isLoading = true);
+    _fileUploadBloc.add(
+      FileAttachEvent(
+        knowledgeId: widget.knowledgeBase.id,
+        fileId: _uploadedFileId!,
+        fileName: _selectedFileName!,
+        accessToken: token,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _fileUploadBloc,
       child: BlocListener<FileUploadBloc, FileUploadState>(
-        listener: (context, state) {
+        listener: (ctx, state) {
           if (state is FileUploadLoading) {
             setState(() => _isLoading = true);
-          } else if (state is FileUploadSuccess) {
+          } else if (state is FileRawUploaded) {
+            setState(() {
+              _isLoading = false;
+              _uploadedFileId = state.file.id;
+            });
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              const SnackBar(
+                content:
+                    Text('Upload file thành công, nhấn Import để gắn vào KB'),
+              ),
+            );
+          } else if (state is FileUploadError) {
             setState(() => _isLoading = false);
-            final updatedKnowledgeBase = _isEditing
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(
+                content: Text(state.message), // đã chắc chắn ko null
+              ),
+            );
+          } else if (state is FileAttachSuccess) {
+            setState(() => _isLoading = false);
+            final updatedKb = _isEditing
                 ? widget.knowledgeBase
                     .updateSource(_createSourceFromUpload(state.response))
                 : widget.knowledgeBase
                     .addSource(_createSourceFromUpload(state.response));
-
-            // hiện Success Dialog thay vì SnackBar
             context.showSuccessNotification(
-              _isEditing
-                  ? 'Nguồn đã được cập nhật thành công.'
-                  : 'Nguồn mới đã được thêm thành công.',
-              onAction: () {
-                // đóng dialog và pop page với kết quả
-                context.pop(updatedKnowledgeBase);
-              },
+              _isEditing ? 'Cập nhật thành công' : 'Thêm nguồn thành công',
+              onAction: () => context.pop(updatedKb),
             );
-          } else if (state is FileUploadError) {
-            setState(() => _isLoading = false);
-            _showErrorSnackbar(state.message);
           }
         },
         child: Scaffold(
@@ -749,203 +825,39 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   }
 
   Widget _buildFileUploadTab() {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title and description
-          _buildSectionHeader(
-            "Upload a File",
-            "Add documents like PDFs, Word files, or text files to your knowledge base",
-            Icons.cloud_upload,
-          ),
-          const SizedBox(height: 24),
-
-          // File preview card
           SourcePreviewCard(
             fileName: _selectedFileName,
-            onClear: _clearSelectedFile,
-            fileIcon: _getFileIcon(),
-            iconColor: _getFileIconColor(),
+            onClear: () {
+              setState(() {
+                _selectedFile = null;
+                _selectedFileName = null;
+                _uploadedFileId = null;
+              });
+            },
           ),
-
           const SizedBox(height: 24),
-
-          // Upload button
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: _mockSelectFile,
-              icon: const Icon(Icons.upload_file),
-              label: Text(
-                  _selectedFileName == null ? "Select File" : "Change File"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-              ),
+          ElevatedButton.icon(
+            onPressed: _pickLocalFile, // ← gọi ngay
+            icon: const Icon(Icons.upload_file),
+            label: Text(
+              _selectedFileName == null ? 'Select File' : 'Change File',
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Supported file formats
-          _buildSupportInfo(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, String subtitle, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 40),
-          child: Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+          const Spacer(),
+          // Nút Import giờ chỉ còn 1 bước attach
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_uploadedFileId == null || _isLoading)
+                  ? null
+                  : _importToKnowledge,
+              child: Text(_isLoading ? 'Importing…' : 'Import to Knowledge'),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Divider(),
-      ],
-    );
-  }
-
-  IconData _getFileIcon() {
-    if (_selectedFileName == null) return Icons.insert_drive_file;
-
-    final extension = _selectedFileName!.split('.').last.toLowerCase();
-
-    switch (extension) {
-      case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx':
-        return Icons.description;
-      case 'xls':
-      case 'xlsx':
-        return Icons.table_chart;
-      case 'ppt':
-      case 'pptx':
-        return Icons.slideshow;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return Icons.image;
-      case 'txt':
-        return Icons.text_snippet;
-      default:
-        return Icons.insert_drive_file;
-    }
-  }
-
-  Color _getFileIconColor() {
-    if (_selectedFileName == null) return Colors.blue;
-
-    final extension = _selectedFileName!.split('.').last.toLowerCase();
-
-    switch (extension) {
-      case 'pdf':
-        return Colors.red;
-      case 'doc':
-      case 'docx':
-        return Colors.blue;
-      case 'xls':
-      case 'xlsx':
-        return Colors.green;
-      case 'ppt':
-      case 'pptx':
-        return Colors.orange;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return Colors.purple;
-      default:
-        return Colors.blue;
-    }
-  }
-
-  Widget _buildSupportInfo() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[100]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue[700]),
-              const SizedBox(width: 8),
-              Text(
-                "Supported File Types",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildFileTypeChip("PDF", Colors.red),
-          _buildFileTypeChip("Word Documents", Colors.blue),
-          _buildFileTypeChip("Excel Spreadsheets", Colors.green),
-          _buildFileTypeChip("PowerPoint", Colors.orange),
-          _buildFileTypeChip("Text Files", Colors.grey),
-          _buildFileTypeChip("CSV", Colors.purple),
-          _buildFileTypeChip("JSON", Colors.amber),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFileTypeChip(String label, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(Icons.check_circle, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(label),
         ],
       ),
     );

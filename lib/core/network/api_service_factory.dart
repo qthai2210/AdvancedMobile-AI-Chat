@@ -58,6 +58,21 @@ class ApiServiceFactory {
       ),
     );
 
+    dio.interceptors.add(
+      LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        responseHeader: true,
+        responseBody: true,
+        error: true,
+        logPrint: (object) {
+          // Dùng AppLogger hoặc print() tuỳ ý
+          print(object.toString());
+        },
+      ),
+    );
+
     return dio;
   }
 }

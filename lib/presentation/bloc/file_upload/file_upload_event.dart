@@ -138,5 +138,42 @@ class UploadWebEvent extends FileUploadEvent {
   List<Object?> get props => [knowledgeId, unitName, webUrl, accessToken];
 }
 
+class UploadRawFileEvent extends FileUploadEvent {
+  final File file;
+  final String accessToken;
+  UploadRawFileEvent(this.file, this.accessToken);
+  @override
+  List<Object?> get props => [file, accessToken];
+}
+
+class AttachFileToKBEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String fileId;
+  final String accessToken;
+  AttachFileToKBEvent(
+      {required this.knowledgeId,
+      required this.fileId,
+      required this.accessToken});
+  @override
+  List<Object?> get props => [knowledgeId, fileId, accessToken];
+}
+
+/// Sau khi raw‐file upload xong, bấm Import sẽ dispatch event này
+class FileAttachEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String fileId;
+  final String fileName;
+  final String accessToken;
+
+  FileAttachEvent({
+    required this.knowledgeId,
+    required this.fileId,
+    required this.fileName,
+    required this.accessToken,
+  });
+  @override
+  List<Object?> get props => [knowledgeId, fileId, fileName, accessToken];
+}
+
 /// Reset to initial state
 class ResetUploadEvent extends FileUploadEvent {}

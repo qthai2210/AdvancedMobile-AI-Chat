@@ -26,10 +26,13 @@ import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dar
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/attach_datasource_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/attach_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/fetch_knowledge_units_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_confluence_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_google_drive_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_local_file_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_raw_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_slack_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_web_use_case.dart';
 import 'package:aichatbot/domain/usecases/prompt/add_favorite_usecase.dart';
@@ -195,6 +198,14 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<UploadWebUseCase>())
     sl.registerLazySingleton(() => UploadWebUseCase(sl<KnowledgeRepository>()));
 
+  if (!sl.isRegistered<UploadRawFileUseCase>())
+    sl.registerLazySingleton(
+        () => UploadRawFileUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<AttachFileToKBUseCase>())
+    sl.registerLazySingleton(
+        () => AttachFileToKBUseCase(sl<KnowledgeRepository>()));
+
   // Blocs - Only register if not already registered
   if (!sl.isRegistered<PromptBloc>()) {
     sl.registerLazySingleton(() => PromptBloc(
@@ -246,14 +257,19 @@ Future<void> initPostLoginServices() async {
   }
 
   if (!sl.isRegistered<FileUploadBloc>()) {
-    sl.registerLazySingleton(() => FileUploadBloc(
-          uploadLocalFileUseCase: sl<UploadLocalFileUseCase>(),
-          uploadGoogleDriveFileUseCase: sl<UploadGoogleDriveFileUseCase>(),
-          uploadSlackFileUseCase: sl<UploadSlackFileUseCase>(),
-          uploadConfluenceFileUseCase: sl<UploadConfluenceFileUseCase>(),
-          uploadWebUseCase: sl<UploadWebUseCase>(),
-        ));
+    sl.registerFactory<FileUploadBloc>(
+      () => FileUploadBloc(
+        // positional parameters, not named!
+        sl<UploadRawFileUseCase>(),
+        sl<AttachDatasourceUseCase>(),
+      ),
+    );
   }
+
+  // Register AttachDatasourceUseCase
+  sl.registerLazySingleton<AttachDatasourceUseCase>(
+    () => AttachDatasourceUseCase(sl<KnowledgeRepository>()),
+  );
 
   _postLoginServicesInitialized = true;
   AppLogger.i('Post-login services initialized successfully');

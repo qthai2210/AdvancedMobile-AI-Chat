@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
+import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:aichatbot/core/network/api_service.dart';
@@ -12,8 +15,6 @@ import 'package:aichatbot/data/models/knowledge/get_knowledge_units_params.dart'
 import 'package:aichatbot/data/models/knowledge/knowledge_unit_list_response.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/utils/logger.dart';
-import 'package:dio/dio.dart';
-import 'package:http_parser/http_parser.dart';
 
 /// Service for interacting with Knowledge-related API endpoints
 class KnowledgeApiService {
@@ -230,12 +231,13 @@ class KnowledgeApiService {
       }
 
       // Log the request with detailed information
-      final endpoint = '/kb-core/v1/knowledge/${params.knowledgeId}/units';
+      final endpoint =
+          '/kb-core/v1/knowledge/${params.knowledgeId}/datasources';
       final url = '${_dio.options.baseUrl}$endpoint';
 
       AppLogger.d(
           '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
-      AppLogger.d('│ 🔍 [GET] Knowledge Units');
+      AppLogger.d('│ 🔍 [GET] Knowledge Data Sources');
       AppLogger.d('│ URL: $url');
       AppLogger.d('│ Knowledge ID: ${params.knowledgeId}');
       AppLogger.d('│ Parameters: ${params.toQueryParameters()}');
@@ -526,6 +528,7 @@ class KnowledgeApiService {
     required String accessToken,
   }) async {
     final endpoint = '/kb-core/v1/knowledge/$knowledgeId/web';
+    final url = '${_dio.options.baseUrl}$endpoint';
     final body = {
       'unitName': unitName,
       'webUrl': webUrl,
@@ -535,15 +538,190 @@ class KnowledgeApiService {
       'Authorization': 'Bearer $accessToken',
       'Content-Type': 'application/json',
     };
+
+    // ─── LOG REQUEST ────────────────────────────────
+    AppLogger.d('┌── KNOWLEDGE API REQUEST ─────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Upload Web Source');
+    AppLogger.d('│ URL: $url');
+    AppLogger.d('│ Knowledge ID: $knowledgeId');
+    AppLogger.d('│ Body: $body');
+    AppLogger.d('│ Headers: $headers');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
     final response = await _dio.post(
       endpoint,
       data: body,
       options: Options(headers: headers),
     );
+
+    // ─── LOG RESPONSE ───────────────────────────────
+    AppLogger.d('┌── KNOWLEDGE API RESPONSE ────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Upload Web Source');
+    AppLogger.d('│ Status: ${response.statusCode}');
+    AppLogger.d('│ Data: ${response.data}');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
     if (response.statusCode == 201) {
       return FileUploadResponse.fromJson(response.data);
     } else {
       throw Exception('Upload website failed: ${response.statusCode}');
     }
+  }
+
+  /// Bước 1: upload raw file → trả về fileId
+  Future<UploadedFile> uploadRawFile({
+    required File file,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/files';
+    final url = '${_uploadDio.options.baseUrl}$endpoint';
+
+    // Use fromMap so Dio knows about your file part
+    final form = FormData();
+    form.files.add(
+      MapEntry(
+        'files',
+        await MultipartFile.fromFile(
+          file.path,
+          filename: p.basename(file.path),
+          // gán mime type đúng để server nhận file
+          contentType: MediaType.parse(_getSupportedMimeType(file)!),
+        ),
+      ),
+    );
+
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+      // DO NOT set Content-Type here: Dio will add boundary automatically
+    };
+
+    // Log request
+    AppLogger.d('┌── Raw File Upload Request ─────────────────');
+    AppLogger.d('│ URL: $url');
+    AppLogger.d('│ FormData: $form');
+    AppLogger.d('│ fileKeys: ${form.files.map((e) => e.key).toList()}');
+    // log luôn size & filename để đối chiếu
+    form.files.forEach((kv) {
+      AppLogger.d('│ → key=${kv.key}, filename=${kv.value.filename}, '
+          'length=${kv.value.length}');
+    });
+    AppLogger.d('└───────────────────────────────────────────');
+
+    final resp = await _uploadDio.post(
+      endpoint,
+      data: form,
+      options: Options(headers: headers),
+    );
+
+    // ─── LOG FULL RESPONSE ───────────────────────────
+    AppLogger.d('┌── RAW UPLOAD FULL RESPONSE ─────────────────');
+    AppLogger.d('│ Status code   : ${resp.statusCode}');
+    AppLogger.d('│ Status message: ${resp.statusMessage}');
+    AppLogger.d('│ Request URI   : ${resp.requestOptions.uri}');
+    AppLogger.d('│ Request headers: ${resp.requestOptions.headers}');
+    AppLogger.d('│ Response headers: ${resp.headers.map}');
+    AppLogger.d('│ Data          : ${resp.data}');
+    AppLogger.d('│ Response toString(): ${resp.toString()}');
+    AppLogger.d('└──────────────────────────────────────────────');
+
+    if (resp.statusCode == 201) {
+      final list = (resp.data['files'] as List<dynamic>?) ?? [];
+      if (list.isEmpty) {
+        throw Exception('Uploaded but server returned empty files list');
+      }
+      return UploadedFile.fromJson(list.first as Map<String, dynamic>);
+    }
+
+    throw Exception('Upload failed (${resp.statusCode}): ${resp.data}');
+  }
+
+  /// Bước 2: gắn lên knowledge base
+  Future<FileUploadResponse> attachFileToKnowledge({
+    required String knowledgeId,
+    required String fileId,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/files';
+    final url = '${_dio.options.baseUrl}$endpoint';
+    final body = {'fileId': fileId};
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+      'Content-Type': 'application/json',
+    };
+
+    // ─── LOG REQUEST ────────────────────────────────
+    AppLogger.d('┌── KNOWLEDGE API REQUEST ─────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Attach File to KB');
+    AppLogger.d('│ URL: $url');
+    AppLogger.d('│ Knowledge ID: $knowledgeId');
+    AppLogger.d('│ Body: $body');
+    AppLogger.d('│ Headers: $headers');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    final resp = await _dio.post(
+      endpoint,
+      data: body,
+      options: Options(headers: headers),
+    );
+
+    // ─── LOG RESPONSE ───────────────────────────────
+    AppLogger.d('┌── KNOWLEDGE API RESPONSE ────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Attach File to KB');
+    AppLogger.d('│ Status: ${resp.statusCode}');
+    AppLogger.d('│ Data: ${resp.data}');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    if (resp.statusCode == 201) {
+      return FileUploadResponse.fromJson(resp.data);
+    }
+    throw Exception('Attach to KB failed: ${resp.statusCode}');
+  }
+
+  /// Bước 2: gắn datasource lên KB
+  Future<FileUploadResponse> attachDatasource({
+    required String knowledgeId,
+    required String fileId,
+    required String fileName,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/datasources';
+    final url = '${_dio.options.baseUrl}$endpoint';
+    final body = {
+      'datasources': [
+        {
+          'type': 'local_file',
+          'name': fileName,
+          'credentials': {'file': fileId},
+        }
+      ]
+    };
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+      'Content-Type': 'application/json',
+    };
+
+    AppLogger.d('┌── KNOWLEDGE API REQUEST ─────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Attach DataSource');
+    AppLogger.d('│ URL: $url');
+    AppLogger.d('│ Body: $body');
+    AppLogger.d('│ Headers: $headers');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    final resp = await _dio.post(endpoint, data: body, options: Options(headers: headers));
+
+    AppLogger.d('┌── KNOWLEDGE API RESPONSE ────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Attach DataSource');
+    AppLogger.d('│ Status: ${resp.statusCode}');
+    AppLogger.d('│ Data: ${resp.data}');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    if (resp.statusCode == 201) {
+      // Vì response trả về “datasources”, ta wrap lại thành files để tái sử dụng FileUploadResponse
+      return FileUploadResponse.fromJson({'files': resp.data['datasources']});
+    }
+    throw Exception('Attach datasource failed: ${resp.statusCode}');
   }
 }

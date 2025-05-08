@@ -6,6 +6,7 @@ import 'package:aichatbot/data/models/knowledge/knowledge_list_response.dart';
 import 'package:aichatbot/data/models/knowledge/get_knowledge_params.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_units_response.dart';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
 
 /// Repository interface for Knowledge-related operations
 abstract class KnowledgeRepository {
@@ -77,6 +78,21 @@ abstract class KnowledgeRepository {
     required String knowledgeId,
     required String unitName,
     required String webUrl,
+    required String accessToken,
+  });
+
+  Future<UploadedFile> uploadRawFile(
+      {required File file, required String accessToken});
+
+  Future<FileUploadResponse> attachFile(
+      {required String knowledgeId,
+      required String fileId,
+      required String accessToken});
+
+  Future<FileUploadResponse> attachDatasource({
+    required String knowledgeId,
+    required String fileId,
+    required String fileName,
     required String accessToken,
   });
 }
