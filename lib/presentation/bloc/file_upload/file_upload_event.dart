@@ -66,31 +66,6 @@ class UploadGoogleDriveEvent extends FileUploadEvent {
       ];
 }
 
-class UploadSlackEvent extends FileUploadEvent {
-  final String knowledgeId;
-  final String unitName;
-  final String slackWorkspace;
-  final String slackBotToken;
-  final String? accessToken;
-
-  UploadSlackEvent({
-    required this.knowledgeId,
-    required this.unitName,
-    required this.slackWorkspace,
-    required this.slackBotToken,
-    this.accessToken,
-  });
-
-  @override
-  List<Object?> get props => [
-        knowledgeId,
-        unitName,
-        slackWorkspace,
-        slackBotToken,
-        accessToken,
-      ];
-}
-
 /// Upload a Confluence source
 class UploadConfluenceEvent extends FileUploadEvent {
   final String knowledgeId;
@@ -173,6 +148,21 @@ class FileAttachEvent extends FileUploadEvent {
   });
   @override
   List<Object?> get props => [knowledgeId, fileId, fileName, accessToken];
+}
+
+class UploadSlackEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String name;
+  final String slackBotToken;
+  final String accessToken;
+  UploadSlackEvent({
+    required this.knowledgeId,
+    required this.name,
+    required this.slackBotToken,
+    required this.accessToken,
+  });
+  @override
+  List<Object?> get props => [knowledgeId, name, slackBotToken, accessToken];
 }
 
 /// Reset to initial state

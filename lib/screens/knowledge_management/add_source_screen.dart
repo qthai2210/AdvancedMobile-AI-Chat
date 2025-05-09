@@ -72,6 +72,15 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   String? _uploadedFileId; // ← thêm biến này
 
+  final _slackNameController = TextEditingController();
+  final _slackTokenController = TextEditingController(
+      text: 'xoxb-8791657246691-8799983218929-qxXkSQIaMQZMOoNIZB3jdENH');
+
+  bool get _canImportSlack =>
+      _slackNameController.text.trim().isNotEmpty &&
+      _slackTokenController.text.trim().isNotEmpty &&
+      !_isLoading;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +94,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     if (widget.editSource != null) {
       _loadSourceData();
     }
+    _slackNameController.addListener(_onTextChange);
+    _slackTokenController.addListener(_onTextChange);
   }
 
   int _getInitialTabIndex() {
@@ -335,36 +346,17 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   }
 
   Future<void> _saveSlackSource() async {
-    if (_selectedSlackFileId == null || _selectedSlackFileName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bạn phải chọn file Slack trước')),
-      );
-      return;
-    }
+    final token = context.read<AuthBloc>().state.user?.accessToken;
+    if (token == null) throw Exception('Chưa login');
     setState(() => _isLoading = true);
-    try {
-      final authState = context.read<AuthBloc>().state;
-      final accessToken = authState.user?.accessToken;
-      if (_slackBotToken == null || accessToken == null) {
-        throw Exception('Chưa kết nối Slack hoặc chưa login');
-      }
-
-      _fileUploadBloc.add(
-        UploadSlackEvent(
-          knowledgeId: widget.knowledgeBase.id,
-          unitName: _selectedSlackFileName!,
-          slackWorkspace: _slackWorkspaceName!,
-          slackBotToken: _slackBotToken!,
-          accessToken: accessToken,
-        ),
-      );
-    } catch (e) {
-      AppLogger.e("Lỗi upload Slack: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-      setState(() => _isLoading = false);
-    }
+    _fileUploadBloc.add(
+      UploadSlackEvent(
+        knowledgeId: widget.knowledgeBase.id,
+        name: _slackNameController.text.trim(),
+        slackBotToken: _slackTokenController.text.trim(),
+        accessToken: token,
+      ),
+    );
   }
 
   Future<void> _saveConfluenceSource() async {
@@ -671,6 +663,8 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
+  void _onTextChange() => setState(() {});
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -969,51 +963,30 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(
-            "Slack",
-            "Chọn file từ Slack để upload vào knowledge base",
-            Icons.forum,
-          ),
-          const SizedBox(height: 24),
-
-          // nút chọn hoặc preview
-          if (_selectedSlackFileName != null)
-            Row(
-              children: [
-                Expanded(
-                    child: Text(_selectedSlackFileName!,
-                        style: const TextStyle(fontSize: 16))),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => setState(() {
-                    _selectedSlackFileId = null;
-                    _selectedSlackFileName = null;
-                  }),
-                )
-              ],
-            )
-          else
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _isSlackLoading ? null : _pickSlackFile,
-                icon: const Icon(Icons.drive_file_rename_outline),
-                label:
-                    Text(_isSlackLoading ? 'Loading...' : 'Select from Slack'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+          TextFormField(
+            controller: _slackNameController,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
             ),
-
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _slackTokenController,
+            decoration: const InputDecoration(
+              labelText: 'Slack Bot Token',
+              border: OutlineInputBorder(),
+            ),
+            obscureText: true,
+          ),
           const Spacer(),
-
-          // nút upload
-          ElevatedButton(
-            onPressed: (_selectedSlackFileId == null) ? null : _saveSlackSource,
-            child: const Text("Upload to Knowledge"),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _canImportSlack ? _saveSlackSource : null,
+              child: Text(_isLoading ? 'Importing...' : 'Import to Knowledge'),
+            ),
           ),
         ],
       ),

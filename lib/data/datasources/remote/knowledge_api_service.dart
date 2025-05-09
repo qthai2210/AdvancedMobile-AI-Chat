@@ -457,36 +457,36 @@ class KnowledgeApiService {
   }
 
   /// Uploads a Slack source to the knowledge base
-  Future<FileUploadResponse> uploadSlackSource({
-    required String knowledgeId,
-    required String unitName,
-    required String slackWorkspace,
-    required String slackBotToken,
-    String? accessToken,
-  }) async {
-    final url = '/kb-core/v1/knowledge/$knowledgeId/slack';
+  // Future<FileUploadResponse> uploadSlackSource({
+  //   required String knowledgeId,
+  //   required String unitName,
+  //   required String slackWorkspace,
+  //   required String slackBotToken,
+  //   String? accessToken,
+  // }) async {
+  //   final url = '/kb-core/v1/knowledge/$knowledgeId/slack';
 
-    final body = {
-      'unitName': unitName,
-      'slackWorkspace': slackWorkspace,
-      'slackBotToken': slackBotToken,
-    };
+  //   final body = {
+  //     'unitName': unitName,
+  //     'slackWorkspace': slackWorkspace,
+  //     'slackBotToken': slackBotToken,
+  //   };
 
-    final headers = <String, dynamic>{
-      if (accessToken != null && accessToken.isNotEmpty)
-        'x-jarvis-guid': accessToken,
-      if (accessToken != null && accessToken.isNotEmpty)
-        'Authorization': 'Bearer $accessToken',
-    };
+  //   final headers = <String, dynamic>{
+  //     if (accessToken != null && accessToken.isNotEmpty)
+  //       'x-jarvis-guid': accessToken,
+  //     if (accessToken != null && accessToken.isNotEmpty)
+  //       'Authorization': 'Bearer $accessToken',
+  //   };
 
-    final response = await _uploadDio.post(
-      url,
-      data: body,
-      options: Options(headers: headers),
-    );
+  //   final response = await _uploadDio.post(
+  //     url,
+  //     data: body,
+  //     options: Options(headers: headers),
+  //   );
 
-    return FileUploadResponse.fromJson(response.data);
-  }
+  //   return FileUploadResponse.fromJson(response.data);
+  // }
 
   /// Uploads a Confluence source to the knowledge base
   Future<FileUploadResponse> uploadConfluenceSource({
@@ -710,7 +710,8 @@ class KnowledgeApiService {
     AppLogger.d('│ Headers: $headers');
     AppLogger.d('└─────────────────────────────────────────────────');
 
-    final resp = await _dio.post(endpoint, data: body, options: Options(headers: headers));
+    final resp = await _dio.post(endpoint,
+        data: body, options: Options(headers: headers));
 
     AppLogger.d('┌── KNOWLEDGE API RESPONSE ────────────────────────');
     AppLogger.d('│ 🔍 [POST] Attach DataSource');
@@ -723,5 +724,51 @@ class KnowledgeApiService {
       return FileUploadResponse.fromJson({'files': resp.data['datasources']});
     }
     throw Exception('Attach datasource failed: ${resp.statusCode}');
+  }
+
+  /// Upload Slack datasource
+  Future<FileUploadResponse> uploadSlackSource({
+    required String knowledgeId,
+    required String name,
+    required String slackToken,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/datasources';
+    final url = '${_dio.options.baseUrl}$endpoint';
+    final body = {
+      'datasources': [
+        {
+          'type': 'slack',
+          'name': name,
+          'credentials': {'token': slackToken},
+        }
+      ]
+    };
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+      'Content-Type': 'application/json',
+    };
+    AppLogger.d('┌── KNOWLEDGE API REQUEST ─────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Slack Import');
+    AppLogger.d('│ URL: $url');
+    AppLogger.d('│ Body: $body');
+    AppLogger.d('│ Headers: $headers');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    final resp = await _dio.post(endpoint,
+        data: body, options: Options(headers: headers));
+
+    AppLogger.d('┌── KNOWLEDGE API RESPONSE ────────────────────────');
+    AppLogger.d('│ 🔍 [POST] Slack Import');
+    AppLogger.d('│ Status: ${resp.statusCode}');
+    AppLogger.d('│ Data: ${resp.data}');
+    AppLogger.d('└─────────────────────────────────────────────────');
+
+    if (resp.statusCode == 201) {
+      // wrap lại để reuse FileUploadResponse
+      return FileUploadResponse.fromJson({'files': resp.data['datasources']});
+    }
+    throw Exception('Slack import failed: ${resp.statusCode}');
   }
 }

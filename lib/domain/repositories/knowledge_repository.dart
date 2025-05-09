@@ -57,13 +57,13 @@ abstract class KnowledgeRepository {
     String? accessToken,
   });
 
-  Future<FileUploadResponse> uploadSlackSource({
-    required String knowledgeId,
-    required String unitName,
-    required String slackWorkspace,
-    required String slackBotToken,
-    String? accessToken,
-  });
+  // Future<FileUploadResponse> uploadSlackSource({
+  //   required String knowledgeId,
+  //   required String unitName,
+  //   required String slackWorkspace,
+  //   required String slackBotToken,
+  //   String? accessToken,
+  // });
 
   Future<FileUploadResponse> uploadConfluenceSource({
     required String knowledgeId,
@@ -93,6 +93,14 @@ abstract class KnowledgeRepository {
     required String knowledgeId,
     required String fileId,
     required String fileName,
+    required String accessToken,
+  });
+
+  Future<FileUploadResponse> uploadSlackSource({
+    required String knowledgeId,
+    required String unitName, // ở domain gọi unitName == name
+    required String slackWorkspace, // bỏ nếu không cần
+    required String slackBotToken,
     required String accessToken,
   });
 }

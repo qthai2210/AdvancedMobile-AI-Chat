@@ -10,7 +10,7 @@ class UploadSlackFileUseCase {
     required String unitName,
     required String slackWorkspace,
     required String slackBotToken,
-    String? accessToken,
+    required String accessToken,
   }) {
     return repository.uploadSlackSource(
       knowledgeId: knowledgeId,

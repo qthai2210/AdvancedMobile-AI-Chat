@@ -230,16 +230,15 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
   @override
   Future<FileUploadResponse> uploadSlackSource({
     required String knowledgeId,
-    required String unitName,
-    required String slackWorkspace,
+    required String unitName,            // ở domain gọi unitName == name
+    required String slackWorkspace,      // bỏ nếu không cần
     required String slackBotToken,
-    String? accessToken,
+    required String accessToken,
   }) {
     return knowledgeApiService.uploadSlackSource(
       knowledgeId: knowledgeId,
-      unitName: unitName,
-      slackWorkspace: slackWorkspace,
-      slackBotToken: slackBotToken,
+      name: unitName,
+      slackToken: slackBotToken,
       accessToken: accessToken,
     );
   }

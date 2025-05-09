@@ -262,6 +262,7 @@ Future<void> initPostLoginServices() async {
         // positional parameters, not named!
         sl<UploadRawFileUseCase>(),
         sl<AttachDatasourceUseCase>(),
+        sl<UploadSlackFileUseCase>(), // ← thêm ở đây
       ),
     );
   }
