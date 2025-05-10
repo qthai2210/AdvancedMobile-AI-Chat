@@ -21,6 +21,7 @@ import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/data/models/chat/message_request_model.dart'
     as msg_model;
 import 'package:aichatbot/data/models/chat/custom_bot_message_model.dart';
+import 'package:aichatbot/presentation/bloc/subscription/subscription_exports.dart';
 
 import 'package:aichatbot/data/models/chat/conversation_model.dart';
 
@@ -95,13 +96,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // Conversation history will be fetched from the API
   List<ChatThread> _chatThreads = [];
-
   // Thêm các biến để xử lý gợi ý prompt
   bool _showPromptSuggestions = false;
   OverlayEntry? _promptOverlay;
   final LayerLink _layerLink = LayerLink();
   List<PromptModel> _promptSuggestions = [];
   bool _isLoadingPromptSuggestions = false;
+
+  // Subscription related fields
+  late SubscriptionBloc _subscriptionBloc;
+  bool _isLoadingSubscription = false;
+  int _remainingTokens = 0;
+
+  /// Fetch subscription data to display remaining tokens
+  void _fetchSubscriptionData() {
+    setState(() {
+      _isLoadingSubscription = true;
+    });
+    _subscriptionBloc.add(const FetchSubscriptionEvent());
+  }
 
   @override
   void initState() {
@@ -112,6 +125,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       name: 'screen_view',
       parameters: {'screen_name': 'ChatDetailScreen'},
     );
+
+    // Initialize subscription bloc
+    _subscriptionBloc = di.sl<SubscriptionBloc>();
+    _fetchSubscriptionData();
 
     // Thêm listener để theo dõi khi người dùng nhập "/"
     _messageController.addListener(_checkForPromptCommand);
@@ -311,8 +328,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
         _isTyping = true;
       });
-
       _scrollToBottom();
+
+      // Simulate token consumption based on message length
+      // In a real implementation, you would get the actual token consumption from the API
+      final estimatedTokens =
+          (message.length / 4).ceil(); // Rough estimate: ~4 chars per token
+
+      // Update local token count immediately for better UX
+      setState(() {
+        _remainingTokens = _remainingTokens > estimatedTokens
+            ? _remainingTokens - estimatedTokens
+            : 0;
+      });
+
+      // Then refresh token count from API after sending a message
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _fetchSubscriptionData();
+      });
 
       try {
         // Get authentication token (you might need to adjust this based on your auth system)
@@ -923,6 +956,62 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  void _handleSubscriptionState(SubscriptionState state) {
+    if (state is SubscriptionLoading) {
+      setState(() {
+        _isLoadingSubscription = true;
+      });
+    } else if (state is SubscriptionLoaded) {
+      setState(() {
+        _isLoadingSubscription = false;
+        // Calculate remaining tokens from subscription data
+        _remainingTokens = state.subscription.totalTokens;
+        AppLogger.d(
+            'Subscription loaded: ${state.subscription.name}, Remaining tokens: $_remainingTokens');
+      });
+
+      // Show warning if token count is low
+      if (_remainingTokens < 1000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_remainingTokens <= 0
+                ? 'You have no tokens left. Please upgrade your plan to continue using the app.'
+                : 'Warning: Your token balance is low ($_remainingTokens tokens remaining)'),
+            backgroundColor: _remainingTokens <= 0 ? Colors.red : Colors.orange,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Upgrade',
+              onPressed: () {
+                // Navigate to subscription page
+                context.push('/purchase');
+              },
+            ),
+          ),
+        );
+      }
+    } else if (state is SubscriptionError) {
+      setState(() {
+        _isLoadingSubscription = false;
+        _remainingTokens = 0; // Default to 0 on error
+      });
+      // Optionally show an error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading subscription: ${state.message}')),
+      );
+    }
+  }
+
+  /// Format token count to be more readable
+  String _formatTokenCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}K';
+    } else {
+      return count.toString();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -938,6 +1027,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         BlocProvider<BotBloc>.value(
           value: di.sl<BotBloc>(),
+        ),
+        BlocProvider<SubscriptionBloc>.value(
+          value: _subscriptionBloc,
         ),
       ],
       child: MultiBlocListener(
@@ -956,6 +1048,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           BlocListener<PromptBloc, PromptState>(
             listener: (context, state) {
               _handlePromptState(state);
+            },
+          ),
+          // Thêm listener cho SubscriptionBloc
+          BlocListener<SubscriptionBloc, SubscriptionState>(
+            listener: (context, state) {
+              _handleSubscriptionState(state);
             },
           ),
         ],
@@ -1037,6 +1135,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     hintText:
                                         'Type a message or / for prompts...',
                                     border: InputBorder.none,
+                                    // Show token info or loading indicator
                                     suffixIcon: _messageController.text
                                                 .startsWith('/') &&
                                             _isLoadingPromptSuggestions
@@ -1049,7 +1148,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                                   strokeWidth: 2),
                                             ),
                                           )
-                                        : null,
+                                        : _buildTokenInfoIndicator(),
                                   ),
                                   textInputAction: TextInputAction.send,
                                   onSubmitted: (_) => _sendMessage(),
@@ -1104,7 +1203,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             style: const TextStyle(fontSize: 16),
             overflow: TextOverflow.ellipsis,
           ),
-          AgentSelectorButton(agent: _selectedAgent, onTap: _changeAIAgent),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AgentSelectorButton(agent: _selectedAgent, onTap: _changeAIAgent),
+              const SizedBox(
+                  width: 8), // Token information chip with refresh capability
+              Tooltip(
+                message: 'Tap to refresh token count',
+                child: InkWell(
+                  onTap: () {
+                    _fetchSubscriptionData();
+                    // Provide feedback that refresh was triggered
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Refreshing token count...'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: _buildTokenInfoChip(),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       centerTitle: true,
@@ -1139,6 +1262,101 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       ],
     );
+  }
+
+  /// Builds the token info chip to display remaining tokens
+  Widget _buildTokenInfoChip() {
+    // Show loading indicator if subscription is loading
+    if (_isLoadingSubscription) {
+      return const SizedBox(
+        height: 16,
+        width: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+    }
+
+    // Get token count color based on remaining tokens
+    Color tokenColor = Colors.green;
+    if (_remainingTokens < 1000) {
+      tokenColor = Colors.red;
+    } else if (_remainingTokens < 5000) {
+      tokenColor = Colors.orange;
+    }
+
+    return Tooltip(
+      message: 'Remaining tokens in your subscription',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.token,
+              size: 12,
+              color: tokenColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _formatTokenCount(_remainingTokens),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds token information indicator for the input field
+  Widget? _buildTokenInfoIndicator() {
+    if (_isLoadingSubscription) {
+      return null; // Don't show anything if loading
+    }
+
+    // Determine token count color
+    Color tokenColor = Colors.green;
+    if (_remainingTokens < 1000) {
+      tokenColor = Colors.red;
+    } else if (_remainingTokens < 5000) {
+      tokenColor = Colors.orange;
+    }
+
+    // Only show indicator if we have token data
+    if (_remainingTokens > 0) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Tooltip(
+          message: 'Remaining tokens: $_remainingTokens',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.token, size: 16, color: tokenColor),
+              const SizedBox(width: 4),
+              Text(
+                _formatTokenCount(_remainingTokens),
+                style: TextStyle(
+                  color: tokenColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return null;
   }
 
   Widget _buildHistoryPanel() {
@@ -1305,6 +1523,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     // _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
+    // Note: We don't close _subscriptionBloc here since it might be managed by an external BlocManager
+    // If you're not using a BlocManager, uncomment the next line
+    // _subscriptionBloc.close();
     super.dispose();
   }
 

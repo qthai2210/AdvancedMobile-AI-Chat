@@ -1,6 +1,7 @@
 import 'package:aichatbot/core/di/core_injection.dart' show sl;
 import 'package:aichatbot/core/di/email_reply_suggestion_injection.dart';
 import 'package:aichatbot/core/di/ai_email_injection.dart';
+import 'package:aichatbot/core/di/subscription_injection.dart';
 import 'package:aichatbot/data/datasources/remote/assistant_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/chat_api_service.dart';
 import 'package:aichatbot/data/datasources/remote/conversation_api_service.dart';
@@ -87,11 +88,12 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<PromptApiService>()) {
     sl.registerLazySingleton(() => PromptApiService());
   }
-
   // Register email reply suggestion dependencies
   registerEmailReplySuggestionDependencies();
   // Register AI email generation dependencies
   registerAiEmailDependencies();
+  // Register subscription dependencies
+  registerSubscriptionDependencies();
 
   // Repositories
   if (!sl.isRegistered<AssistantRepository>()) {
