@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:aichatbot/domain/usecases/knowledge_unit/attach_datasource_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/attach_multiple_local_file_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_raw_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_slack_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/upload_web_use_case.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/utils/logger.dart';
 import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
@@ -11,20 +12,24 @@ import 'file_upload_state.dart';
 
 class FileUploadBloc extends Bloc<FileUploadEvent, FileUploadState> {
   final UploadRawFileUseCase _raw;
-  final AttachDatasourceUseCase _attach;
   final UploadSlackFileUseCase _slack;
+  final UploadWebUseCase _web;
+  final AttachMultipleLocalFilesUseCase _attachMultiple;
 
   FileUploadBloc(
     UploadRawFileUseCase raw,
-    AttachDatasourceUseCase attach,
     UploadSlackFileUseCase slack,
+    UploadWebUseCase web,
+    AttachMultipleLocalFilesUseCase attachMultiple,
   )   : _raw = raw,
-        _attach = attach,
         _slack = slack,
+        _web = web,
+        _attachMultiple = attachMultiple,
         super(FileUploadInitial()) {
     on<UploadRawFileEvent>(_onRaw);
-    on<FileAttachEvent>(_onAttachDatasource);
     on<UploadSlackEvent>(_onSlack);
+    on<UploadWebEvent>(_onWeb);
+    on<AttachMultipleLocalFilesEvent>(_onAttachMultiple);
   }
 
   Future<void> _onRaw(
@@ -43,24 +48,6 @@ class FileUploadBloc extends Bloc<FileUploadEvent, FileUploadState> {
     }
   }
 
-  Future<void> _onAttachDatasource(
-    FileAttachEvent event,
-    Emitter<FileUploadState> emit,
-  ) async {
-    emit(FileUploadLoading());
-    try {
-      final resp = await _attach(
-        knowledgeId: event.knowledgeId,
-        fileId: event.fileId,
-        fileName: event.fileName,
-        accessToken: event.accessToken,
-      );
-      emit(FileAttachSuccess(resp));
-    } catch (e) {
-      emit(FileUploadError(e.toString()));
-    }
-  }
-
   Future<void> _onSlack(
     UploadSlackEvent e,
     Emitter<FileUploadState> emit,
@@ -72,6 +59,41 @@ class FileUploadBloc extends Bloc<FileUploadEvent, FileUploadState> {
         unitName: e.name,
         slackWorkspace: '',
         slackBotToken: e.slackBotToken,
+        accessToken: e.accessToken,
+      );
+      emit(FileAttachSuccess(resp));
+    } catch (ex) {
+      emit(FileUploadError(ex.toString()));
+    }
+  }
+
+  Future<void> _onWeb(
+    UploadWebEvent e,
+    Emitter<FileUploadState> emit,
+  ) async {
+    emit(FileUploadLoading());
+    try {
+      final resp = await _web.execute(
+        knowledgeId: e.knowledgeId,
+        unitName: e.unitName,
+        webUrl: e.webUrl,
+        accessToken: e.accessToken,
+      );
+      emit(FileAttachSuccess(resp));
+    } catch (ex) {
+      emit(FileUploadError(ex.toString()));
+    }
+  }
+
+  Future<void> _onAttachMultiple(
+    AttachMultipleLocalFilesEvent e,
+    Emitter<FileUploadState> emit,
+  ) async {
+    emit(FileUploadLoading());
+    try {
+      final resp = await _attachMultiple.execute(
+        knowledgeId: e.knowledgeId,
+        uploadedFiles: e.files,
         accessToken: e.accessToken,
       );
       emit(FileAttachSuccess(resp));

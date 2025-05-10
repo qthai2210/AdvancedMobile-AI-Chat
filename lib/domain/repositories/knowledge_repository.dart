@@ -89,18 +89,25 @@ abstract class KnowledgeRepository {
       required String fileId,
       required String accessToken});
 
-  Future<FileUploadResponse> attachDatasource({
-    required String knowledgeId,
-    required String fileId,
-    required String fileName,
-    required String accessToken,
-  });
-
   Future<FileUploadResponse> uploadSlackSource({
     required String knowledgeId,
     required String unitName, // ở domain gọi unitName == name
     required String slackWorkspace, // bỏ nếu không cần
     required String slackBotToken,
+    required String accessToken,
+  });
+
+  /// Attach nhiều file (có thể là 1 file) lên KB
+  Future<FileUploadResponse> attachMultipleLocalFiles({
+    required String knowledgeId,
+    required List<UploadedFile> uploadedFiles,
+    required String accessToken,
+  });
+
+  /// Xóa 1 datasource đã attach
+  Future<void> deleteDatasourceInKnowledge({
+    required String knowledgeId,
+    required String datasourceId,
     required String accessToken,
   });
 }

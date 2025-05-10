@@ -230,8 +230,8 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
   @override
   Future<FileUploadResponse> uploadSlackSource({
     required String knowledgeId,
-    required String unitName,            // ở domain gọi unitName == name
-    required String slackWorkspace,      // bỏ nếu không cần
+    required String unitName, // ở domain gọi unitName == name
+    required String slackWorkspace, // bỏ nếu không cần
     required String slackBotToken,
     required String accessToken,
   }) {
@@ -285,21 +285,6 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
   }
 
   @override
-  Future<FileUploadResponse> attachDatasource({
-    required String knowledgeId,
-    required String fileId,
-    required String fileName,
-    required String accessToken,
-  }) {
-    return knowledgeApiService.attachDatasource(
-      knowledgeId: knowledgeId,
-      fileId: fileId,
-      fileName: fileName,
-      accessToken: accessToken,
-    );
-  }
-
-  @override
   Future<FileUploadResponse> attachFile({
     required String knowledgeId,
     required String fileId,
@@ -315,5 +300,31 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
       AppLogger.e('Repository error attaching file: $e');
       rethrow;
     }
+  }
+
+  @override
+  Future<FileUploadResponse> attachMultipleLocalFiles({
+    required String knowledgeId,
+    required List<UploadedFile> uploadedFiles,
+    required String accessToken,
+  }) {
+    return knowledgeApiService.attachMultipleLocalFiles(
+      knowledgeId: knowledgeId,
+      uploadedFiles: uploadedFiles,
+      accessToken: accessToken,
+    );
+  }
+
+  @override
+  Future<void> deleteDatasourceInKnowledge({
+    required String knowledgeId,
+    required String datasourceId,
+    required String accessToken,
+  }) {
+    return knowledgeApiService.deleteDatasourceInKnowledge(
+      knowledgeId: knowledgeId,
+      datasourceId: datasourceId,
+      accessToken: accessToken,
+    );
   }
 }

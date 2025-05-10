@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
 import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_event.dart';
 import 'package:equatable/equatable.dart';
 
@@ -133,23 +134,6 @@ class AttachFileToKBEvent extends FileUploadEvent {
   List<Object?> get props => [knowledgeId, fileId, accessToken];
 }
 
-/// Sau khi raw‐file upload xong, bấm Import sẽ dispatch event này
-class FileAttachEvent extends FileUploadEvent {
-  final String knowledgeId;
-  final String fileId;
-  final String fileName;
-  final String accessToken;
-
-  FileAttachEvent({
-    required this.knowledgeId,
-    required this.fileId,
-    required this.fileName,
-    required this.accessToken,
-  });
-  @override
-  List<Object?> get props => [knowledgeId, fileId, fileName, accessToken];
-}
-
 class UploadSlackEvent extends FileUploadEvent {
   final String knowledgeId;
   final String name;
@@ -163,6 +147,20 @@ class UploadSlackEvent extends FileUploadEvent {
   });
   @override
   List<Object?> get props => [knowledgeId, name, slackBotToken, accessToken];
+}
+
+/// Sau khi ready tất cả UploadedFile, dispatch event này
+class AttachMultipleLocalFilesEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final List<UploadedFile> files;
+  final String accessToken;
+  AttachMultipleLocalFilesEvent({
+    required this.knowledgeId,
+    required this.files,
+    required this.accessToken,
+  });
+  @override
+  List<Object?> get props => [knowledgeId, files, accessToken];
 }
 
 /// Reset to initial state
