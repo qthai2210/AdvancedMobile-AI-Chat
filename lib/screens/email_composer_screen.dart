@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
+import 'package:go_router/go_router.dart';
 
 class EmailComposerScreen extends StatefulWidget {
   const EmailComposerScreen({Key? key}) : super(key: key);
@@ -39,6 +40,12 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
       appBar: AppBar(
         title: const Text('Email Composer'),
         actions: [
+          // Demo button for the Vietnamese email example
+          IconButton(
+            icon: const Icon(Icons.science_outlined),
+            onPressed: () => context.push('/email/reply-suggestions-demo'),
+            tooltip: 'Try Demo with Vietnamese Email',
+          ),
           IconButton(
             icon: const Icon(Icons.send),
             onPressed: _sendEmail,
@@ -124,6 +131,17 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
                 _buildActionButton(
                     'More Info', Icons.help_outline, Colors.purple),
               ],
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _getEmailReplySuggestions,
+              icon: const Icon(Icons.lightbulb_outline),
+              label: const Text('Get Reply Ideas'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.amber[800],
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
             ),
           ],
         ),
@@ -299,7 +317,6 @@ Thanks in advance,
     // This method could be expanded to provide formatting tools
     // Currently, the email is already editable via the TextField
   }
-
   void _sendEmail() {
     // In a real app, this would send the email
     ScaffoldMessenger.of(context).showSnackBar(
@@ -312,6 +329,40 @@ Thanks in advance,
     _bodyController.clear();
     setState(() {
       _selectedAction = '';
+    });
+  }
+
+  /// Navigate to the Email Reply Suggestions screen to get ideas for replying
+  void _getEmailReplySuggestions() {
+    // Make sure we have an email body to analyze
+    if (_bodyController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an email content first')),
+      );
+      return;
+    }
+
+    // Prepare parameters for the suggestions screen
+    final params = {
+      'email': _bodyController.text,
+      'subject': _subjectController.text.isNotEmpty
+          ? _subjectController.text
+          : 'No subject',
+      'sender': 'me@example.com', // In a real app, get from user profile
+      'receiver': _toController.text.isNotEmpty
+          ? _toController.text
+          : 'recipient@example.com',
+      'language': 'english', // Could be detected or set in user preferences
+    }; // Navigate to suggestions screen and wait for result
+    context
+        .push('/email/reply-suggestions', extra: params)
+        .then((selectedIdea) {
+      // If user selected an idea, use it as the email body
+      if (selectedIdea != null && selectedIdea is String) {
+        setState(() {
+          _bodyController.text = selectedIdea;
+        });
+      }
     });
   }
 }

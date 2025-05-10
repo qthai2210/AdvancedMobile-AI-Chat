@@ -1,0 +1,49 @@
+import 'package:dio/dio.dart';
+import 'package:aichatbot/domain/models/email_reply_suggestion_models.dart';
+import 'package:aichatbot/utils/logger.dart';
+
+class EmailReplySuggestionService {
+  final Dio _dio;
+  final String _baseUrl;
+
+  EmailReplySuggestionService({
+    required Dio dio,
+    required String baseUrl,
+  })  : _dio = dio,
+        _baseUrl = baseUrl;
+
+  /// Make API call to get email reply suggestions
+  Future<EmailReplySuggestionResponse> getSuggestions({
+    required EmailReplySuggestionRequest request,
+    String? guid,
+    String? authToken,
+  }) async {
+    try {
+      // Set up headers
+      final headers = <String, dynamic>{
+        'Content-Type': 'application/json',
+      };
+
+      if (guid != null) {
+        headers['x-jarvis-guid'] = guid;
+      }
+
+      if (authToken != null) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+      AppLogger.e("baseUrl: $_baseUrl");
+      // Make the API call
+      final response = await _dio.post(
+        '$_baseUrl/ai-email/reply-ideas',
+        data: request.toJson(),
+        options: Options(headers: headers),
+      );
+
+      // Return the parsed response
+      return EmailReplySuggestionResponse.fromJson(response.data);
+    } catch (e) {
+      AppLogger.e('Error fetching email reply suggestions: $e');
+      rethrow;
+    }
+  }
+}
