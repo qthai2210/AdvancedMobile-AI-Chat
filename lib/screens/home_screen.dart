@@ -37,6 +37,8 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         _buildFeaturedCard(),
                         const SizedBox(height: 20),
+                        _buildAiToolsSection(context),
+                        const SizedBox(height: 20),
                         _buildAgentSelection(context),
                         const SizedBox(height: 20),
                         _buildRecentChats(context),
@@ -187,6 +189,145 @@ class HomeScreen extends StatelessWidget {
           // Navigate to chat with this suggestion
           context.go('/chat/detail/new');
         },
+      ),
+    );
+  }
+
+  Widget _buildAiToolsSection(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.smart_toy,
+                color: Color(0xFF6A3DE8),
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'AI Tools',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6A3DE8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Specialized AI tools to boost your productivity',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildToolCard(
+                context,
+                'AI Email Generator',
+                Icons.email,
+                'Create professional emails based on your ideas',
+                '/email/ai-generate',
+                Colors.blue,
+              ),
+              _buildToolCard(
+                context,
+                'Email Reply Suggestions',
+                Icons.reply,
+                'Get smart suggestions for email replies',
+                '/email',
+                Colors.teal,
+              ),
+              _buildToolCard(
+                context,
+                'Knowledge Management',
+                Icons.auto_stories,
+                'Manage and chat with your documents',
+                '/knowledge_management',
+                Colors.orange,
+              ),
+              _buildToolCard(
+                context,
+                'Prompt Library',
+                Icons.collections_bookmark,
+                'Access powerful prompts for any task',
+                '/prompts',
+                Colors.purple,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    String description,
+    String route,
+    Color color,
+  ) {
+    return InkWell(
+      onTap: () => context.go(route),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.42,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black54,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

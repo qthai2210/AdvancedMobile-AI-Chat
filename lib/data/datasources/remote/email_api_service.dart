@@ -78,4 +78,68 @@ class EmailApiService {
       throw ServerException('Unexpected error: $e');
     }
   }
+
+  /// Generate an AI email based on main idea, action and context
+  ///
+  /// Uses the endpoint: /ai-email
+  Future<AiEmailResponse> generateAiEmail({
+    required AiEmailRequest request,
+    String? customGuid,
+  }) async {
+    const endpoint = '/ai-email';
+
+    try {
+      // Get the access token from secure storage
+      final accessToken = await SecureStorageUtil().getAccessToken();
+
+      // Create headers for the request with authentication and optional custom GUID
+      final headers = <String, dynamic>{
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization token if available
+      if (accessToken != null) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      } else {
+        throw UnauthorizedException('Authentication token is required');
+      }
+
+      // Add custom GUID if provided
+      if (customGuid != null && customGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = customGuid;
+      }
+
+      AppLogger.d('Making request to $endpoint with headers: $headers');
+
+      // Make the API call
+      final response = await _dio.post(
+        endpoint,
+        data: request.toJson(),
+        options: Options(headers: headers),
+      );
+
+      AppLogger.d('Response received: ${response.statusCode}');
+
+      // Process the response
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AiEmailResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          'Failed to generate AI email: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.e('DioException in EmailApiService.generateAiEmail: $e');
+      if (e.response?.statusCode == 401) {
+        throw UnauthorizedException('Authentication failed');
+      } else {
+        throw ServerException(
+          'Network error: ${e.message}',
+        );
+      }
+    } catch (e) {
+      AppLogger.e('Error in EmailApiService.generateAiEmail: $e');
+      throw ServerException('Unexpected error: $e');
+    }
+  }
 }

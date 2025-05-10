@@ -1,12 +1,14 @@
 import 'package:aichatbot/core/di/core_injection.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/presentation/bloc/ai_email/ai_email_bloc.dart';
 import 'package:aichatbot/presentation/bloc/email_reply_suggestion/email_reply_suggestion_bloc.dart';
 import 'package:aichatbot/presentation/screens/assistant/create_assistant_screen.dart';
 import 'package:aichatbot/presentation/screens/email_reply_suggestion_demo_screen.dart';
 import 'package:aichatbot/presentation/screens/email_reply_suggestion_screen.dart';
 import 'package:aichatbot/presentation/screens/purchase_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:aichatbot/screens/ai_email_screen.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
 import 'package:aichatbot/screens/chat_ai_screen.dart';
 import 'package:aichatbot/screens/chat_detail_screen.dart';
@@ -196,6 +198,15 @@ class AppRouter {
           sender: 'Sender Name',
           receiver: 'Receiver Name',
           language: 'vietnamese',
+        ),
+      ),
+      // Route for AI Email generation
+      GoRoute(
+        path: '/email/ai-generate',
+        name: 'aiEmailGenerate',
+        builder: (context, state) => BlocProvider(
+          create: (_) => sl<AiEmailBloc>(),
+          child: const AiEmailScreen(),
         ),
       ),
     ],

@@ -49,12 +49,13 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
           IconButton(
             icon: const Icon(Icons.science_outlined),
             onPressed: () => context.push('/email/reply-suggestions-demo'),
-            tooltip: 'Try Demo with Vietnamese Email',
+            tooltip: 'Demo email suggestions',
           ),
+          // AI Email generation button
           IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: _sendEmail,
-            tooltip: 'Send Email',
+            icon: const Icon(Icons.auto_awesome),
+            onPressed: () => context.push('/email/ai-generate'),
+            tooltip: 'AI Email Generator',
           ),
         ],
       ),
