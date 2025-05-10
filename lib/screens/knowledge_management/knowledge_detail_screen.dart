@@ -157,7 +157,13 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
           TextButton(
             onPressed: () {
               context.pop();
-              // Delete implementation here
+              final token = context.read<AuthBloc>().state.user?.accessToken;
+              if (token == null) return;
+              _knowledgeUnitBloc.add(DeleteDatasourceEvent(
+                knowledgeId: _knowledgeBase.id,
+                datasourceId: unit.id,
+                accessToken: token,
+              ));
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),

@@ -27,8 +27,9 @@ import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dar
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
-import 'package:aichatbot/domain/usecases/knowledge_unit/attach_datasource_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/attach_file_use_case.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/attach_multiple_local_file_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge_unit/delete_datasource_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/fetch_knowledge_units_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_confluence_file_use_case.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/upload_google_drive_use_case.dart';
@@ -182,6 +183,10 @@ Future<void> initPostLoginServices() async {
     sl.registerLazySingleton(
         () => FetchKnowledgeUnitsUseCase(sl<KnowledgeRepository>()));
 
+  if (!sl.isRegistered<DeleteDatasourceUseCase>())
+    sl.registerLazySingleton(
+        () => DeleteDatasourceUseCase(sl<KnowledgeRepository>()));
+
   if (!sl.isRegistered<UploadLocalFileUseCase>())
     sl.registerLazySingleton(() =>
         UploadLocalFileUseCase(fileRepository: sl<KnowledgeRepository>()));
@@ -208,6 +213,44 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<AttachFileToKBUseCase>())
     sl.registerLazySingleton(
         () => AttachFileToKBUseCase(sl<KnowledgeRepository>()));
+
+  if (!sl.isRegistered<AttachMultipleLocalFilesUseCase>())
+    sl.registerLazySingleton(
+        () => AttachMultipleLocalFilesUseCase(sl<KnowledgeRepository>()));
+
+  // 1) Register các UseCase cho file-upload
+  if (!sl.isRegistered<UploadRawFileUseCase>()) {
+    sl.registerLazySingleton<UploadRawFileUseCase>(
+      () => UploadRawFileUseCase(sl<KnowledgeRepository>()),
+    );
+  }
+  if (!sl.isRegistered<AttachMultipleLocalFilesUseCase>()) {
+    sl.registerLazySingleton<AttachMultipleLocalFilesUseCase>(
+      () => AttachMultipleLocalFilesUseCase(sl<KnowledgeRepository>()),
+    );
+  }
+  if (!sl.isRegistered<UploadSlackFileUseCase>()) {
+    sl.registerLazySingleton<UploadSlackFileUseCase>(
+      () => UploadSlackFileUseCase(sl<KnowledgeRepository>()),
+    );
+  }
+  if (!sl.isRegistered<UploadWebUseCase>()) {
+    sl.registerLazySingleton<UploadWebUseCase>(
+      () => UploadWebUseCase(sl<KnowledgeRepository>()),
+    );
+  }
+
+  // 2) Register FileUploadBloc
+  if (!sl.isRegistered<FileUploadBloc>()) {
+    sl.registerFactory<FileUploadBloc>(
+      () => FileUploadBloc(
+        sl<UploadRawFileUseCase>(),
+        sl<UploadSlackFileUseCase>(),
+        sl<UploadWebUseCase>(),
+        sl<AttachMultipleLocalFilesUseCase>(),
+      ),
+    );
+  }
 
   // Blocs - Only register if not already registered
   if (!sl.isRegistered<PromptBloc>()) {
@@ -256,24 +299,9 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<KnowledgeUnitBloc>()) {
     sl.registerLazySingleton(() => KnowledgeUnitBloc(
           fetchKnowledgeUnitsUseCase: sl<FetchKnowledgeUnitsUseCase>(),
+          deleteDatasourceUseCase: sl<DeleteDatasourceUseCase>(),
         ));
   }
-
-  if (!sl.isRegistered<FileUploadBloc>()) {
-    sl.registerFactory<FileUploadBloc>(
-      () => FileUploadBloc(
-        // positional parameters, not named!
-        sl<UploadRawFileUseCase>(),
-        sl<AttachDatasourceUseCase>(),
-        sl<UploadSlackFileUseCase>(), // ← thêm ở đây
-      ),
-    );
-  }
-
-  // Register AttachDatasourceUseCase
-  sl.registerLazySingleton<AttachDatasourceUseCase>(
-    () => AttachDatasourceUseCase(sl<KnowledgeRepository>()),
-  );
 
   _postLoginServicesInitialized = true;
   AppLogger.i('Post-login services initialized successfully');
@@ -337,6 +365,8 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<UpdateKnowledgeUseCase>();
     if (sl.isRegistered<FetchKnowledgeUnitsUseCase>())
       sl.resetLazySingleton<FetchKnowledgeUnitsUseCase>();
+    if (sl.isRegistered<DeleteDatasourceUseCase>())
+      sl.resetLazySingleton<DeleteDatasourceUseCase>();
     if (sl.isRegistered<UploadLocalFileUseCase>())
       sl.resetLazySingleton<UploadLocalFileUseCase>();
     if (sl.isRegistered<UploadGoogleDriveFileUseCase>())
@@ -349,6 +379,14 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<UploadWebUseCase>();
     if (sl.isRegistered<FetchKnowledgeUnitsUseCase>())
       sl.resetLazySingleton<FetchKnowledgeUnitsUseCase>();
+    if (sl.isRegistered<DeleteDatasourceUseCase>())
+      sl.resetLazySingleton<DeleteDatasourceUseCase>();
+    if (sl.isRegistered<UploadRawFileUseCase>())
+      sl.resetLazySingleton<UploadRawFileUseCase>();
+    if (sl.isRegistered<AttachFileToKBUseCase>())
+      sl.resetLazySingleton<AttachFileToKBUseCase>();
+    if (sl.isRegistered<AttachMultipleLocalFilesUseCase>())
+      sl.resetLazySingleton<AttachMultipleLocalFilesUseCase>();
 
     // Reset Repositories
     if (sl.isRegistered<AssistantRepository>())

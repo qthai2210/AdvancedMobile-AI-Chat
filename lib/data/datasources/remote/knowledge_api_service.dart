@@ -527,11 +527,22 @@ class KnowledgeApiService {
     required String webUrl,
     required String accessToken,
   }) async {
-    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/web';
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/datasources';
+    // final endpoint = '/kb-core/v1/knowledge/$knowledgeId/web';
     final url = '${_dio.options.baseUrl}$endpoint';
     final body = {
-      'unitName': unitName,
-      'webUrl': webUrl,
+      'datasources': [
+        {
+          'unitName': unitName,
+          'name': unitName,
+          'webUrl': webUrl,
+          'url': webUrl,
+          'type': 'website',
+          'credentials': {
+            'url': webUrl,
+          }
+        }
+      ]
     };
     final headers = {
       'x-jarvis-guid': accessToken,
@@ -770,5 +781,59 @@ class KnowledgeApiService {
       return FileUploadResponse.fromJson({'files': resp.data['datasources']});
     }
     throw Exception('Slack import failed: ${resp.statusCode}');
+  }
+
+  /// Bước 3: attach nhiều local_file cùng lúc
+  Future<FileUploadResponse> attachMultipleLocalFiles({
+    required String knowledgeId,
+    required List<UploadedFile> uploadedFiles,
+    required String accessToken,
+  }) async {
+    final endpoint = '/kb-core/v1/knowledge/$knowledgeId/datasources';
+    final body = {
+      'datasources': uploadedFiles
+          .map((f) => {
+                'type': 'local_file',
+                'name': f.name,
+                'credentials': {'file': f.id},
+              })
+          .toList(),
+    };
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+      'Content-Type': 'application/json',
+    };
+    final resp = await _dio.post(endpoint,
+        data: body, options: Options(headers: headers));
+    if (resp.statusCode == 201) {
+      return FileUploadResponse.fromJson({'files': resp.data['datasources']});
+    }
+    throw Exception('Attach multiple files failed: ${resp.statusCode}');
+  }
+
+  /// Bước 4: Xóa 1 datasource khỏi KB
+  Future<void> deleteDatasourceInKnowledge({
+    required String knowledgeId,
+    required String datasourceId,
+    required String accessToken,
+  }) async {
+    final endpoint =
+        '/kb-core/v1/knowledge/$knowledgeId/datasources/$datasourceId';
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'x-jarvis-guid': accessToken,
+    };
+    AppLogger.d('┌── DELETE Datasource ─────────────────────────────');
+    AppLogger.d('│ DELETE $endpoint');
+    AppLogger.d('│ Headers: $headers');
+    AppLogger.d('└────────────────────────────────────────────────');
+
+    final resp = await _dio.delete(
+      endpoint,
+      options: Options(headers: headers),
+    );
+    if (resp.statusCode == 204) return;
+    throw Exception('Delete datasource failed: ${resp.statusCode}');
   }
 }

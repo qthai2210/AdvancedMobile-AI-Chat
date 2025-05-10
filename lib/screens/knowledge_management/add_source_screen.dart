@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:aichatbot/data/models/knowledge/file_upload_response.dart';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/presentation/bloc/file_upload/file_upload_bloc.dart';
@@ -70,7 +71,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   final TextEditingController _webUrlController = TextEditingController();
   final TextEditingController _unitNameController = TextEditingController();
 
-  String? _uploadedFileId; // ← thêm biến này
+  final List<UploadedFile> _uploadedFiles = []; // ← giữ list
 
   final _slackNameController = TextEditingController();
   final _slackTokenController = TextEditingController(
@@ -651,13 +652,25 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   // Bước 2: attach file vào KB
   Future<void> _importToKnowledge() async {
     final token = context.read<AuthBloc>().state.user?.accessToken;
-    if (token == null || _uploadedFileId == null) return;
+    if (token == null || _uploadedFiles.isEmpty) return;
     setState(() => _isLoading = true);
     _fileUploadBloc.add(
-      FileAttachEvent(
+      AttachMultipleLocalFilesEvent(
         knowledgeId: widget.knowledgeBase.id,
-        fileId: _uploadedFileId!,
-        fileName: _selectedFileName!,
+        files: _uploadedFiles,
+        accessToken: token,
+      ),
+    );
+  }
+
+  Future<void> _importMultipleToKnowledge() async {
+    final token = context.read<AuthBloc>().state.user?.accessToken;
+    if (token == null) return;
+    setState(() => _isLoading = true);
+    _fileUploadBloc.add(
+      AttachMultipleLocalFilesEvent(
+        knowledgeId: widget.knowledgeBase.id,
+        files: _uploadedFiles,
         accessToken: token,
       ),
     );
@@ -674,15 +687,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           if (state is FileUploadLoading) {
             setState(() => _isLoading = true);
           } else if (state is FileRawUploaded) {
-            setState(() {
-              _isLoading = false;
-              _uploadedFileId = state.file.id;
-            });
+            setState(() => _isLoading = false);
+            _uploadedFiles.add(state.file);
             ScaffoldMessenger.of(ctx).showSnackBar(
-              const SnackBar(
-                content:
-                    Text('Upload file thành công, nhấn Import để gắn vào KB'),
-              ),
+              SnackBar(content: Text('Uploaded ${state.file.name}')),
             );
           } else if (state is FileUploadError) {
             setState(() => _isLoading = false);
@@ -829,11 +837,23 @@ class _AddSourceScreenState extends State<AddSourceScreen>
               setState(() {
                 _selectedFile = null;
                 _selectedFileName = null;
-                _uploadedFileId = null;
+                _uploadedFiles.clear();
               });
             },
           ),
           const SizedBox(height: 24),
+          if (_uploadedFiles.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              children: _uploadedFiles
+                  .map((f) => Chip(
+                        label: Text(f.name),
+                        onDeleted: () => setState(() {
+                          _uploadedFiles.remove(f);
+                        }),
+                      ))
+                  .toList(),
+            ),
           ElevatedButton.icon(
             onPressed: _pickLocalFile, // ← gọi ngay
             icon: const Icon(Icons.upload_file),
@@ -846,9 +866,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: (_uploadedFileId == null || _isLoading)
+              onPressed: (_uploadedFiles.isEmpty || _isLoading)
                   ? null
-                  : _importToKnowledge,
+                  : _importMultipleToKnowledge,
               child: Text(_isLoading ? 'Importing…' : 'Import to Knowledge'),
             ),
           ),
@@ -1028,7 +1048,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _saveSource,
+        onPressed: (_uploadedFiles.isEmpty || _isLoading)
+            ? null
+            : _importMultipleToKnowledge,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: Theme.of(context).primaryColor,
