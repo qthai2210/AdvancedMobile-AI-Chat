@@ -426,54 +426,78 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   : 'new_conversation'); // Add ! to force non-nullable
 
           // Format previous messages for the conversation history
-          List<msg_model.ChatMessage> messageHistory = _messages.map((msg) {
+          // Get all messages except the last one (which is the current user message)
+          final messagesToInclude = _messages.length > 1
+              ? _messages.sublist(0, _messages.length - 1)
+              : [];
+          List<msg_model.ChatMessage> messageHistory =
+              messagesToInclude.map((msg) {
             return msg_model.ChatMessage(
-              role: msg.isUser ? 'user' : 'model',
+              role: msg.isUser ? 'user' : 'assistant',
               content: msg.text,
               files: const [],
-              // assistant: !msg.isUser
-              //     ? msg_model.AssistantModel(
-              //         model: "dify",
-              //         name: _selectedAgent.name,
-              //         id: _selectedAgent.id,
-              //       )
-              //     : null,
+              assistant: !msg.isUser
+                  ? msg_model.AssistantModel(
+                      model: "dify",
+                      name: _selectedAgent.name,
+                      id: _selectedAgent.id,
+                    )
+                  : null,
+            );
+          }).toList();
+
+          AppLogger.e(
+              "Message history for API: ${messageHistory.length} messages");
+          // if messageHistory is empty, remove conversationId
+          if (messageHistory.isEmpty) {
+            final requestModel = msg_model.MessageRequestModel(
+              content: message,
+              files: [],
+              metadata: msg_model.MessageMetadata(
+                conversation: msg_model.Conversation(
+                  id: "",
+                  title: "",
+                  createdAt: DateTime.now(),
+                  messages: [],
+                ),
+                id: conversationId, // Set the ID here too
+              ),
               assistant: msg_model.AssistantModel(
                 model: "dify",
                 name: _selectedAgent.name,
                 id: _selectedAgent.id,
               ),
             );
-          }).toList();
-
-          AppLogger.e(
-              "Message history for API: ${messageHistory.length} messages");
-
-          final requestModel = msg_model.MessageRequestModel(
-            content: message,
-            files: [],
-            metadata: msg_model.MessageMetadata(
-              conversation: msg_model.Conversation(
-                id: conversationId,
-                title: _currentThreadTitle,
-                createdAt: DateTime.now(),
-                messages: messageHistory, // Include the conversation history
+            context
+                .read<ChatBloc>()
+                .add(SendMessageEvent(request: requestModel));
+          } else {
+            final requestModel = msg_model.MessageRequestModel(
+              content: message,
+              files: [],
+              metadata: msg_model.MessageMetadata(
+                conversation: msg_model.Conversation(
+                  id: conversationId,
+                  title: _currentThreadTitle,
+                  createdAt: DateTime.now(),
+                  messages: messageHistory, // Include the conversation history
+                ),
+                id: conversationId, // Set the ID here too
               ),
-              id: conversationId, // Set the ID here too
-            ),
-            assistant: msg_model.AssistantModel(
-              model: "dify",
-              name: _selectedAgent.name,
-              id: _selectedAgent.id,
-            ),
-          ); // Check if we're using a custom bot
+              assistant: msg_model.AssistantModel(
+                model: "dify",
+                name: _selectedAgent.name,
+                id: _selectedAgent.id,
+              ),
+            ); //
+            context
+                .read<ChatBloc>()
+                .add(SendMessageEvent(request: requestModel));
+          }
+
           AppLogger.w("Selected agent: $_selectedAgent");
           AppLogger.w("Using conversation ID: $conversationId");
           AppLogger.w("Using conversation title: $_currentThreadTitle");
-          AppLogger.w("Metadata in request: ${requestModel.metadata.toJson()}");
-          AppLogger.w(
-              "Full request JSON: ${jsonEncode(requestModel.toJson())}");
-          context.read<ChatBloc>().add(SendMessageEvent(request: requestModel));
         }
       } catch (error) {
         // Handle initial errors (like not authenticated)
