@@ -1,5 +1,7 @@
 import 'package:aichatbot/core/di/core_injection.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
+import 'package:aichatbot/data/models/assistant/assistant_model.dart';
+import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/bloc/ai_email/ai_email_bloc.dart';
 import 'package:aichatbot/presentation/bloc/email_reply_suggestion/email_reply_suggestion_bloc.dart';
@@ -10,6 +12,7 @@ import 'package:aichatbot/presentation/screens/purchase_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/screens/ai_email_screen.dart';
 import 'package:aichatbot/screens/bot_management/bot_list_screen.dart';
+import 'package:aichatbot/screens/bot_management/bot_edit_screen.dart';
 import 'package:aichatbot/screens/chat_ai_screen.dart';
 import 'package:aichatbot/screens/chat_detail_screen.dart';
 import 'package:aichatbot/screens/email_composer_screen.dart';
@@ -73,6 +76,17 @@ class AppRouter {
         path: '/bot_management/create',
         name: 'createAssistant',
         builder: (context, state) => const CreateAssistantScreen(),
+      ),
+      GoRoute(
+        path: '/bot_management/:botId/edit',
+        name: 'editAssistant',
+        builder: (context, state) {
+          final extras = state.extra as Map<String, dynamic>;
+          return BotEditScreen(
+            bot: extras['bot'] as AIBot,
+            assistantModel: extras['assistantModel'] as AssistantModel,
+          );
+        },
       ),
       GoRoute(
         path: '/email',

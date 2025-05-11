@@ -21,6 +21,7 @@ import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dar
 import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
@@ -168,9 +169,11 @@ Future<void> initPostLoginServices() async {
 
   if (!sl.isRegistered<UpdateAssistantUseCase>())
     sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
-
   if (!sl.isRegistered<DeleteAssistantUseCase>())
     sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
+
+  if (!sl.isRegistered<LinkKnowledgeToAssistantUseCase>())
+    sl.registerLazySingleton(() => LinkKnowledgeToAssistantUseCase(sl()));
 
   // Knowledge use cases
   if (!sl.isRegistered<GetKnowledgesUseCase>())
@@ -283,9 +286,9 @@ Future<void> initPostLoginServices() async {
           sendCustomBotMessageUseCase: sl(),
         ));
   }
-
   if (!sl.isRegistered<BotBloc>()) {
     sl.registerLazySingleton(() => BotBloc(
+          linkKnowledgeToAssistantUseCase: sl(),
           getAssistantsUseCase: sl(),
           createAssistantUseCase: sl(),
           updateAssistantUseCase: sl(),
@@ -361,6 +364,8 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<UpdateAssistantUseCase>();
     if (sl.isRegistered<DeleteAssistantUseCase>())
       sl.resetLazySingleton<DeleteAssistantUseCase>();
+    if (sl.isRegistered<LinkKnowledgeToAssistantUseCase>())
+      sl.resetLazySingleton<LinkKnowledgeToAssistantUseCase>();
     if (sl.isRegistered<GetKnowledgesUseCase>())
       sl.resetLazySingleton<GetKnowledgesUseCase>();
     if (sl.isRegistered<CreateKnowledgeUseCase>())
