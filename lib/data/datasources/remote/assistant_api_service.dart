@@ -142,8 +142,7 @@ class AssistantApiService {
   ///
   /// Makes a PUT request to the update assistant endpoint
   ///
-  /// [assistantId] is required to identify which assistant to update
-  /// [assistantName] is required as the new name
+  /// [assistantId] is required to identify which assistant to update  /// [assistantName] is required as the new name
   /// [instructions] and [description] are optional updated values
   /// [xJarvisGuid] is an optional tracking GUID
   ///
@@ -174,30 +173,70 @@ class AssistantApiService {
 
       if (description != null) {
         body['description'] = description;
-      } // Make the API call
+      }
+
+      // Make the API call
       final response = await _dio.patch(
         '/kb-core/v1/ai-assistant/$assistantId',
         data: body,
         options: Options(headers: headers),
       );
 
-      AppLogger.i('Update assistant response: ${response.data}');
+      AppLogger.i('Update assistant response: ${response.statusCode}');
 
-      // Handle different response structures
-      try {
-        if (response.data['data'] != null) {
-          // If response has a nested 'data' field
-          return AssistantModel.fromJson(response.data['data']);
-        } else if (response.data is Map<String, dynamic>) {
-          // If the response itself is the assistant data
-          return AssistantModel.fromJson(response.data);
-        } else {
-          throw Exception('Unexpected response format: ${response.data}');
+      // Handle 204 No Content response
+      if (response.statusCode == 204) {
+        // For 204 No Content, return an assistant model with just the required fields
+        // since update was successful but no content was returned
+        AppLogger.i(
+            'Received 204 No Content response - update successful but no content returned');
+        return AssistantModel(
+          id: assistantId,
+          assistantName: assistantName,
+          openAiAssistantId:
+              '', // Using default empty string as we don't have this info
+          instructions: instructions,
+          description: description,
+        );
+      }
+
+      // Handle response with content
+      if (response.data != null) {
+        try {
+          if (response.data['data'] != null) {
+            // If response has a nested 'data' field
+            return AssistantModel.fromJson(response.data['data']);
+          } else if (response.data is Map<String, dynamic>) {
+            // If the response itself is the assistant data
+            return AssistantModel.fromJson(response.data);
+          }
+
+          // If we got here, the response format wasn't recognized
+          AppLogger.w(
+              'Unexpected response format but update likely successful: ${response.data}');
+          return AssistantModel(
+            id: assistantId,
+            assistantName: assistantName,
+            openAiAssistantId: '', // Using default empty string
+            instructions: instructions,
+            description: description,
+          );
+        } catch (e) {
+          AppLogger.e('Error parsing assistant response: $e');
+          AppLogger.e('Response was: ${response.data}');
+          throw Exception('Failed to parse assistant response: $e');
         }
-      } catch (e) {
-        AppLogger.e('Error parsing assistant response: $e');
-        AppLogger.e('Response was: ${response.data}');
-        throw Exception('Failed to parse assistant response: $e');
+      } else {
+        // Empty response but not a 204 status
+        AppLogger.w(
+            'Received empty response with status ${response.statusCode}');
+        return AssistantModel(
+          id: assistantId,
+          assistantName: assistantName,
+          openAiAssistantId: '',
+          instructions: instructions,
+          description: description,
+        );
       }
     } on DioException catch (e) {
       AppLogger.e('Error updating assistant: ${e.message}');
@@ -213,8 +252,7 @@ class AssistantApiService {
   ///
   /// Makes a DELETE request to the delete assistant endpoint
   ///
-  /// [assistantId] is required to identify which assistant to delete
-  /// [xJarvisGuid] is an optional tracking GUID
+  /// [assistantId] is required to identify which assistant to delete  /// [xJarvisGuid] is an optional tracking GUID
   ///
   /// Returns true on successful deletion
   Future<bool> deleteAssistant({
@@ -229,15 +267,16 @@ class AssistantApiService {
       }
 
       // Make the API call
-      final response = await _apiService.dio.delete(
+      final response = await _dio.delete(
         '/kb-core/v1/ai-assistant/$assistantId',
         options: Options(headers: headers),
       );
 
       AppLogger.i('Delete assistant response: ${response.statusCode}');
 
-      // If status code is 200, the deletion was successful
-      return response.statusCode == 200;
+      // If status code is 200 or 204, the deletion was successful
+      // 204 means "No Content" which is a common response for DELETE operations
+      return response.statusCode == 200 || response.statusCode == 204;
     } on DioException catch (e) {
       AppLogger.e('Error deleting assistant: ${e.message}');
       AppLogger.e('Error response: ${e.response?.data}');
