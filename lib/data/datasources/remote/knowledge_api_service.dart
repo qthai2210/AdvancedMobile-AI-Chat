@@ -711,15 +711,14 @@ class KnowledgeApiService {
     AppLogger.d('│ Response toString(): ${resp.toString()}');
     AppLogger.d('└──────────────────────────────────────────────');
 
-    if (resp.statusCode == 201) {
-      final list = (resp.data['files'] as List<dynamic>?) ?? [];
-      if (list.isEmpty) {
+    if ((resp.statusCode ?? 0) >= 200 && resp.statusCode! < 300) {
+      final files = resp.data['files'] as List<dynamic>?;
+      if (files == null || files.isEmpty) {
         throw Exception('Uploaded but server returned empty files list');
       }
-      return UploadedFile.fromJson(list.first as Map<String, dynamic>);
+      return UploadedFile.fromJson(files.first as Map<String, dynamic>);
     }
-
-    throw Exception('Upload failed (${resp.statusCode}): ${resp.data}');
+    throw Exception('Upload raw file failed: ${resp.statusCode}');
   }
 
   /// Bước 2: gắn lên knowledge base
