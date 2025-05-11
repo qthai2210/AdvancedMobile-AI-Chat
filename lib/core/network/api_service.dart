@@ -80,9 +80,19 @@ class ApiService {
       case 203:
         // Handle 202 and 203 as success responses
         return onSuccess(response.data);
-
       case 204:
-        return onSuccess(response.data);
+        // 204 means No Content, so response.data might be null or empty
+        // For methods that return void, this is fine
+        // For methods that expect data, we need to handle this case specially
+        try {
+          // Try to process the data if it exists
+          return onSuccess(response.data);
+        } catch (e) {
+          // If data is null or empty and causes an error, return null or a default value
+          debugPrint('204 response with empty data, returning default value');
+          return onSuccess(
+              null); // Implementations should handle null data appropriately
+        }
       case 401:
       case 403:
         throw UnauthorizedException('Authentication error: ${response.data}');

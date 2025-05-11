@@ -200,10 +200,11 @@ class KnowledgeApiService {
       AppLogger.d('│ 🔍 [DELETE] Knowledge');
       AppLogger.d('│ Status: ${response.statusCode}');
       AppLogger.d(
-          '└────────────────────────────────────────────────────────────');
-
-      // Return success based on status code (200 is success)
-      return response.statusCode == 200;
+          '└────────────────────────────────────────────────────────────'); // Return success based on status code (200 or 204 are success)
+      // 204 means "No Content" which is a common response for DELETE operations
+      AppLogger.i(
+          'Delete knowledge response: ${response.statusCode} handle this case');
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       AppLogger.e('Error deleting knowledge base: $e');
       rethrow;
