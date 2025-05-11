@@ -179,3 +179,30 @@ class AssistantKnowledgeRemoveFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when a Telegram bot is being published
+class PublishingTelegramBot extends BotState {}
+
+/// State when a Telegram bot has been successfully published
+class TelegramBotPublished extends BotState {
+  final String assistantId;
+  final String telegramBotUrl;
+
+  const TelegramBotPublished({
+    required this.assistantId,
+    required this.telegramBotUrl,
+  });
+
+  @override
+  List<Object?> get props => [assistantId, telegramBotUrl];
+}
+
+/// State when there was an error publishing a Telegram bot
+class TelegramBotPublishFailed extends BotState {
+  final String message;
+
+  const TelegramBotPublishFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

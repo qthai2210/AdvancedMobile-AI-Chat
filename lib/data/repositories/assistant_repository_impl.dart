@@ -173,4 +173,27 @@ class AssistantRepositoryImpl implements AssistantRepository {
       throw ServerFailure(e.toString());
     }
   }
+
+  @override
+  Future<String> publishTelegramBot({
+    required String assistantId,
+    required String botToken,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      return await assistantApiService.publishTelegramBot(
+        assistantId: assistantId,
+        botToken: botToken,
+        accessToken: accessToken,
+        xJarvisGuid: xJarvisGuid,
+      );
+    } on DioException catch (e) {
+      throw ServerFailure(
+        e.response?.statusMessage ?? 'Server error: ${e.response?.statusCode}',
+      );
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
 }

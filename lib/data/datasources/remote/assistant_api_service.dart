@@ -396,4 +396,64 @@ class AssistantApiService {
       throw Exception('Failed to remove knowledge from assistant: $e');
     }
   }
+
+  /// Publishes an assistant as a Telegram bot
+  ///
+  /// Makes a POST request to the Telegram bot integration endpoint
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [botToken] is required Telegram bot token from BotFather
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns the Telegram bot URL on successful publishing
+  Future<String> publishTelegramBot({
+    required String assistantId,
+    required String botToken,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional values
+      final headers = <String, dynamic>{};
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Prepare request body with the bot token
+      final body = {
+        'botToken': botToken,
+      };
+
+      AppLogger.i('Publishing assistant $assistantId as Telegram bot');
+
+      // Make the API call
+      final response = await _dio.post(
+        '/kb-core/v1/bot-integration/telegram/publish/$assistantId',
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      // Log the response for debugging
+      AppLogger.i('Response received: ${response.data}');
+
+      // Extract the redirect URL from the response
+      if (response.data is Map && response.data.containsKey('redirect')) {
+        return response.data['redirect'];
+      } else {
+        throw Exception('Invalid response format: missing redirect URL');
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error publishing Telegram bot: ${e.message}');
+      rethrow;
+    } catch (e) {
+      AppLogger.e('Unexpected error publishing Telegram bot: $e');
+      rethrow;
+    }
+  }
 }

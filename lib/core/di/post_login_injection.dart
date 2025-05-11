@@ -23,6 +23,7 @@ import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart'
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/publish_telegram_bot_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
@@ -178,6 +179,10 @@ Future<void> initPostLoginServices() async {
 
   if (!sl.isRegistered<RemoveKnowledgeFromAssistantUseCase>())
     sl.registerLazySingleton(() => RemoveKnowledgeFromAssistantUseCase(sl()));
+
+  if (!sl.isRegistered<PublishTelegramBotUseCase>())
+    sl.registerLazySingleton(() => PublishTelegramBotUseCase(sl()));
+
   // Knowledge use cases
   if (!sl.isRegistered<GetKnowledgesUseCase>())
     sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
@@ -300,6 +305,7 @@ Future<void> initPostLoginServices() async {
           updateAssistantUseCase: sl(),
           deleteAssistantUseCase: sl(),
           removeKnowledgeFromAssistantUseCase: sl(),
+          publishTelegramBotUseCase: sl(),
         ));
   }
   if (!sl.isRegistered<KnowledgeBloc>()) {
@@ -375,6 +381,8 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<LinkKnowledgeToAssistantUseCase>();
     if (sl.isRegistered<RemoveKnowledgeFromAssistantUseCase>())
       sl.resetLazySingleton<RemoveKnowledgeFromAssistantUseCase>();
+    if (sl.isRegistered<PublishTelegramBotUseCase>())
+      sl.resetLazySingleton<PublishTelegramBotUseCase>();
     if (sl.isRegistered<GetKnowledgesUseCase>())
       sl.resetLazySingleton<GetKnowledgesUseCase>();
     if (sl.isRegistered<GetAssistantKnowledgesUseCase>())

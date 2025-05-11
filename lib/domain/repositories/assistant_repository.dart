@@ -94,4 +94,19 @@ abstract class AssistantRepository {
     String? accessToken,
     String? xJarvisGuid,
   });
+
+  /// Publishes an assistant as a Telegram bot
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [botToken] is required Telegram bot token from BotFather
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns the Telegram bot URL on successful publishing
+  Future<String> publishTelegramBot({
+    required String assistantId,
+    required String botToken,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
 }

@@ -4,6 +4,7 @@
 // 3. Chat Settings Tab: Configure model parameters and chat behavior
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +14,7 @@ import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_state.dart';
@@ -46,9 +48,11 @@ class _BotEditScreenState extends State<BotEditScreen>
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
+  late TextEditingController _telegramBotTokenController;
   bool _isLoading = false;
   bool _hasChanges = false;
-
+  bool _isPublishingToTelegram = false;
+  String? _telegramBotUrl;
   @override
   void initState() {
     super.initState();
@@ -63,6 +67,7 @@ class _BotEditScreenState extends State<BotEditScreen>
         TextEditingController(text: widget.assistantModel.description ?? '');
     _instructionsController =
         TextEditingController(text: widget.assistantModel.instructions ?? '');
+    _telegramBotTokenController = TextEditingController();
 
     // Listen for changes to track if form is dirty
     _nameController.addListener(_onFieldChanged);
@@ -79,6 +84,7 @@ class _BotEditScreenState extends State<BotEditScreen>
     _nameController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
+    _telegramBotTokenController.dispose();
     super.dispose();
   }
 
@@ -238,6 +244,33 @@ class _BotEditScreenState extends State<BotEditScreen>
     }
   }
 
+  // Method to handle Telegram bot publishing
+  void _publishTelegramBot() {
+    // Validate the bot token
+    final botToken = _telegramBotTokenController.text.trim();
+    if (botToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a Telegram bot token'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPublishingToTelegram = true;
+    });
+
+    // Dispatch the event to the BotBloc
+    context.read<BotBloc>().add(
+          PublishTelegramBotEvent(
+            assistantId: widget.assistantModel.id,
+            botToken: botToken,
+          ),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -274,6 +307,30 @@ class _BotEditScreenState extends State<BotEditScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Update failed: ${state.message}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is PublishingTelegramBot) {
+                // Keep publishing indicator
+              } else if (state is TelegramBotPublished) {
+                setState(() {
+                  _isPublishingToTelegram = false;
+                  _telegramBotUrl = state.telegramBotUrl;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Telegram bot published successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is TelegramBotPublishFailed) {
+                setState(() => _isPublishingToTelegram = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Failed to publish Telegram bot: ${state.message}'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -478,6 +535,124 @@ class _BotEditScreenState extends State<BotEditScreen>
               fillColor: Colors.grey[50],
             ),
           ),
+          const SizedBox(height: 24), // Telegram Bot Token field
+          TextField(
+            controller: _telegramBotTokenController,
+            decoration: InputDecoration(
+              labelText: 'Telegram Bot Token',
+              hintText: 'Enter your Telegram bot token',
+              prefixIcon: const Icon(Icons.telegram),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Publish to Telegram button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isPublishingToTelegram ? null : _publishTelegramBot,
+              icon: const Icon(Icons.send),
+              label: _isPublishingToTelegram
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Publishing...'),
+                      ],
+                    )
+                  : const Text('Publish to Telegram'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ), // Display Telegram bot URL if available
+          if (_telegramBotUrl != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          color: Colors.green, size: 16),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Telegram Bot Published Successfully',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Telegram Bot URL:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    _telegramBotUrl!,
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          // Copy to clipboard
+                          Clipboard.setData(
+                              ClipboardData(text: _telegramBotUrl!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('URL copied to clipboard'),
+                              duration: Duration(seconds: 1),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copy URL'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 24),
 
           // Created date info
