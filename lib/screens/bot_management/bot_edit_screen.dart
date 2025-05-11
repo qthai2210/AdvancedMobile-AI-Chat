@@ -13,6 +13,8 @@ import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
+import 'package:aichatbot/presentation/bloc/knowledge/knowledge_state.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_base_selector_dialog.dart';
@@ -64,6 +66,9 @@ class _BotEditScreenState extends State<BotEditScreen>
     _nameController.addListener(_onFieldChanged);
     _descriptionController.addListener(_onFieldChanged);
     _instructionsController.addListener(_onFieldChanged);
+
+    // Fetch the assistant's knowledge bases when the screen loads
+    _fetchAssistantKnowledges();
   }
 
   @override
@@ -127,6 +132,8 @@ class _BotEditScreenState extends State<BotEditScreen>
       context: context,
       builder: (context) {
         return KnowledgeBaseSelectorDialog(
+          assistantId: widget.assistantModel
+              .id, // Pass the assistant ID to fetch its knowledge bases
           onKnowledgeSelected: (String knowledgeId, String knowledgeName) {
             // Dispatch the LinkKnowledgeToAssistantEvent
             context.read<BotBloc>().add(
@@ -146,6 +153,16 @@ class _BotEditScreenState extends State<BotEditScreen>
           },
         );
       },
+    );
+  }
+
+  /// Fetch knowledge bases attached to this assistant
+  void _fetchAssistantKnowledges() {
+    sl<KnowledgeBloc>().add(
+      FetchAssistantKnowledgesEvent(
+        assistantId: widget.assistantModel.id,
+        limit: 50,
+      ),
     );
   }
 
@@ -195,12 +212,27 @@ class _BotEditScreenState extends State<BotEditScreen>
                     backgroundColor: Colors.green,
                   ),
                 );
+
+                // Refresh the list of knowledge bases after linking
+                _fetchAssistantKnowledges();
               } else if (state is AssistantKnowledgeLinkFailed) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content:
                         Text('Failed to link knowledge base: ${state.message}'),
                     backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+          BlocListener<KnowledgeBloc, KnowledgeState>(
+            listener: (context, state) {
+              if (state is KnowledgeError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Knowledge base error: ${state.message}'),
+                    backgroundColor: Colors.orange,
                   ),
                 );
               }
@@ -407,13 +439,23 @@ class _BotEditScreenState extends State<BotEditScreen>
             ],
           ),
           const SizedBox(height: 24),
-          Text(
-            'Knowledge Bases',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Knowledge Bases',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh knowledge bases',
+                onPressed: _fetchAssistantKnowledges,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -437,24 +479,69 @@ class _BotEditScreenState extends State<BotEditScreen>
   }
 
   Widget _buildKnowledgeBasesList() {
-    // This would ideally display knowledge bases linked to this assistant
-    // For now, we'll display a placeholder
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.auto_awesome),
-            title: const Text('Link a knowledge base'),
-            subtitle: const Text('No knowledge bases linked yet'),
-            trailing: const Icon(Icons.add_circle_outline),
-            onTap: _linkKnowledgeToAssistant,
-          ),
-        ],
+      child: BlocBuilder<KnowledgeBloc, KnowledgeState>(
+        builder: (context, state) {
+          if (state is KnowledgeLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is KnowledgeError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text('Error: ${state.message}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _fetchAssistantKnowledges,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          } else if (state is KnowledgeLoaded && state.knowledges.isNotEmpty) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                _fetchAssistantKnowledges();
+              },
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: state.knowledges.length,
+                itemBuilder: (context, index) {
+                  final knowledge = state.knowledges[index];
+                  return ListTile(
+                    leading: const Icon(Icons.auto_awesome),
+                    title: Text(knowledge.knowledgeName),
+                    subtitle: knowledge.description != null &&
+                            knowledge.description!.isNotEmpty
+                        ? Text(knowledge.description!)
+                        : null,
+                    trailing: const Icon(Icons.info_outline),
+                  );
+                },
+              ),
+            );
+          } else {
+            // No knowledge bases or initial state
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome),
+                  title: const Text('Link a knowledge base'),
+                  subtitle: const Text('No knowledge bases linked yet'),
+                  trailing: const Icon(Icons.add_circle_outline),
+                  onTap: _linkKnowledgeToAssistant,
+                ),
+              ],
+            );
+          }
+        },
       ),
     );
   }

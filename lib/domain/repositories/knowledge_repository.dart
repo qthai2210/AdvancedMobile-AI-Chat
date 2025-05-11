@@ -16,6 +16,28 @@ abstract class KnowledgeRepository {
   /// Returns a [KnowledgeListResponse] containing the list of knowledges and metadata
   Future<KnowledgeListResponse> getKnowledges(GetKnowledgeParams params);
 
+  /// Fetches knowledge bases attached to a specific assistant
+  ///
+  /// [assistantId] - The ID of the assistant
+  /// [q] - Optional search query
+  /// [order] - Optional sort order (ASC/DESC)
+  /// [orderField] - Optional field to sort by
+  /// [offset] - Optional pagination offset
+  /// [limit] - Optional pagination limit
+  /// [xJarvisGuid] - Optional GUID for tracking
+  /// [accessToken] - Optional access token for authorization
+  /// Returns a [KnowledgeListResponse] containing the list of knowledge bases and metadata
+  Future<KnowledgeListResponse> getAssistantKnowledges({
+    required String assistantId,
+    String? q,
+    String? order,
+    String? orderField,
+    int offset,
+    int limit,
+    String? xJarvisGuid,
+    String? accessToken,
+  });
+
   /// Creates a new knowledge base with the provided parameters
   ///
   /// [params] - The parameters containing the knowledge name and optional description

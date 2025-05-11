@@ -9,10 +9,12 @@ import 'package:aichatbot/core/di/injection_container.dart';
 /// This dialog is used when linking knowledge bases to an assistant.
 class KnowledgeBaseSelectorDialog extends StatefulWidget {
   final Function(String knowledgeId, String knowledgeName) onKnowledgeSelected;
+  final String? assistantId;
 
   const KnowledgeBaseSelectorDialog({
     Key? key,
     required this.onKnowledgeSelected,
+    this.assistantId,
   }) : super(key: key);
 
   @override
@@ -41,23 +43,49 @@ class _KnowledgeBaseSelectorDialogState
 
   /// Fetch knowledge bases from the server
   void _fetchKnowledgeBases() {
-    _knowledgeBloc.add(
-      FetchKnowledgesEvent(
-        searchQuery: _searchQuery,
-        offset: 0,
-        limit: 20,
-      ),
-    );
+    if (widget.assistantId != null) {
+      // If an assistantId is provided, fetch knowledge bases for that assistant
+      _knowledgeBloc.add(
+        FetchAssistantKnowledgesEvent(
+          assistantId: widget.assistantId!,
+          searchQuery: _searchQuery,
+          offset: 0,
+          limit: 20,
+        ),
+      );
+    } else {
+      // Otherwise fetch all knowledge bases
+      _knowledgeBloc.add(
+        FetchKnowledgesEvent(
+          searchQuery: _searchQuery,
+          offset: 0,
+          limit: 20,
+        ),
+      );
+    }
   }
 
   /// Search for knowledge bases with the current query
   void _searchKnowledgeBases() {
-    _knowledgeBloc.add(
-      RefreshKnowledgesEvent(
-        searchQuery: _searchQuery,
-        limit: 20,
-      ),
-    );
+    if (widget.assistantId != null) {
+      // If an assistantId is provided, search knowledge bases for that assistant
+      _knowledgeBloc.add(
+        FetchAssistantKnowledgesEvent(
+          assistantId: widget.assistantId!,
+          searchQuery: _searchQuery,
+          offset: 0,
+          limit: 20,
+        ),
+      );
+    } else {
+      // Otherwise search all knowledge bases
+      _knowledgeBloc.add(
+        RefreshKnowledgesEvent(
+          searchQuery: _searchQuery,
+          limit: 20,
+        ),
+      );
+    }
   }
 
   @override

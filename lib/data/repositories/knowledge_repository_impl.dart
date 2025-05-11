@@ -17,7 +17,6 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
   final KnowledgeApiService knowledgeApiService;
 
   KnowledgeRepositoryImpl({required this.knowledgeApiService});
-
   @override
   Future<KnowledgeListResponse> getKnowledges(GetKnowledgeParams params) async {
     try {
@@ -25,6 +24,35 @@ class KnowledgeRepositoryImpl implements KnowledgeRepository {
       return response;
     } catch (e) {
       AppLogger.e('Repository error fetching knowledges: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<KnowledgeListResponse> getAssistantKnowledges({
+    required String assistantId,
+    String? q,
+    String? order = "DESC",
+    String? orderField = "createdAt",
+    int offset = 0,
+    int limit = 10,
+    String? xJarvisGuid,
+    String? accessToken,
+  }) async {
+    try {
+      final response = await knowledgeApiService.getAssistantKnowledges(
+        assistantId: assistantId,
+        q: q,
+        order: order,
+        orderField: orderField,
+        offset: offset,
+        limit: limit,
+        xJarvisGuid: xJarvisGuid,
+        accessToken: accessToken,
+      );
+      return response;
+    } catch (e) {
+      AppLogger.e('Repository error fetching assistant knowledges: $e');
       rethrow;
     }
   }

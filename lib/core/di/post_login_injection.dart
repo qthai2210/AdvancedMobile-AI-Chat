@@ -28,6 +28,7 @@ import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.d
 import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/get_assistant_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/attach_file_use_case.dart';
@@ -174,10 +175,12 @@ Future<void> initPostLoginServices() async {
 
   if (!sl.isRegistered<LinkKnowledgeToAssistantUseCase>())
     sl.registerLazySingleton(() => LinkKnowledgeToAssistantUseCase(sl()));
-
   // Knowledge use cases
   if (!sl.isRegistered<GetKnowledgesUseCase>())
     sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
+
+  if (!sl.isRegistered<GetAssistantKnowledgesUseCase>())
+    sl.registerLazySingleton(() => GetAssistantKnowledgesUseCase(sl()));
 
   if (!sl.isRegistered<CreateKnowledgeUseCase>())
     sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
@@ -295,13 +298,13 @@ Future<void> initPostLoginServices() async {
           deleteAssistantUseCase: sl(),
         ));
   }
-
   if (!sl.isRegistered<KnowledgeBloc>()) {
     sl.registerLazySingleton(() => KnowledgeBloc(
           getKnowledgesUseCase: sl(),
           createKnowledgeUseCase: sl(),
           deleteKnowledgeUseCase: sl(),
           updateKnowledgeUseCase: sl(),
+          getAssistantKnowledgesUseCase: sl(),
         ));
   }
 
@@ -368,6 +371,8 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<LinkKnowledgeToAssistantUseCase>();
     if (sl.isRegistered<GetKnowledgesUseCase>())
       sl.resetLazySingleton<GetKnowledgesUseCase>();
+    if (sl.isRegistered<GetAssistantKnowledgesUseCase>())
+      sl.resetLazySingleton<GetAssistantKnowledgesUseCase>();
     if (sl.isRegistered<CreateKnowledgeUseCase>())
       sl.resetLazySingleton<CreateKnowledgeUseCase>();
     if (sl.isRegistered<DeleteKnowledgeUseCase>())
