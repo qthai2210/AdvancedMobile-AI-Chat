@@ -392,29 +392,58 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           }).toList();
 
           AppLogger.w("CustombotResquest1: $messageHistory");
-          final customBotRequest = CustomBotMessageRequest(
-            content: message,
-            files: const [],
-            metadata: CustomBotMetadata(
-              conversation: CustomBotConversation(
-                id: widget.threadId ?? 'new_conversation',
-                title: _currentThreadTitle,
-                createdAt: DateTime.now(),
-                messages: messageHistory,
+          // if messageHistory is empty, remove conversationId
+          if (messageHistory.isEmpty) {
+            AppLogger.w("CustombotResquest3: $messageHistory");
+            final customBotRequest = CustomBotMessageRequest(
+              content: message,
+              files: const [],
+              metadata: CustomBotMetadata(
+                conversation: CustomBotConversation(
+                  id: '',
+                  title: '',
+                  createdAt: DateTime.now(),
+                  messages: messageHistory,
+                ),
               ),
-            ),
-            assistant: CustomBotAssistant(
-              model: "knowledge-base",
-              name: _selectedAgent.name,
-              id: _selectedAgent
-                  .idString, // Use idString instead of id directly
-            ),
-          );
-          AppLogger.w("Custom bot request: $customBotRequest");
-          // Use CustomBotMessageEvent instead
-          context
-              .read<ChatBloc>()
-              .add(SendCustomBotMessageEvent(request: customBotRequest));
+              assistant: CustomBotAssistant(
+                model: "knowledge-base",
+                name: _selectedAgent.name,
+                id: _selectedAgent
+                    .idString, // Use idString instead of id directly
+              ),
+            );
+            AppLogger.w("Custom bot request: $customBotRequest");
+            // Use CustomBotMessageEvent instead
+            context
+                .read<ChatBloc>()
+                .add(SendCustomBotMessageEvent(request: customBotRequest));
+          } else {
+            AppLogger.w("CustombotResquest4: $messageHistory");
+            final customBotRequest = CustomBotMessageRequest(
+              content: message,
+              files: const [],
+              metadata: CustomBotMetadata(
+                conversation: CustomBotConversation(
+                  id: widget.threadId ?? 'new_conversation',
+                  title: _currentThreadTitle,
+                  createdAt: DateTime.now(),
+                  messages: messageHistory,
+                ),
+              ),
+              assistant: CustomBotAssistant(
+                model: "knowledge-base",
+                name: _selectedAgent.name,
+                id: _selectedAgent
+                    .idString, // Use idString instead of id directly
+              ),
+            );
+            AppLogger.w("Custom bot request: $customBotRequest");
+            // Use CustomBotMessageEvent instead
+            context
+                .read<ChatBloc>()
+                .add(SendCustomBotMessageEvent(request: customBotRequest));
+          }
         } else {
           // Use regular ChatBloc to send the message for standard bots
           AppLogger.e(
