@@ -340,4 +340,60 @@ class AssistantApiService {
       throw Exception('Failed to link knowledge to assistant: $e');
     }
   }
+
+  /// Removes a knowledge base from an assistant
+  ///
+  /// Makes a DELETE request to remove a knowledge base from an assistant
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [knowledgeId] is required to identify the knowledge base to remove
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns true on successful removal (status code 204)
+  Future<bool> removeKnowledgeFromAssistant({
+    required String assistantId,
+    required String knowledgeId,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional authorization and GUID
+      final headers = <String, dynamic>{};
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      // Log the request details
+      AppLogger.i(
+          'Removing knowledge $knowledgeId from assistant $assistantId');
+
+      // Construct the endpoint URL
+      final endpoint =
+          '/kb-core/v1/ai-assistant/$assistantId/knowledges/$knowledgeId';
+
+      // Make the API call
+      final response = await _dio.delete(
+        endpoint,
+        options: Options(headers: headers),
+      );
+
+      AppLogger.i('Remove knowledge response: ${response.statusCode}');
+
+      // For this endpoint, 204 No Content indicates success
+      return response.statusCode == 204;
+    } on DioException catch (e) {
+      AppLogger.e('Error removing knowledge from assistant: ${e.message}');
+      AppLogger.e('Error response: ${e.response?.data}');
+      throw Exception(
+          'Failed to remove knowledge from assistant: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error removing knowledge from assistant: $e');
+      throw Exception('Failed to remove knowledge from assistant: $e');
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dar
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assistant_usecase.dart';
 import 'package:aichatbot/data/models/assistant/get_assistants_params.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
@@ -16,6 +17,8 @@ class BotBloc extends Bloc<BotEvent, BotState> {
   final UpdateAssistantUseCase _updateAssistantUseCase;
   final DeleteAssistantUseCase _deleteAssistantUseCase;
   final LinkKnowledgeToAssistantUseCase _linkKnowledgeToAssistantUseCase;
+  final RemoveKnowledgeFromAssistantUseCase
+      _removeKnowledgeFromAssistantUseCase;
 
   BotBloc({
     required GetAssistantsUseCase getAssistantsUseCase,
@@ -23,11 +26,15 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     required UpdateAssistantUseCase updateAssistantUseCase,
     required DeleteAssistantUseCase deleteAssistantUseCase,
     required LinkKnowledgeToAssistantUseCase linkKnowledgeToAssistantUseCase,
+    required RemoveKnowledgeFromAssistantUseCase
+        removeKnowledgeFromAssistantUseCase,
   })  : _getAssistantsUseCase = getAssistantsUseCase,
         _createAssistantUseCase = createAssistantUseCase,
         _updateAssistantUseCase = updateAssistantUseCase,
         _deleteAssistantUseCase = deleteAssistantUseCase,
         _linkKnowledgeToAssistantUseCase = linkKnowledgeToAssistantUseCase,
+        _removeKnowledgeFromAssistantUseCase =
+            removeKnowledgeFromAssistantUseCase,
         super(BotInitial()) {
     on<FetchBotsEvent>(_onFetchBots);
     on<FetchMoreBotsEvent>(_onFetchMoreBots);
@@ -36,6 +43,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     on<UpdateAssistantEvent>(_onUpdateAssistant);
     on<DeleteAssistantEvent>(_onDeleteAssistant);
     on<LinkKnowledgeToAssistantEvent>(_onLinkKnowledgeToAssistant);
+    on<RemoveKnowledgeFromAssistantEvent>(_onRemoveKnowledgeFromAssistant);
   }
 
   /// Handler for FetchBotsEvent
@@ -239,6 +247,37 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       }
     } catch (e) {
       emit(AssistantKnowledgeLinkFailed(message: e.toString()));
+    }
+  }
+
+  /// Handler for RemoveKnowledgeFromAssistantEvent
+  Future<void> _onRemoveKnowledgeFromAssistant(
+    RemoveKnowledgeFromAssistantEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(AssistantRemovingKnowledge());
+
+    try {
+      final success = await _removeKnowledgeFromAssistantUseCase.call(
+        assistantId: event.assistantId,
+        knowledgeId: event.knowledgeId,
+        accessToken: event.accessToken,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      if (success) {
+        emit(AssistantKnowledgeRemoved(
+          assistantId: event.assistantId,
+          knowledgeId: event.knowledgeId,
+        ));
+      } else {
+        emit(const AssistantKnowledgeRemoveFailed(
+          message:
+              'Failed to remove knowledge from assistant. Please try again.',
+        ));
+      }
+    } catch (e) {
+      emit(AssistantKnowledgeRemoveFailed(message: e.toString()));
     }
   }
 }

@@ -129,3 +129,22 @@ class LinkKnowledgeToAssistantEvent extends BotEvent {
   List<Object?> get props =>
       [assistantId, knowledgeId, accessToken, xJarvisGuid];
 }
+
+/// Event to remove a knowledge base from an assistant
+class RemoveKnowledgeFromAssistantEvent extends BotEvent {
+  final String assistantId;
+  final String knowledgeId;
+  final String? accessToken;
+  final String? xJarvisGuid;
+
+  const RemoveKnowledgeFromAssistantEvent({
+    required this.assistantId,
+    required this.knowledgeId,
+    this.accessToken,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props =>
+      [assistantId, knowledgeId, accessToken, xJarvisGuid];
+}

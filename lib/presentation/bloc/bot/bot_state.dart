@@ -152,3 +152,30 @@ class AssistantKnowledgeLinkFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when removing a knowledge base from an assistant
+class AssistantRemovingKnowledge extends BotState {}
+
+/// State when a knowledge base has been successfully removed from an assistant
+class AssistantKnowledgeRemoved extends BotState {
+  final String assistantId;
+  final String knowledgeId;
+
+  const AssistantKnowledgeRemoved({
+    required this.assistantId,
+    required this.knowledgeId,
+  });
+
+  @override
+  List<Object?> get props => [assistantId, knowledgeId];
+}
+
+/// State when there was an error removing a knowledge base from an assistant
+class AssistantKnowledgeRemoveFailed extends BotState {
+  final String message;
+
+  const AssistantKnowledgeRemoveFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

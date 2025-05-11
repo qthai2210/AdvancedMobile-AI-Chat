@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
+import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
@@ -17,6 +18,7 @@ import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_state.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_base_selector_dialog.dart';
 
 /// A screen for editing bot details with a tabbed interface.
@@ -166,6 +168,62 @@ class _BotEditScreenState extends State<BotEditScreen>
     );
   }
 
+  /// Shows a confirmation dialog and removes the knowledge base from the assistant if confirmed
+  void _confirmRemoveKnowledge(KnowledgeModel knowledge) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Remove "${knowledge.knowledgeName}"?'),
+        content: Text(
+            'Are you sure you want to remove this knowledge base from the assistant? '
+            'This action does not delete the knowledge base itself.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _removeKnowledgeFromAssistant(knowledge);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Removes a knowledge base from the assistant
+  void _removeKnowledgeFromAssistant(KnowledgeModel knowledge) {
+    // Get assistant ID and knowledge ID
+    final assistantId = widget.assistantModel.id;
+    final knowledgeId = knowledge.id; // Both IDs should be non-empty
+    if (assistantId != null && knowledgeId != null && assistantId.isNotEmpty) {
+      context.read<BotBloc>().add(
+            RemoveKnowledgeFromAssistantEvent(
+              assistantId: assistantId,
+              knowledgeId: knowledgeId,
+              xJarvisGuid: '', // Empty GUID is acceptable per the API
+            ),
+          );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Removing knowledge base: ${knowledge.knowledgeName}'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Invalid assistant or knowledge ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -215,6 +273,26 @@ class _BotEditScreenState extends State<BotEditScreen>
 
                 // Refresh the list of knowledge bases after linking
                 _fetchAssistantKnowledges();
+              } else if (state is AssistantRemovingKnowledge) {
+                // Show loading indicator or status if needed
+              } else if (state is AssistantKnowledgeRemoved) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Knowledge base removed successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+
+                // Refresh the list of knowledge bases after removal
+                _fetchAssistantKnowledges();
+              } else if (state is AssistantKnowledgeRemoveFailed) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Failed to remove knowledge base: ${state.message}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               } else if (state is AssistantKnowledgeLinkFailed) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -521,7 +599,22 @@ class _BotEditScreenState extends State<BotEditScreen>
                             knowledge.description!.isNotEmpty
                         ? Text(knowledge.description!)
                         : null,
-                    trailing: const Icon(Icons.info_outline),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.info_outline),
+                          onPressed: () {
+                            // Show knowledge details if needed
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
+                          onPressed: () => _confirmRemoveKnowledge(knowledge),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),

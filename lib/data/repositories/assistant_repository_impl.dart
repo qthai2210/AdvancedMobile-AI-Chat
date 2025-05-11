@@ -150,4 +150,27 @@ class AssistantRepositoryImpl implements AssistantRepository {
       throw ServerFailure(e.toString());
     }
   }
+
+  @override
+  Future<bool> removeKnowledgeFromAssistant({
+    required String assistantId,
+    required String knowledgeId,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      return await assistantApiService.removeKnowledgeFromAssistant(
+        assistantId: assistantId,
+        knowledgeId: knowledgeId,
+        accessToken: accessToken,
+        xJarvisGuid: xJarvisGuid,
+      );
+    } on DioException catch (e) {
+      throw ServerFailure(
+        e.response?.statusMessage ?? 'Server error: ${e.response?.statusCode}',
+      );
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
 }
