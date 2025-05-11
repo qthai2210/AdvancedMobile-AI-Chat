@@ -10,11 +10,13 @@ import 'package:aichatbot/core/di/injection_container.dart';
 class KnowledgeBaseSelectorDialog extends StatefulWidget {
   final Function(String knowledgeId, String knowledgeName) onKnowledgeSelected;
   final String? assistantId;
+  final List<String>? excludeKnowledgeIds;
 
   const KnowledgeBaseSelectorDialog({
     Key? key,
     required this.onKnowledgeSelected,
     this.assistantId,
+    this.excludeKnowledgeIds,
   }) : super(key: key);
 
   @override
@@ -106,11 +108,36 @@ class _KnowledgeBaseSelectorDialogState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Select Knowledge Base',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.assistantId != null
+                                ? 'Linked Knowledge Bases'
+                                : widget.excludeKnowledgeIds != null &&
+                                        widget.excludeKnowledgeIds!.isNotEmpty
+                                    ? 'Available Knowledge Bases'
+                                    : 'All Knowledge Bases',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.assistantId != null
+                                ? 'Currently linked to this assistant'
+                                : widget.excludeKnowledgeIds != null &&
+                                        widget.excludeKnowledgeIds!.isNotEmpty
+                                    ? 'Select a knowledge base to link'
+                                    : 'All available knowledge bases',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -178,9 +205,17 @@ class _KnowledgeBaseSelectorDialogState
                         ),
                       );
                     }
-
                     if (state is KnowledgeLoaded) {
-                      if (state.knowledges.isEmpty) {
+                      // Filter out knowledge bases that are in the exclude list
+                      final knowledges = widget.excludeKnowledgeIds != null
+                          ? state.knowledges
+                              .where((k) =>
+                                  k.id != null &&
+                                  !widget.excludeKnowledgeIds!.contains(k.id))
+                              .toList()
+                          : state.knowledges;
+
+                      if (knowledges.isEmpty) {
                         return const Center(
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
@@ -194,9 +229,9 @@ class _KnowledgeBaseSelectorDialogState
 
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        itemCount: state.knowledges.length,
+                        itemCount: knowledges.length,
                         itemBuilder: (context, index) {
-                          final knowledge = state.knowledges[index];
+                          final knowledge = knowledges[index];
                           return InkWell(
                             onTap: () {
                               if (knowledge.id != null) {

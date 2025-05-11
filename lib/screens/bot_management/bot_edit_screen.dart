@@ -129,13 +129,25 @@ class _BotEditScreenState extends State<BotEditScreen>
   }
 
   void _linkKnowledgeToAssistant() {
-    // Show dialog with list of knowledge bases
+    final state = context.read<KnowledgeBloc>().state;
+
+    // Get the IDs of knowledge bases already linked to this assistant
+    List<String> linkedKnowledgeIds = [];
+    if (state is KnowledgeLoaded) {
+      linkedKnowledgeIds = state.knowledges
+          .where((knowledge) => knowledge.id != null)
+          .map((knowledge) => knowledge.id!)
+          .toList();
+    }
+
+    // Show dialog with list of all available knowledge bases
     showDialog(
       context: context,
       builder: (context) {
         return KnowledgeBaseSelectorDialog(
-          assistantId: widget.assistantModel
-              .id, // Pass the assistant ID to fetch its knowledge bases
+          // Don't pass assistantId to show all available knowledge bases
+          // Pass the list of already linked knowledge base IDs to exclude them
+          excludeKnowledgeIds: linkedKnowledgeIds,
           onKnowledgeSelected: (String knowledgeId, String knowledgeName) {
             // Dispatch the LinkKnowledgeToAssistantEvent
             context.read<BotBloc>().add(
@@ -199,8 +211,10 @@ class _BotEditScreenState extends State<BotEditScreen>
   void _removeKnowledgeFromAssistant(KnowledgeModel knowledge) {
     // Get assistant ID and knowledge ID
     final assistantId = widget.assistantModel.id;
-    final knowledgeId = knowledge.id; // Both IDs should be non-empty
-    if (assistantId != null && knowledgeId != null && assistantId.isNotEmpty) {
+    final knowledgeId = knowledge.id;
+
+    // Check if both IDs are available (and not empty)
+    if (assistantId.isNotEmpty && knowledgeId != null) {
       context.read<BotBloc>().add(
             RemoveKnowledgeFromAssistantEvent(
               assistantId: assistantId,
