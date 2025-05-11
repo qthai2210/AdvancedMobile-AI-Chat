@@ -13,12 +13,12 @@ class AssistantModel extends Assistant {
     super.createdBy,
     super.updatedBy,
   });
-
   factory AssistantModel.fromJson(Map<String, dynamic> json) {
     return AssistantModel(
       id: json['id'] as String,
       assistantName: json['assistantName'] as String,
-      openAiAssistantId: json['openAiAssistantId'] as String,
+      openAiAssistantId: json['openAiAssistantId'] as String? ??
+          '', // Make it nullable with default empty string
       instructions: json['instructions'] as String?,
       description: json['description'] as String?,
       openAiThreadIdPlay: json['openAiThreadIdPlay'] as String?,

@@ -1,7 +1,8 @@
 class Assistant {
   final String id;
   final String assistantName;
-  final String openAiAssistantId;
+  final String
+      openAiAssistantId; // We'll keep this required but provide a default value in the model
   final String? instructions;
   final String? description;
   final String? openAiThreadIdPlay;
