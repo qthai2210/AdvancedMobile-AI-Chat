@@ -85,6 +85,10 @@ class _AddSourceScreenState extends State<AddSourceScreen>
   @override
   void initState() {
     super.initState();
+    // initialize GoogleSignIn with Drive scope
+    _googleSignIn = GoogleSignIn(
+      scopes: <String>[drive.DriveApi.driveFileScope],
+    );
     _fileUploadBloc = di.sl<FileUploadBloc>();
     _tabController = TabController(
       length: 5,
@@ -254,9 +258,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           throw Exception('Authentication required');
         }
 
-        AppLogger.d("_uploadLocalFile: Dispatching UploadLocalFileEvent");
+        AppLogger.d("_uploadLocalFile: Dispatching UploadRawFileEvent");
         _fileUploadBloc.add(
-          UploadLocalFileEvent(
+          UploadRawFileEvent(
             knowledgeId: widget.knowledgeBase.id,
             file: _selectedFile!,
             accessToken: accessToken,
@@ -617,8 +621,9 @@ class _AddSourceScreenState extends State<AddSourceScreen>
       }
       _fileUploadBloc.add(
         UploadRawFileEvent(
-          file,
-          token,
+          knowledgeId: widget.knowledgeBase.id,
+          file: file,
+          accessToken: token,
         ),
       );
     } catch (e) {
@@ -820,7 +825,7 @@ class _AddSourceScreenState extends State<AddSourceScreen>
               ],
             ),
           ),
-          _buildSaveButton(),
+          //  _buildSaveButton(),
         ],
       ),
     );
@@ -1033,53 +1038,53 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     );
   }
 
-  Widget _buildSaveButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: (_uploadedFiles.isEmpty || _isLoading)
-            ? null
-            : _importMultipleToKnowledge,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: _isLoading
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(_isEditing ? 'Updating...' : 'Adding...'),
-                ],
-              )
-            : Text(_isEditing ? 'Update Source' : 'Add Data Source'),
-      ),
-    );
-  }
+  // Widget _buildSaveButton() {
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withOpacity(0.1),
+  //           blurRadius: 8,
+  //           offset: const Offset(0, -4),
+  //         ),
+  //       ],
+  //     ),
+  //     // child: ElevatedButton(
+  //     //   onPressed: (_uploadedFiles.isEmpty || _isLoading)
+  //     //       ? null
+  //     //       : _importMultipleToKnowledge,
+  //     //   style: ElevatedButton.styleFrom(
+  //     //     padding: const EdgeInsets.symmetric(vertical: 16),
+  //     //     backgroundColor: Theme.of(context).primaryColor,
+  //     //     foregroundColor: Colors.white,
+  //     //     shape: RoundedRectangleBorder(
+  //     //       borderRadius: BorderRadius.circular(12),
+  //     //     ),
+  //     //     elevation: 0,
+  //     //   ),
+  //     //   child: _isLoading
+  //     //       ? Row(
+  //     //           mainAxisAlignment: MainAxisAlignment.center,
+  //     //           children: [
+  //     //             const SizedBox(
+  //     //               width: 20,
+  //     //               height: 20,
+  //     //               child: CircularProgressIndicator(
+  //     //                 color: Colors.white,
+  //     //                 strokeWidth: 2,
+  //     //               ),
+  //     //             ),
+  //     //             const SizedBox(width: 12),
+  //     //             Text(_isEditing ? 'Updating...' : 'Adding...'),
+  //     //           ],
+  //     //         )
+  //     //       : Text(_isEditing ? 'Update Source' : 'Add Data Source'),
+  //     // ),
+  //   );
+  // }
 
   KnowledgeSource _createSourceFromUpload(FileUploadResponse response) {
     final now = DateTime.now();

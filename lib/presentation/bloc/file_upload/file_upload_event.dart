@@ -1,32 +1,45 @@
 import 'dart:io';
-import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
-import 'package:aichatbot/presentation/bloc/knowledge_unit/knowledge_unit_event.dart';
+
 import 'package:equatable/equatable.dart';
+import 'package:aichatbot/data/models/knowledge/uploaded_file_model.dart';
 
 abstract class FileUploadEvent extends Equatable {
+  const FileUploadEvent();
   @override
   List<Object?> get props => [];
 }
 
-/// Upload a local file
-class UploadLocalFileEvent extends FileUploadEvent {
+/// 1) Upload raw local file
+class UploadRawFileEvent extends FileUploadEvent {
   final String knowledgeId;
   final File file;
   final String accessToken;
-  final String? guid;
-
-  UploadLocalFileEvent({
+  const UploadRawFileEvent({
     required this.knowledgeId,
     required this.file,
     required this.accessToken,
-    this.guid,
   });
-
   @override
-  List<Object?> get props => [knowledgeId, file.path, accessToken, guid];
+  List<Object?> get props => [knowledgeId, file, accessToken];
 }
 
-/// Upload a Google Drive "file" (metadata only)
+/// 2) Upload website source
+class UploadWebEvent extends FileUploadEvent {
+  final String knowledgeId;
+  final String unitName;
+  final String webUrl;
+  final String accessToken;
+  const UploadWebEvent({
+    required this.knowledgeId,
+    required this.unitName,
+    required this.webUrl,
+    required this.accessToken,
+  });
+  @override
+  List<Object?> get props => [knowledgeId, unitName, webUrl, accessToken];
+}
+
+/// 3) Upload Google Drive file
 class UploadGoogleDriveEvent extends FileUploadEvent {
   final String knowledgeId;
   final String id;
@@ -34,112 +47,28 @@ class UploadGoogleDriveEvent extends FileUploadEvent {
   final bool status;
   final String userId;
   final String createdAt;
-  final String? updatedAt;
-  final String? createdBy;
-  final String? updatedBy;
-  final String? accessToken;
-
-  UploadGoogleDriveEvent({
+  final String accessToken;
+  const UploadGoogleDriveEvent({
     required this.knowledgeId,
     required this.id,
     required this.name,
     required this.status,
     required this.userId,
     required this.createdAt,
-    this.updatedAt,
-    this.createdBy,
-    this.updatedBy,
-    this.accessToken,
-  });
-
-  @override
-  List<Object?> get props => [
-        knowledgeId,
-        id,
-        name,
-        status,
-        userId,
-        createdAt,
-        updatedAt,
-        createdBy,
-        updatedBy,
-        accessToken,
-      ];
-}
-
-/// Upload a Confluence source
-class UploadConfluenceEvent extends FileUploadEvent {
-  final String knowledgeId;
-  final String unitName;
-  final String wikiPageUrl;
-  final String confluenceUsername;
-  final String confluenceAccessToken;
-  final String? accessToken;
-
-  UploadConfluenceEvent({
-    required this.knowledgeId,
-    required this.unitName,
-    required this.wikiPageUrl,
-    required this.confluenceUsername,
-    required this.confluenceAccessToken,
-    this.accessToken,
-  });
-
-  @override
-  List<Object?> get props => [
-        knowledgeId,
-        unitName,
-        wikiPageUrl,
-        confluenceUsername,
-        confluenceAccessToken,
-        accessToken,
-      ];
-}
-
-/// Event đẩy lên khi upload từ Web URL
-class UploadWebEvent extends FileUploadEvent {
-  final String knowledgeId;
-  final String unitName;
-  final String webUrl;
-  final String accessToken;
-
-  UploadWebEvent({
-    required this.knowledgeId,
-    required this.unitName,
-    required this.webUrl,
     required this.accessToken,
   });
-
   @override
-  List<Object?> get props => [knowledgeId, unitName, webUrl, accessToken];
+  List<Object?> get props =>
+      [knowledgeId, id, name, status, userId, createdAt, accessToken];
 }
 
-class UploadRawFileEvent extends FileUploadEvent {
-  final File file;
-  final String accessToken;
-  UploadRawFileEvent(this.file, this.accessToken);
-  @override
-  List<Object?> get props => [file, accessToken];
-}
-
-class AttachFileToKBEvent extends FileUploadEvent {
-  final String knowledgeId;
-  final String fileId;
-  final String accessToken;
-  AttachFileToKBEvent(
-      {required this.knowledgeId,
-      required this.fileId,
-      required this.accessToken});
-  @override
-  List<Object?> get props => [knowledgeId, fileId, accessToken];
-}
-
+/// 4) Upload Slack source
 class UploadSlackEvent extends FileUploadEvent {
   final String knowledgeId;
   final String name;
   final String slackBotToken;
   final String accessToken;
-  UploadSlackEvent({
+  const UploadSlackEvent({
     required this.knowledgeId,
     required this.name,
     required this.slackBotToken,
@@ -149,12 +78,12 @@ class UploadSlackEvent extends FileUploadEvent {
   List<Object?> get props => [knowledgeId, name, slackBotToken, accessToken];
 }
 
-/// Sau khi ready tất cả UploadedFile, dispatch event này
+/// 5) Attach multiple local files as data source
 class AttachMultipleLocalFilesEvent extends FileUploadEvent {
   final String knowledgeId;
   final List<UploadedFile> files;
   final String accessToken;
-  AttachMultipleLocalFilesEvent({
+  const AttachMultipleLocalFilesEvent({
     required this.knowledgeId,
     required this.files,
     required this.accessToken,
@@ -162,6 +91,3 @@ class AttachMultipleLocalFilesEvent extends FileUploadEvent {
   @override
   List<Object?> get props => [knowledgeId, files, accessToken];
 }
-
-/// Reset to initial state
-class ResetUploadEvent extends FileUploadEvent {}
