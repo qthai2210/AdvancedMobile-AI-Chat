@@ -149,6 +149,22 @@ class RemoveKnowledgeFromAssistantEvent extends BotEvent {
       [assistantId, knowledgeId, accessToken, xJarvisGuid];
 }
 
+/// Event to validate a Telegram bot token
+class ValidateTelegramBotEvent extends BotEvent {
+  final String botToken;
+  final String? accessToken;
+  final String? xJarvisGuid;
+
+  const ValidateTelegramBotEvent({
+    required this.botToken,
+    this.accessToken,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [botToken, accessToken, xJarvisGuid];
+}
+
 /// Event to publish an assistant as a Telegram bot
 class PublishTelegramBotEvent extends BotEvent {
   final String assistantId;

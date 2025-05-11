@@ -206,3 +206,28 @@ class TelegramBotPublishFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when a Telegram bot token is being validated
+class ValidatingTelegramBot extends BotState {}
+
+/// State when a Telegram bot token has been successfully validated
+class TelegramBotValidated extends BotState {
+  final Map<String, dynamic> botInfo;
+
+  const TelegramBotValidated({
+    required this.botInfo,
+  });
+
+  @override
+  List<Object?> get props => [botInfo];
+}
+
+/// State when there was an error validating a Telegram bot token
+class TelegramBotValidationFailed extends BotState {
+  final String message;
+
+  const TelegramBotValidationFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

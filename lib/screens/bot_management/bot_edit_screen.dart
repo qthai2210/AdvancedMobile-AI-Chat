@@ -52,15 +52,16 @@ class _BotEditScreenState extends State<BotEditScreen>
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _isPublishingToTelegram = false;
+  bool _isValidatingTelegramBot = false;
   String? _telegramBotUrl;
+  Map<String, dynamic>? _validatedBotInfo;
   @override
   void initState() {
     super.initState();
 
     // Initialize tab controller
-    _tabController = TabController(length: 3, vsync: this);
-
-    // Initialize text controllers with bot data
+    _tabController = TabController(
+        length: 3, vsync: this); // Initialize text controllers with bot data
     _nameController =
         TextEditingController(text: widget.assistantModel.assistantName);
     _descriptionController =
@@ -73,6 +74,15 @@ class _BotEditScreenState extends State<BotEditScreen>
     _nameController.addListener(_onFieldChanged);
     _descriptionController.addListener(_onFieldChanged);
     _instructionsController.addListener(_onFieldChanged);
+
+    // Reset validation state when token changes
+    _telegramBotTokenController.addListener(() {
+      if (_validatedBotInfo != null) {
+        setState(() {
+          _validatedBotInfo = null;
+        });
+      }
+    });
 
     // Fetch the assistant's knowledge bases when the screen loads
     _fetchAssistantKnowledges();
@@ -244,9 +254,8 @@ class _BotEditScreenState extends State<BotEditScreen>
     }
   }
 
-  // Method to handle Telegram bot publishing
-  void _publishTelegramBot() {
-    // Validate the bot token
+  // Method to validate Telegram bot token
+  void _validateTelegramBot() {
     final botToken = _telegramBotTokenController.text.trim();
     if (botToken.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -257,6 +266,29 @@ class _BotEditScreenState extends State<BotEditScreen>
       );
       return;
     }
+
+    setState(() {
+      _isValidatingTelegramBot = true;
+    });
+
+    // Dispatch the validation event to the BotBloc
+    context.read<BotBloc>().add(
+          ValidateTelegramBotEvent(
+            botToken: botToken,
+          ),
+        );
+  }
+
+  // Method to handle Telegram bot publishing
+  void _publishTelegramBot() {
+    // Check if we've already validated the bot token
+    if (_validatedBotInfo == null) {
+      // If not validated yet, run validation first
+      _validateTelegramBot();
+      return;
+    }
+
+    final botToken = _telegramBotTokenController.text.trim();
 
     setState(() {
       _isPublishingToTelegram = true;
@@ -307,6 +339,36 @@ class _BotEditScreenState extends State<BotEditScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Update failed: ${state.message}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is ValidatingTelegramBot) {
+                // Keep validating indicator
+              } else if (state is TelegramBotValidated) {
+                setState(() {
+                  _isValidatingTelegramBot = false;
+                  _validatedBotInfo = state.botInfo;
+                }); // Show validation success message with bot info
+                final botUsername = state.botInfo['username'] as String? ?? '';
+                final botId = state.botInfo['id'].toString();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Telegram bot validated successfully: @$botUsername (ID: $botId)'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+
+                // Automatically publish the bot after successful validation
+                _publishTelegramBot();
+              } else if (state is TelegramBotValidationFailed) {
+                setState(() => _isValidatingTelegramBot = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Bot validation failed: ${state.message}'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -556,15 +618,70 @@ class _BotEditScreenState extends State<BotEditScreen>
               fillColor: Colors.grey[50],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 16), // Show validation status if available
+          if (_validatedBotInfo != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Bot Successfully Validated',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // const Divider(height: 16),
+                  // _buildBotInfoRow(
+                  //     'Bot ID:', '${_validatedBotInfo!['id'] ?? 'Unknown'}'),
+                  // _buildBotInfoRow('Username:',
+                  //     '@${_validatedBotInfo!['username'] ?? 'Unknown'}'),
+                  // _buildBotInfoRow('Display Name:',
+                  //     '${_validatedBotInfo!['first_name'] ?? 'Unknown'}'),
+                  // _buildBotInfoRow('Is Bot:',
+                  //     _formatBoolValue(_validatedBotInfo!['is_bot'] as bool?)),
+                  // _buildBotInfoRow(
+                  //     'Can Join Groups:',
+                  //     _formatBoolValue(
+                  //         _validatedBotInfo!['can_join_groups'] as bool?)),
+                  // _buildBotInfoRow(
+                  //     'Read Group Messages:',
+                  //     _formatBoolValue(
+                  //         _validatedBotInfo!['can_read_all_group_messages']
+                  //             as bool?)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
-          // Publish to Telegram button
+          // Validate and Publish to Telegram button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isPublishingToTelegram ? null : _publishTelegramBot,
+              onPressed: (_isValidatingTelegramBot || _isPublishingToTelegram)
+                  ? null
+                  : (_validatedBotInfo != null
+                      ? _publishTelegramBot
+                      : _validateTelegramBot),
               icon: const Icon(Icons.send),
-              label: _isPublishingToTelegram
+              label: _isValidatingTelegramBot
                   ? const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -574,14 +691,31 @@ class _BotEditScreenState extends State<BotEditScreen>
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                         SizedBox(width: 8),
-                        Text('Publishing...'),
+                        Text('Validating...'),
                       ],
                     )
-                  : const Text('Publish to Telegram'),
+                  : _isPublishingToTelegram
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 8),
+                            Text('Publishing...'),
+                          ],
+                        )
+                      : _validatedBotInfo != null
+                          ? const Text('Publish to Telegram')
+                          : const Text('Validate & Publish'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor:
+                    _validatedBotInfo != null ? Colors.green : Colors.blue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: _validatedBotInfo != null ? 3 : 2,
               ),
             ),
           ), // Display Telegram bot URL if available
@@ -956,6 +1090,43 @@ class _BotEditScreenState extends State<BotEditScreen>
         ],
       ),
     );
+  }
+
+  /// Helper method to build a row for displaying bot information
+  Widget _buildBotInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Helper method to format boolean values for display
+  String _formatBoolValue(bool? value) {
+    if (value == null) return 'N/A';
+    return value ? 'Yes' : 'No';
   }
 
   String _formatDate(DateTime date) {

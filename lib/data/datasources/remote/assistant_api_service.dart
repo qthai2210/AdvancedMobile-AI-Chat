@@ -456,4 +456,70 @@ class AssistantApiService {
       rethrow;
     }
   }
+
+  /// Validates a Telegram bot token before publishing
+  ///
+  /// Makes a POST request to the Telegram bot validation endpoint
+  ///
+  /// [botToken] is required Telegram bot token from BotFather
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns a map with bot information on successful validation
+  Future<Map<String, dynamic>> validateTelegramBot({
+    required String botToken,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional values
+      final headers = <String, dynamic>{};
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Prepare request body with the bot token
+      final body = {
+        'botToken': botToken,
+      };
+
+      AppLogger.i('Validating Telegram bot token');
+
+      // Make the API call
+      final response = await _dio.post(
+        '/kb-core/v1/bot-integration/telegram/validation',
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      // Log the response for debugging
+      AppLogger.i('Validation response received: ${response.data}');
+
+      // Extract and return the result from the response
+      if (response.data is Map &&
+          response.data.containsKey('ok') &&
+          response.data['ok']) {
+        return {
+          'isValid': true,
+          'botInfo': response.data['result'],
+        };
+      } else {
+        return {
+          'isValid': false,
+          'error': 'Invalid token or API response',
+        };
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error validating Telegram bot token: $e');
+      throw Exception('Failed to validate Telegram bot token: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error validating Telegram bot token: $e');
+      throw Exception('Unexpected error validating Telegram bot token: $e');
+    }
+  }
 }

@@ -109,4 +109,17 @@ abstract class AssistantRepository {
     String? accessToken,
     String? xJarvisGuid,
   });
+
+  /// Validates a Telegram bot token before publishing
+  ///
+  /// [botToken] is required Telegram bot token from BotFather
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns a map with bot information on successful validation
+  Future<Map<String, dynamic>> validateTelegramBot({
+    required String botToken,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
 }

@@ -7,6 +7,7 @@ import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dar
 import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/publish_telegram_bot_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/validate_telegram_bot_usecase.dart';
 import 'package:aichatbot/data/models/assistant/get_assistants_params.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
@@ -21,6 +22,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
   final RemoveKnowledgeFromAssistantUseCase
       _removeKnowledgeFromAssistantUseCase;
   final PublishTelegramBotUseCase _publishTelegramBotUseCase;
+  final ValidateTelegramBotUseCase _validateTelegramBotUseCase;
 
   BotBloc({
     required GetAssistantsUseCase getAssistantsUseCase,
@@ -31,6 +33,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     required RemoveKnowledgeFromAssistantUseCase
         removeKnowledgeFromAssistantUseCase,
     required PublishTelegramBotUseCase publishTelegramBotUseCase,
+    required ValidateTelegramBotUseCase validateTelegramBotUseCase,
   })  : _getAssistantsUseCase = getAssistantsUseCase,
         _createAssistantUseCase = createAssistantUseCase,
         _updateAssistantUseCase = updateAssistantUseCase,
@@ -39,6 +42,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
         _removeKnowledgeFromAssistantUseCase =
             removeKnowledgeFromAssistantUseCase,
         _publishTelegramBotUseCase = publishTelegramBotUseCase,
+        _validateTelegramBotUseCase = validateTelegramBotUseCase,
         super(BotInitial()) {
     on<FetchBotsEvent>(_onFetchBots);
     on<FetchMoreBotsEvent>(_onFetchMoreBots);
@@ -48,6 +52,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     on<DeleteAssistantEvent>(_onDeleteAssistant);
     on<LinkKnowledgeToAssistantEvent>(_onLinkKnowledgeToAssistant);
     on<RemoveKnowledgeFromAssistantEvent>(_onRemoveKnowledgeFromAssistant);
+    on<ValidateTelegramBotEvent>(_onValidateTelegramBot);
     on<PublishTelegramBotEvent>(_onPublishTelegramBot);
   }
 
@@ -283,6 +288,26 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       }
     } catch (e) {
       emit(AssistantKnowledgeRemoveFailed(message: e.toString()));
+    }
+  }
+
+  /// Handler for ValidateTelegramBotEvent
+  Future<void> _onValidateTelegramBot(
+    ValidateTelegramBotEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(ValidatingTelegramBot());
+
+    try {
+      final botInfo = await _validateTelegramBotUseCase.call(
+        botToken: event.botToken,
+        accessToken: event.accessToken,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      emit(TelegramBotValidated(botInfo: botInfo));
+    } catch (e) {
+      emit(TelegramBotValidationFailed(message: e.toString()));
     }
   }
 
