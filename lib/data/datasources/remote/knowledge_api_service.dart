@@ -161,6 +161,80 @@ class KnowledgeApiService {
     }
   }
 
+  /// Fetches knowledge bases attached to a specific assistant
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [params] contains optional query parameters for filtering and pagination
+  /// Returns a [KnowledgeListResponse] containing the list of knowledge bases and metadata
+  Future<KnowledgeListResponse> getAssistantKnowledges({
+    required String assistantId,
+    String? q,
+    String? order = "DESC",
+    String? orderField = "createdAt",
+    int offset = 0,
+    int limit = 10,
+    String? xJarvisGuid,
+    String? accessToken,
+  }) async {
+    try {
+      // Prepare headers for authorization and x-jarvis-guid if provided
+      final headers = <String, dynamic>{};
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      // Prepare query parameters
+      final queryParams = <String, dynamic>{};
+      if (q != null && q.isNotEmpty) queryParams['q'] = q;
+      if (order != null) queryParams['order'] = order;
+      if (orderField != null) queryParams['order_field'] = orderField;
+      queryParams['offset'] = offset.toString();
+      queryParams['limit'] = limit.toString();
+
+      // Log the request with detailed information
+      final endpoint = '/kb-core/v1/ai-assistant/$assistantId/knowledges';
+      final url = '${_dio.options.baseUrl}$endpoint';
+
+      AppLogger.d(
+          '┌── KNOWLEDGE API REQUEST ──────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Assistant Knowledge Bases');
+      AppLogger.d('│ URL: $url');
+      AppLogger.d('│ Assistant ID: $assistantId');
+      AppLogger.d('│ Parameters: $queryParams');
+      AppLogger.d(
+          '│ Headers: ${headers.isNotEmpty ? headers : "Default headers"}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
+
+      // Make the API call
+      final response = await _dio.get(
+        endpoint,
+        queryParameters: queryParams,
+        options: Options(headers: headers.isNotEmpty ? headers : null),
+      );
+
+      // Log the response with detailed information
+      AppLogger.d(
+          '┌── KNOWLEDGE API RESPONSE ─────────────────────────────────');
+      AppLogger.d('│ 🔍 [GET] Assistant Knowledge Bases');
+      AppLogger.d('│ Status: ${response.statusCode}');
+      AppLogger.d(
+          '│ Data: Knowledge items count: ${response.data['data']?.length ?? 0}');
+      AppLogger.d(
+          '└────────────────────────────────────────────────────────────');
+
+      // Parse and return the response
+      return KnowledgeListResponse.fromJson(response.data);
+    } catch (e) {
+      AppLogger.e('Error fetching assistant knowledges: $e');
+      rethrow;
+    }
+  }
+
   /// Deletes a knowledge base with the provided ID
   ///
   /// [id] - The ID of the knowledge base to delete

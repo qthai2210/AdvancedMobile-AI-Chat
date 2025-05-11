@@ -21,12 +21,15 @@ import 'package:aichatbot/domain/usecases/assistant/create_assistant_usecase.dar
 import 'package:aichatbot/domain/usecases/assistant/delete_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/get_assistants_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/update_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_message_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/create_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/delete_knowledge_usecase.dart';
+import 'package:aichatbot/domain/usecases/knowledge/get_assistant_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/get_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge_unit/attach_file_use_case.dart';
@@ -168,13 +171,19 @@ Future<void> initPostLoginServices() async {
 
   if (!sl.isRegistered<UpdateAssistantUseCase>())
     sl.registerLazySingleton(() => UpdateAssistantUseCase(sl()));
-
   if (!sl.isRegistered<DeleteAssistantUseCase>())
     sl.registerLazySingleton(() => DeleteAssistantUseCase(sl()));
+  if (!sl.isRegistered<LinkKnowledgeToAssistantUseCase>())
+    sl.registerLazySingleton(() => LinkKnowledgeToAssistantUseCase(sl()));
 
+  if (!sl.isRegistered<RemoveKnowledgeFromAssistantUseCase>())
+    sl.registerLazySingleton(() => RemoveKnowledgeFromAssistantUseCase(sl()));
   // Knowledge use cases
   if (!sl.isRegistered<GetKnowledgesUseCase>())
     sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
+
+  if (!sl.isRegistered<GetAssistantKnowledgesUseCase>())
+    sl.registerLazySingleton(() => GetAssistantKnowledgesUseCase(sl()));
 
   if (!sl.isRegistered<CreateKnowledgeUseCase>())
     sl.registerLazySingleton(() => CreateKnowledgeUseCase(sl()));
@@ -283,22 +292,23 @@ Future<void> initPostLoginServices() async {
           sendCustomBotMessageUseCase: sl(),
         ));
   }
-
   if (!sl.isRegistered<BotBloc>()) {
     sl.registerLazySingleton(() => BotBloc(
+          linkKnowledgeToAssistantUseCase: sl(),
           getAssistantsUseCase: sl(),
           createAssistantUseCase: sl(),
           updateAssistantUseCase: sl(),
           deleteAssistantUseCase: sl(),
+          removeKnowledgeFromAssistantUseCase: sl(),
         ));
   }
-
   if (!sl.isRegistered<KnowledgeBloc>()) {
     sl.registerLazySingleton(() => KnowledgeBloc(
           getKnowledgesUseCase: sl(),
           createKnowledgeUseCase: sl(),
           deleteKnowledgeUseCase: sl(),
           updateKnowledgeUseCase: sl(),
+          getAssistantKnowledgesUseCase: sl(),
         ));
   }
 
@@ -361,8 +371,14 @@ Future<void> resetPostLoginServices() async {
       sl.resetLazySingleton<UpdateAssistantUseCase>();
     if (sl.isRegistered<DeleteAssistantUseCase>())
       sl.resetLazySingleton<DeleteAssistantUseCase>();
+    if (sl.isRegistered<LinkKnowledgeToAssistantUseCase>())
+      sl.resetLazySingleton<LinkKnowledgeToAssistantUseCase>();
+    if (sl.isRegistered<RemoveKnowledgeFromAssistantUseCase>())
+      sl.resetLazySingleton<RemoveKnowledgeFromAssistantUseCase>();
     if (sl.isRegistered<GetKnowledgesUseCase>())
       sl.resetLazySingleton<GetKnowledgesUseCase>();
+    if (sl.isRegistered<GetAssistantKnowledgesUseCase>())
+      sl.resetLazySingleton<GetAssistantKnowledgesUseCase>();
     if (sl.isRegistered<CreateKnowledgeUseCase>())
       sl.resetLazySingleton<CreateKnowledgeUseCase>();
     if (sl.isRegistered<DeleteKnowledgeUseCase>())

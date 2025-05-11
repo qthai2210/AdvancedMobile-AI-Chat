@@ -1,4 +1,5 @@
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
+import 'package:aichatbot/domain/usecases/knowledge/get_assistant_knowledges_usecase.dart';
 import 'package:aichatbot/domain/usecases/knowledge/update_knowledge_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/data/models/knowledge/create_knowledge_params.dart';
@@ -15,16 +16,19 @@ class KnowledgeBloc extends Bloc<KnowledgeEvent, KnowledgeState> {
   final CreateKnowledgeUseCase _createKnowledgeUseCase;
   final DeleteKnowledgeUseCase _deleteKnowledgeUseCase;
   final UpdateKnowledgeUseCase _updateKnowledgeUseCase;
+  final GetAssistantKnowledgesUseCase _getAssistantKnowledgesUseCase;
 
   KnowledgeBloc({
     required GetKnowledgesUseCase getKnowledgesUseCase,
     required CreateKnowledgeUseCase createKnowledgeUseCase,
     required DeleteKnowledgeUseCase deleteKnowledgeUseCase,
     required UpdateKnowledgeUseCase updateKnowledgeUseCase,
+    required GetAssistantKnowledgesUseCase getAssistantKnowledgesUseCase,
   })  : _getKnowledgesUseCase = getKnowledgesUseCase,
         _createKnowledgeUseCase = createKnowledgeUseCase,
         _deleteKnowledgeUseCase = deleteKnowledgeUseCase,
         _updateKnowledgeUseCase = updateKnowledgeUseCase,
+        _getAssistantKnowledgesUseCase = getAssistantKnowledgesUseCase,
         super(KnowledgeInitial()) {
     on<FetchKnowledgesEvent>(_onFetchKnowledges);
     on<FetchMoreKnowledgesEvent>(_onFetchMoreKnowledges);
@@ -32,6 +36,7 @@ class KnowledgeBloc extends Bloc<KnowledgeEvent, KnowledgeState> {
     on<CreateKnowledgeEvent>(_onCreateKnowledge);
     on<DeleteKnowledgeEvent>(_onDeleteKnowledge);
     on<UpdateKnowledgeEvent>(_onUpdateKnowledge);
+    on<FetchAssistantKnowledgesEvent>(_onFetchAssistantKnowledges);
   }
 
   /// Handles the [FetchKnowledgesEvent] to load initial knowledges
@@ -269,6 +274,40 @@ class KnowledgeBloc extends Bloc<KnowledgeEvent, KnowledgeState> {
     } catch (e) {
       AppLogger.e('Error deleting knowledge base: $e');
       emit(KnowledgeError('Failed to delete knowledge base: ${e.toString()}'));
+    }
+  }
+
+  /// Handles the [FetchAssistantKnowledgesEvent] to load knowledge bases attached to an assistant
+  Future<void> _onFetchAssistantKnowledges(
+    FetchAssistantKnowledgesEvent event,
+    Emitter<KnowledgeState> emit,
+  ) async {
+    emit(KnowledgeLoading());
+
+    try {
+      final response = await _getAssistantKnowledgesUseCase.execute(
+        assistantId: event.assistantId,
+        q: event.searchQuery,
+        order: event.order,
+        orderField: event.orderField,
+        offset: event.offset,
+        limit: event.limit,
+        xJarvisGuid: event.xJarvisGuid,
+        accessToken: event.accessToken,
+      );
+
+      emit(KnowledgeLoaded(
+        knowledges: response.data,
+        hasReachedMax: !response.meta.hasNext,
+        currentOffset: event.offset + response.data.length,
+        total: response.meta.total,
+      ));
+
+      AppLogger.i('Loaded ${response.data.length} assistant knowledge bases');
+    } catch (e) {
+      AppLogger.e('Error fetching assistant knowledges: $e');
+      emit(KnowledgeError(
+          'Failed to load assistant knowledges: ${e.toString()}'));
     }
   }
 }

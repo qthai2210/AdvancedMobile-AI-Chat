@@ -64,4 +64,34 @@ abstract class AssistantRepository {
     required String assistantId,
     String? xJarvisGuid,
   });
+
+  /// Links a knowledge base to an assistant
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [knowledgeId] is required to identify the knowledge base
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns true on successful linking
+  Future<bool> linkKnowledgeToAssistant({
+    required String assistantId,
+    required String knowledgeId,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
+
+  /// Removes a knowledge base from an assistant
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [knowledgeId] is required to identify the knowledge base to remove
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns true on successful removal
+  Future<bool> removeKnowledgeFromAssistant({
+    required String assistantId,
+    required String knowledgeId,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
 }

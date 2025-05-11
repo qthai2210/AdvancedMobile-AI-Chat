@@ -96,6 +96,41 @@ class DeleteKnowledgeEvent extends KnowledgeEvent {
   List<Object?> get props => [id, xJarvisGuid];
 }
 
+/// Event to fetch knowledge bases attached to a specific assistant
+class FetchAssistantKnowledgesEvent extends KnowledgeEvent {
+  final String assistantId;
+  final String? searchQuery;
+  final String? order;
+  final String? orderField;
+  final int offset;
+  final int limit;
+  final String? xJarvisGuid;
+  final String? accessToken;
+
+  const FetchAssistantKnowledgesEvent({
+    required this.assistantId,
+    this.searchQuery,
+    this.order,
+    this.orderField,
+    this.offset = 0,
+    this.limit = 10,
+    this.xJarvisGuid,
+    this.accessToken,
+  });
+
+  @override
+  List<Object?> get props => [
+        assistantId,
+        searchQuery,
+        order,
+        orderField,
+        offset,
+        limit,
+        xJarvisGuid,
+        accessToken,
+      ];
+}
+
 /// Event khi người dùng cập nhật một knowledge base
 class UpdateKnowledgeEvent extends KnowledgeEvent {
   final String id;
