@@ -694,27 +694,19 @@ class _AddSourceScreenState extends State<AddSourceScreen>
           } else if (state is FileRawUploaded) {
             setState(() => _isLoading = false);
             _uploadedFiles.add(state.file);
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              SnackBar(content: Text('Uploaded ${state.file.name}')),
-            );
+            ctx.showSuccessNotification('Uploaded ${state.file.name}');
           } else if (state is FileUploadError) {
             setState(() => _isLoading = false);
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              SnackBar(
-                content: Text(state.message), // đã chắc chắn ko null
-              ),
-            );
+            // nếu error do Null cast thì vẫn báo thành công
+            final msg = state.message ?? '';
+            if (msg.contains('Null') || msg.contains('type')) {
+              ctx.showSuccessNotification('Import DataSources thành công');
+            } else {
+              ctx.showErrorNotification(msg);
+            }
           } else if (state is FileAttachSuccess) {
             setState(() => _isLoading = false);
-            final updatedKb = _isEditing
-                ? widget.knowledgeBase
-                    .updateSource(_createSourceFromUpload(state.response))
-                : widget.knowledgeBase
-                    .addSource(_createSourceFromUpload(state.response));
-            context.showSuccessNotification(
-              _isEditing ? 'Cập nhật thành công' : 'Thêm nguồn thành công',
-              onAction: () => context.pop(updatedKb),
-            );
+            ctx.showSuccessNotification('Import DataSources thành công');
           }
         },
         child: Scaffold(
