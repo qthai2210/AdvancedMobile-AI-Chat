@@ -338,31 +338,77 @@ class _BotListScreenState extends State<BotListScreen> {
   void _deleteBot(AIBot bot) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Assistant'),
-        content: Text('Are you sure you want to delete "${bot.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('CANCEL'),
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          TextButton(
-            onPressed: () {
-              context.pop();
-              // Set deleting flag to true
-              setState(() {
-                _isDeletingAssistant = true;
-              });
-              // Dispatch the DeleteAssistantEvent to delete the assistant
-              context.read<BotBloc>().add(DeleteAssistantEvent(
-                    assistantId: bot.id,
-                  ));
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('DELETE'),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete_forever,
+                    size: 48, color: Theme.of(context).hintColor),
+                const SizedBox(height: 16),
+                Text(
+                  'Delete Assistant',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to delete "${bot.name}"?',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        child: const Text('CANCEL'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          setState(() => _isDeletingAssistant = true);
+                          context.read<BotBloc>().add(
+                                DeleteAssistantEvent(assistantId: bot.id),
+                              );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).hintColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('DELETE'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

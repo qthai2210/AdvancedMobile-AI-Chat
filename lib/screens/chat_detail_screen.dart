@@ -1087,7 +1087,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           value: di.sl<ChatBloc>(),
         ),
         BlocProvider<BotBloc>.value(
-          value: BlocProvider.of<BotBloc>(context),
+          value: di.sl<BotBloc>(),
         ),
         BlocProvider<SubscriptionBloc>.value(
           value: _subscriptionBloc,

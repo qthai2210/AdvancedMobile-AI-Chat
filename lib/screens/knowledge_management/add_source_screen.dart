@@ -825,48 +825,116 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   Widget _buildFileUploadTab() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SourcePreviewCard(
-            fileName: _selectedFileName,
-            onClear: () {
-              setState(() {
-                _selectedFile = null;
-                _selectedFileName = null;
-                _uploadedFiles.clear();
-              });
-            },
+          // Section header
+          Row(
+            children: [
+              const Icon(Icons.insert_drive_file,
+                  size: 28, color: Colors.blueAccent),
+              const SizedBox(width: 8),
+              Text(
+                'Upload Local File',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          if (_uploadedFiles.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              children: _uploadedFiles
-                  .map((f) => Chip(
-                        label: Text(f.name),
-                        onDeleted: () => setState(() {
-                          _uploadedFiles.remove(f);
-                        }),
-                      ))
-                  .toList(),
+          const SizedBox(height: 12),
+
+          // Card grouping preview + file picker
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          ElevatedButton.icon(
-            onPressed: _pickLocalFile, // ← gọi ngay
-            icon: const Icon(Icons.upload_file),
-            label: Text(
-              _selectedFileName == null ? 'Select File' : 'Change File',
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Nếu đã upload nhiều file thì liệt kê thành hàng
+                  if (_uploadedFiles.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _uploadedFiles.map((file) {
+                        return SourcePreviewCard(
+                          fileName: file.name,
+                          fileIcon: _getFileIcon(file.name),
+                          iconColor: _getFileIconColor(file.name),
+                          onClear: () {
+                            setState(() {
+                              _uploadedFiles.remove(file);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ] else
+                    // Mặc định nếu chưa có file nào thì show placeholder
+                    SourcePreviewCard(
+                      fileName: null,
+                      onClear: () {},
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Select / Change file button
+                  OutlinedButton.icon(
+                    onPressed: _pickLocalFile,
+                    icon: Icon(
+                      _selectedFileName == null
+                          ? Icons.upload_file
+                          : Icons.drive_file_move,
+                    ),
+                    label: Text(
+                      _selectedFileName == null ? 'Select File' : 'Add File',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+
           const Spacer(),
-          // Nút Import giờ chỉ còn 1 bước attach
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_uploadedFiles.isEmpty || _isLoading)
-                  ? null
-                  : _importMultipleToKnowledge,
-              child: Text(_isLoading ? 'Importing…' : 'Import to Knowledge'),
+
+          // Import button
+          ElevatedButton.icon(
+            onPressed: (_uploadedFiles.isEmpty || _isLoading)
+                ? null
+                : _importMultipleToKnowledge,
+            icon: _isLoading
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.cloud_upload),
+            label: Text(
+              _isLoading ? 'Importing…' : 'Import to Knowledge',
+              style: const TextStyle(fontSize: 16),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
             ),
           ),
         ],
@@ -980,29 +1048,75 @@ class _AddSourceScreenState extends State<AddSourceScreen>
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            controller: _slackNameController,
-            decoration: const InputDecoration(
-              labelText: 'Name',
-              border: OutlineInputBorder(),
-            ),
+          Row(
+            children: [
+              const Icon(Icons.forum, size: 28, color: Colors.blueAccent),
+              const SizedBox(width: 8),
+              Text(
+                'Import from Slack',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _slackTokenController,
-            decoration: const InputDecoration(
-              labelText: 'Slack Bot Token',
-              border: OutlineInputBorder(),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            obscureText: true,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _slackNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Display Name',
+                      prefixIcon: const Icon(Icons.person),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _slackTokenController,
+                    decoration: InputDecoration(
+                      labelText: 'Bot OAuth Token',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    obscureText: true,
+                  ),
+                ],
+              ),
+            ),
           ),
           const Spacer(),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: ElevatedButton.icon(
               onPressed: _canImportSlack ? _saveSlackSource : null,
-              child: Text(_isLoading ? 'Importing...' : 'Import to Knowledge'),
+              icon: const Icon(Icons.cloud_upload),
+              label: Text(
+                _isLoading ? 'Importing…' : 'Import to Knowledge',
+                style: const TextStyle(fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                backgroundColor: Theme.of(context).primaryColor,
+              ),
             ),
           ),
         ],
@@ -1099,5 +1213,46 @@ class _AddSourceScreenState extends State<AddSourceScreen>
 
   KnowledgeSourceType _getSourceTypeFromMimetype(String mimetype) {
     return _selectedType;
+  }
+
+  // Helpers to pick icon & color by file extension
+  IconData _getFileIcon(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  Color _getFileIconColor(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return Colors.red;
+      case 'doc':
+      case 'docx':
+        return Colors.blue;
+      case 'xls':
+      case 'xlsx':
+        return Colors.green;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
   }
 }
