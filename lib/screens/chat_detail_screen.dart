@@ -479,15 +479,41 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               role: msg.isUser ? 'user' : 'assistant',
               content: msg.text,
               files: const [],
-              assistant: !msg.isUser
-                  ? msg_model.AssistantModel(
-                      model: "dify",
-                      name: _selectedAgent.name,
-                      id: _selectedAgent.id,
-                    )
-                  : null,
+              assistant: msg_model.AssistantModel(
+                model: "dify",
+                name: _selectedAgent.name,
+                id: _selectedAgent.id,
+              ),
             );
           }).toList();
+          //    messagesToInclude.map((msg) {
+          //   return msg_model.ChatMessage(
+          //     role: msg.isUser ? 'user' : 'assistant',
+          //     content: msg.text,
+          //     files: const [],
+          //     assistant: !msg.isUser
+          //         ? msg_model.AssistantModel(
+          //             model: "dify",
+          //             name: _selectedAgent.name,
+          //             id: _selectedAgent.id,
+          //           )
+          //         : null,
+          //   );
+          // }).toList();
+          //     messagesToInclude.map((msg) {
+          //   return msg_model.ChatMessage(
+          //     role: msg.isUser ? 'user' : 'assistant',
+          //     content: msg.text,
+          //     files: const [],
+          //     assistant: !msg.isUser
+          //         ? msg_model.AssistantModel(
+          //             model: "dify",
+          //             name: _selectedAgent.name,
+          //             id: _selectedAgent.id,
+          //           )
+          //         : null,
+          //   );
+          // }).toList();
 
           AppLogger.e(
               "Message history for API: ${messageHistory.length} messages");
@@ -503,7 +529,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   createdAt: DateTime.now(),
                   messages: [],
                 ),
-                id: conversationId, // Set the ID here too
+                // id: conversationId, // Set the ID here too
               ),
               assistant: msg_model.AssistantModel(
                 model: "dify",
@@ -525,7 +551,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   createdAt: DateTime.now(),
                   messages: messageHistory, // Include the conversation history
                 ),
-                id: conversationId, // Set the ID here too
+                //id: conversationId, // Set the ID here too
               ),
               assistant: msg_model.AssistantModel(
                 model: "dify",
