@@ -74,25 +74,41 @@ class FileUploadResponse {
 }
 
 class FileMetadata {
+  final String fileId;
+  final String fileUrl;
   final String mimetype;
-  final String name;
 
   FileMetadata({
+    required this.fileId,
+    required this.fileUrl,
     required this.mimetype,
-    required this.name,
   });
 
   factory FileMetadata.fromJson(Map<String, dynamic> json) {
+    // với slack: metadata only has datasourceId
+    final fileId = (json['fileId'] as String?)
+          ?? (json['datasourceId'] as String?)
+          ?? '';
+    // nếu có preview URL
+    final fileUrl = json['fileUrl'] as String? ?? '';
+    // có thể dùng cả 2 key mimeType hoặc mimetype
+    final mimetype = (json['mimeType'] as String?)
+          ?? (json['mimetype'] as String?)
+          ?? '';
+
     return FileMetadata(
-      mimetype: json['mimetype'] as String,
-      name: json['name'] as String,
+      fileId: fileId,
+      fileUrl: fileUrl,
+      mimetype: mimetype,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'mimetype': mimetype,
-      'name': name,
-    };
+    final map = <String, dynamic>{};
+    // xuất lại theo format của từng loại
+    if (fileId.isNotEmpty) map['fileId'] = fileId;
+    if (fileUrl.isNotEmpty) map['fileUrl'] = fileUrl;
+    if (mimetype.isNotEmpty) map['mimeType'] = mimetype;
+    return map;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:aichatbot/models/knowledge_base_model.dart';
+import 'package:aichatbot/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aichatbot/screens/knowledge_management/knowledge_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,10 +24,8 @@ class KnowledgeManagementScreen extends StatefulWidget {
 
 class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     with SingleTickerProviderStateMixin {
-  /// Controller for the search input field
+  // Controller và state cho search
   final TextEditingController _searchController = TextEditingController();
-
-  /// Current search query
   String _searchQuery = '';
 
   /// State for showing/hiding the add form
@@ -68,6 +67,9 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
 
     // Initialize data
     _fetchKnowledgeBases();
+
+    // Khi user gõ, tự động gọi lại API với q mới
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
@@ -77,6 +79,13 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
     _descriptionController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final q = _searchController.text.trim();
+    if (q == _searchQuery) return;
+    setState(() => _searchQuery = q);
+    _refreshKnowledgeBases();
   }
 
   /// Fetch knowledge bases from the server
@@ -92,9 +101,13 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
 
   /// Refresh knowledge bases from the server
   void _refreshKnowledgeBases() {
+    setState(() => _isLoading = true);
+    final token = context.read<AuthBloc>().state.user?.accessToken;
+    // dùng đúng tên tham số của event: searchQuery, offset, limit
     context.read<KnowledgeBloc>().add(
-          RefreshKnowledgesEvent(
-            searchQuery: _searchQuery,
+          FetchKnowledgesEvent(
+            searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+            offset: 0,
             limit: 20,
           ),
         );
@@ -390,12 +403,7 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        onChanged: (value) {
-          setState(() => _searchQuery = value);
-          if (value.isEmpty) {
-            _refreshKnowledgeBases();
-          }
-        },
+        onChanged: (_) {}, // đã handle trong listener
         onSubmitted: (_) {
           _refreshKnowledgeBases();
         },

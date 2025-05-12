@@ -14,7 +14,7 @@ class PromptApiService {
     // Set the base URL for the Dio instance
     // _apiService.dio.options.baseUrl = ApiConfig.jarvisBaseUrl;
   }
-  
+
   /// Refreshes the authentication header for this service
   Future<void> refreshAuthHeader() async {
     try {
@@ -740,5 +740,33 @@ class PromptApiService {
       return '${response.substring(0, 500)}... (truncated, total length: ${response.length})';
     }
     return response;
+  }
+}
+
+class PromptRemoteDataSource {
+  final Dio _client;
+  PromptRemoteDataSource(this._client);
+
+  Future<PromptModel> updatePrompt({
+    required String accessToken,
+    required String promptId,
+    required String title,
+    // ...
+  }) async {
+    debugPrint('📡 API: updatePrompt → endpoint: /prompts/$promptId');
+    debugPrint('📡 API: payload: { title: $title, … }');
+    final resp = await _client.patch(
+      '/prompts/$promptId',
+      data: {
+        'title': title,
+        // …
+      },
+      options: Options(headers: {
+        'Authorization': 'Bearer $accessToken',
+      }),
+    );
+    debugPrint('📡 API: updatePrompt response status=${resp.statusCode}');
+    debugPrint('📡 API: updatePrompt body=${resp.data}');
+    return PromptModel.fromJson(resp.data);
   }
 }

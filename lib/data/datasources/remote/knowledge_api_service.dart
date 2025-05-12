@@ -74,10 +74,16 @@ class KnowledgeApiService {
           '└────────────────────────────────────────────────────────────');
 
       // Make the API call
+      // build query parameters, include `q` only when non-empty
+      final queryParams = <String, dynamic>{
+        if (params.query != null && params.query!.isNotEmpty) 'q': params.query,
+        'offset': params.offset.toString(),
+        'limit': params.limit.toString(),
+      };
       final response = await _dio.get(
         endpoint,
-        //queryParameters: params.toQueryParameters(),
-        // options: Options(headers: headers),
+        queryParameters: queryParams,
+        options: Options(headers: _dio.options.headers),
       );
 
       // Log the response with detailed information
