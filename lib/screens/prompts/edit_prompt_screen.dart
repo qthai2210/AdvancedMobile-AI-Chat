@@ -60,7 +60,7 @@ class _EditPromptScreenState extends State<EditPromptScreen> {
             _isSubmitting = false;
           });
           context.showSuccessNotification('Cập nhật prompt thành công');
-          Future.delayed(const Duration(milliseconds: 500), () {
+          Future.delayed(const Duration(milliseconds: 2000), () {
             context.pop(true);
           });
         } else if (state.status == PromptStatus.failure) {

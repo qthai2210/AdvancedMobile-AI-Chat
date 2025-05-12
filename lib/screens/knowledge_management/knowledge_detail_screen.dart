@@ -144,32 +144,88 @@ class _KnowledgeDetailScreenState extends State<KnowledgeDetailScreen> {
   void _confirmDeleteUnit(KnowledgeUnitModel unit) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Unit'),
-        content: Text(
-          'Are you sure you want to delete "${unit.name}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Cancel'),
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          TextButton(
-            onPressed: () {
-              context.pop();
-              final token = context.read<AuthBloc>().state.user?.accessToken;
-              if (token == null) return;
-              _knowledgeUnitBloc.add(DeleteDatasourceEvent(
-                knowledgeId: _knowledgeBase.id,
-                datasourceId: unit.id,
-                accessToken: token,
-              ));
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 48,
+                      color: Theme.of(context).hintColor,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Delete Datasource',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(color: Colors.black),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to delete "${unit.name}"? This action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          final token =
+                              context.read<AuthBloc>().state.user?.accessToken;
+                          if (token == null) return;
+                          _knowledgeUnitBloc.add(DeleteDatasourceEvent(
+                            knowledgeId: _knowledgeBase.id,
+                            datasourceId: unit.id,
+                            accessToken: token,
+                          ));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Delete',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

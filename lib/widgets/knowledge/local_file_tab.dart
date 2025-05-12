@@ -29,14 +29,15 @@ class LocalFileTab extends StatelessWidget {
             icon: const Icon(Icons.upload_file),
             label: isLoading
                 ? const SizedBox(
-                    width: 16, height: 16,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(files.isEmpty ? 'Select file' : 'Change file'),
+                : Text(files.isEmpty ? 'Select file' : 'Add file'),
           ),
 
           // thêm phần hiển thị file đã chọn
-          if (files.isNotEmpty) 
+          if (files.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: SingleChildScrollView(
@@ -64,7 +65,8 @@ class LocalFileTab extends StatelessWidget {
               onPressed: canImport ? onImport : null,
               child: isLoading
                   ? const SizedBox(
-                      width: 16, height: 16,
+                      width: 16,
+                      height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Import to Knowledge'),
