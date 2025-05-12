@@ -50,6 +50,7 @@ class ChatDetailScreen extends StatefulWidget {
   final String? threadId;
   final String? initialPrompt;
   final bool? setCursorToEnd;
+  final AIAgent? initialAgent;
 
   const ChatDetailScreen({
     Key? key,
@@ -57,6 +58,7 @@ class ChatDetailScreen extends StatefulWidget {
     this.threadId,
     this.initialPrompt,
     this.setCursorToEnd,
+    this.initialAgent,
   }) : super(key: key);
 
   @override
@@ -124,11 +126,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _analytics.logEvent(
       name: 'screen_view',
       parameters: {'screen_name': 'ChatDetailScreen'},
-    );
-
-    // Initialize subscription bloc
+    ); // Initialize subscription bloc
     _subscriptionBloc = di.sl<SubscriptionBloc>();
     _fetchSubscriptionData();
+
+    // Set the initial agent if provided
+    if (widget.initialAgent != null) {
+      _selectedAgent = widget.initialAgent!;
+    }
 
     // Thêm listener để theo dõi khi người dùng nhập "/"
     _messageController.addListener(_checkForPromptCommand);
@@ -194,16 +199,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   void _loadChatThread() {
     if (widget.isNewChat) {
-      _currentThreadTitle = 'New Conversation';
+      // Set title with custom bot name if initialAgent is provided
+      if (widget.initialAgent != null && widget.initialAgent!.isCustom) {
+        _currentThreadTitle = 'Chat with ${widget.initialAgent!.name}';
+      } else {
+        _currentThreadTitle = 'New Conversation';
+      }
       _messages = [];
-      // _messages.add(
-      //   Message(
-      //     text: "Xin chào! Tôi là1 ${_selectedAgent.name}. Bạn cần giúp gì?",
-      //     isUser: false,
-      //     timestamp: DateTime.now(),
-      //     agent: _selectedAgent,
-      //   ),
-      // );
+      // Add a welcome message if we're using a custom bot
+      if (widget.initialAgent != null && widget.initialAgent!.isCustom) {
+        // _messages.add(
+        //   Message(
+        //     text:
+        //         "Hello! I'm ${_selectedAgent.name}, your custom assistant. How can I help you today?",
+        //     isUser: false,
+        //     timestamp: DateTime.now(),
+        //     agent: _selectedAgent,
+        //   ),
+        // );
+      }
     } else {
       // Load existing conversation from API
       _loadExistingConversation();

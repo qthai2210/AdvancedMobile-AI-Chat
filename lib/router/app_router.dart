@@ -2,6 +2,7 @@ import 'package:aichatbot/core/di/core_injection.dart';
 import 'package:aichatbot/data/models/prompt/prompt_model.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
+import 'package:aichatbot/models/ai_agent_model.dart';
 import 'package:aichatbot/models/knowledge_base_model.dart';
 import 'package:aichatbot/presentation/bloc/ai_email/ai_email_bloc.dart';
 import 'package:aichatbot/presentation/bloc/email_reply_suggestion/email_reply_suggestion_bloc.dart';
@@ -162,17 +163,26 @@ class AppRouter {
           final threadId = state.pathParameters['threadId']!;
           final isNew = threadId == 'new';
           final extra = state.extra;
-          final initial = (extra is Map<String, dynamic>)
-              ? extra['initialPrompt'] as String?
-              : null;
-          final toEnd = (extra is Map<String, dynamic>)
-              ? extra['setCursorToEnd'] as bool?
-              : false;
+
+          // Extract parameters from extra map
+          String? initial;
+          bool? toEnd;
+          AIAgent? agent;
+
+          if (extra is Map<String, dynamic>) {
+            initial = extra['initialPrompt'] as String?;
+            toEnd = extra['setCursorToEnd'] as bool?;
+            if (extra.containsKey('initialAgent')) {
+              agent = extra['initialAgent'] as AIAgent?;
+            }
+          }
+
           return ChatDetailScreen(
             isNewChat: isNew,
             threadId: isNew ? null : threadId,
             initialPrompt: initial,
             setCursorToEnd: toEnd ?? false,
+            initialAgent: agent,
           );
         },
       ),

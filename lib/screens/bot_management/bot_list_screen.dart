@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
+import 'package:aichatbot/models/ai_agent_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
@@ -269,9 +270,22 @@ class _BotListScreenState extends State<BotListScreen> {
 
   /// Navigates to the chat screen to chat with the selected bot.
   void _chatWithBot(AIBot bot) {
-    // In a real app, navigate to chat screen with this bot
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Chat with ${bot.name}')),
+    // Create a custom AIAgent from this bot
+    final customAgent = AIAgent(
+      id: bot.id,
+      name: bot.name,
+      description: bot.description,
+      color: bot.color,
+      isCustom: true, // Mark as custom assistant
+    );
+
+    // Navigate to chat detail screen with this bot
+    context.pushNamed(
+      'chatDetail',
+      pathParameters: {'threadId': 'new'},
+      extra: {
+        'initialAgent': customAgent,
+      },
     );
   }
 
