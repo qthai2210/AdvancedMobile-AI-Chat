@@ -211,3 +211,35 @@ class ValidateSlackBotEvent extends BotEvent {
         xJarvisGuid,
       ];
 }
+
+/// Event to publish an assistant as a Slack bot
+class PublishSlackBotEvent extends BotEvent {
+  final String assistantId;
+  final String botToken;
+  final String clientId;
+  final String clientSecret;
+  final String signingSecret;
+  final String? accessToken;
+  final String? xJarvisGuid;
+
+  const PublishSlackBotEvent({
+    required this.assistantId,
+    required this.botToken,
+    required this.clientId,
+    required this.clientSecret,
+    required this.signingSecret,
+    this.accessToken,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [
+        assistantId,
+        botToken,
+        clientId,
+        clientSecret,
+        signingSecret,
+        accessToken,
+        xJarvisGuid,
+      ];
+}

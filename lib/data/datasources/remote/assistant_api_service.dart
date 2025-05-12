@@ -605,4 +605,78 @@ class AssistantApiService {
           'Unexpected error validating Slack bot configuration: $e');
     }
   }
+
+  /// Publishes an assistant as a Slack bot
+  ///
+  /// Makes a POST request to the Slack bot integration endpoint
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [botToken] is required Slack bot token
+  /// [clientId] is required Slack client ID
+  /// [clientSecret] is required Slack client secret
+  /// [signingSecret] is required Slack signing secret
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is an optional tracking GUID
+  ///
+  /// Returns the Slack bot URL on successful publishing
+  Future<String> publishSlackBot({
+    required String assistantId,
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional values
+      final headers = <String, dynamic>{};
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Prepare request body with all required parameters
+      final body = {
+        'botToken': botToken,
+        'clientId': clientId,
+        'clientSecret': clientSecret,
+        'signingSecret': signingSecret,
+      };
+
+      AppLogger.i('Publishing assistant $assistantId as Slack bot');
+
+      // Make the API call using the specified endpoint
+      final response = await _dio.post(
+        '/kb-core/v1/bot-integration/slack/publish/$assistantId',
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      // Log the response for debugging
+      AppLogger.i('Slack publish response received: ${response.data}');
+
+      // Extract the redirect URL from the response
+      if (response.data is Map && response.data.containsKey('redirect')) {
+        return response.data['redirect'];
+      }
+      // If empty successful response (204 or 200 with no content)
+      else if (response.statusCode == 200 || response.statusCode == 204) {
+        // Return a default URL or success message if the API doesn't provide a redirect URL
+        return 'https://slack.com/apps';
+      } else {
+        throw Exception('Invalid response format: missing redirect URL');
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error publishing Slack bot: ${e.message}');
+      throw Exception('Failed to publish Slack bot: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error publishing Slack bot: $e');
+      throw Exception('Failed to publish Slack bot: $e');
+    }
+  }
 }

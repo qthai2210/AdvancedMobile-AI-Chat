@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
@@ -13,6 +14,7 @@ import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
 import 'package:aichatbot/widgets/bots/bot_list_item.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
+import 'package:aichatbot/core/di/injection_container.dart';
 
 /// A screen that displays and manages a list of AI bots.
 ///
@@ -49,6 +51,7 @@ class _BotListScreenState extends State<BotListScreen> {
 
   /// Selected bot for detail views (needed for onTap functionality)
   AIBot? _selectedBot;
+  AssistantModel? _selectedAssistant;
 
   @override
   void initState() {
@@ -192,7 +195,103 @@ class _BotListScreenState extends State<BotListScreen> {
       });
     }
   }
-  // Removed unused _buildCreateAssistantForm method
+
+  /// Builds a form for creating a new assistant
+  Widget _buildCreateAssistantForm(
+    TextEditingController nameController,
+    TextEditingController descriptionController,
+    TextEditingController instructionsController,
+    BuildContext dialogContext,
+  ) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Assistant name field
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Assistant Name',
+                hintText: 'Enter assistant name',
+                prefixIcon: const Icon(Icons.smart_toy),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Description field
+            TextField(
+              controller: descriptionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Description (Optional)',
+                hintText: 'Enter assistant description',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(bottom: 64),
+                  child: Icon(Icons.description),
+                ),
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Instructions field
+            TextField(
+              controller: instructionsController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                labelText: 'Instructions (Optional)',
+                hintText: 'Enter specific instructions for the assistant',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(bottom: 100),
+                  child: Icon(Icons.psychology),
+                ),
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   /// Navigates to the bot detail screen for editing.
   ///
@@ -352,9 +451,17 @@ class _BotListScreenState extends State<BotListScreen> {
                     isSelected: bot.id == _selectedBot?.id,
                     onTap: () {
                       setState(() {
-                        _selectedBot =
-                            bot; // Find the corresponding AssistantModel if needed for future use
-                        // AssistantModel lookup removed as it was unused
+                        _selectedBot = bot;
+                        // Also find the corresponding AssistantModel
+                        if (state is BotsLoaded) {
+                          try {
+                            _selectedAssistant = state.bots.firstWhere(
+                              (assistant) => assistant.id == bot.id,
+                            );
+                          } catch (e) {
+                            _selectedAssistant = null;
+                          }
+                        }
                       });
                     },
                     onEdit: () => _editBot(bot),

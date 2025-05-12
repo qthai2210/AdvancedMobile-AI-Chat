@@ -97,18 +97,14 @@ class _AIAgentSelectorState extends State<AIAgentSelector> {
 
   @override
   Widget build(BuildContext context) {
-    // Use BlocManager to get a managed instance of BotBloc
-    // This prevents the bloc from being automatically closed when the widget is disposed
-    final blocManager = di.sl<BlocManager>();
+    // Use BlocManager to get a managed instance of BotBloc    // Get the existing BotBloc from context to prevent duplicate event handler registration
+    final botBloc = context.read<BotBloc>();
+
+    // Fetch bots when needed
+    botBloc.add(const FetchBotsEvent());
 
     return BlocProvider<BotBloc>.value(
-      value: blocManager.getBloc<BotBloc>(() {
-        // Create a new BotBloc if needed
-        final bloc = di.sl<BotBloc>();
-        // Fetch bots immediately when created
-        bloc.add(const FetchBotsEvent());
-        return bloc;
-      }),
+      value: botBloc,
       child: BlocListener<BotBloc, BotState>(
         listener: (context, state) {
           if (state is BotsLoaded) {

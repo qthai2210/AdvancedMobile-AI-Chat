@@ -141,4 +141,25 @@ abstract class AssistantRepository {
     String? accessToken,
     String? xJarvisGuid,
   });
+
+  /// Publishes an assistant as a Slack bot
+  ///
+  /// [assistantId] is required to identify the assistant
+  /// [botToken] is required Slack bot token
+  /// [clientId] is required Slack client ID
+  /// [clientSecret] is required Slack client secret
+  /// [signingSecret] is required Slack signing secret
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is optional for tracking
+  ///
+  /// Returns the Slack bot URL on successful publishing
+  Future<String> publishSlackBot({
+    required String assistantId,
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
 }

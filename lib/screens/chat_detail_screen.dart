@@ -590,13 +590,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) => BlocProvider<BotBloc>.value(
-        value: di.sl<BlocManager>().getBloc<BotBloc>(() {
-          // Get a managed instance of BotBloc to prevent "Cannot add new events after calling close" error
-          final bloc = di.sl<BotBloc>();
-          // Initialize the bloc if needed
-          bloc.add(const FetchBotsEvent());
-          return bloc;
-        }),
+        value: BlocProvider.of<BotBloc>(context),
         child: SizedBox(
           height: MediaQuery.of(context).size.height * 0.7,
           child: AIAgentSelector(
@@ -1079,7 +1073,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           value: di.sl<ChatBloc>(),
         ),
         BlocProvider<BotBloc>.value(
-          value: di.sl<BotBloc>(),
+          value: BlocProvider.of<BotBloc>(context),
         ),
         BlocProvider<SubscriptionBloc>.value(
           value: _subscriptionBloc,

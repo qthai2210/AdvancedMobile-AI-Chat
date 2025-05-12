@@ -31,7 +31,9 @@ class BotDetailsTab extends StatefulWidget {
   final Function() validateTelegramBot;
   final Function() publishTelegramBot;
   final Function() validateSlackBot;
-
+  final Function() publishSlackBot;
+  final bool isPublishingToSlack;
+  final String? slackBotUrl;
   const BotDetailsTab({
     Key? key,
     required this.bot,
@@ -47,12 +49,15 @@ class BotDetailsTab extends StatefulWidget {
     required this.isValidatingTelegramBot,
     required this.isPublishingToTelegram,
     required this.isValidatingSlackBot,
+    required this.isPublishingToSlack,
     required this.validatedBotInfo,
     required this.validatedSlackBotInfo,
     required this.telegramBotUrl,
+    required this.slackBotUrl,
     required this.validateTelegramBot,
     required this.publishTelegramBot,
     required this.validateSlackBot,
+    required this.publishSlackBot,
   }) : super(key: key);
 
   @override
@@ -708,15 +713,19 @@ class _BotDetailsTabState extends State<BotDetailsTab> {
             ),
           ),
           const SizedBox(height: 12),
-        ],
-
-        // Validate Slack Bot Button
+        ], // Validate/Publish Slack Bot Button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed:
-                widget.isValidatingSlackBot ? null : widget.validateSlackBot,
-            icon: const Icon(Icons.check_circle),
+                (widget.isValidatingSlackBot || widget.isPublishingToSlack)
+                    ? null
+                    : (widget.validatedSlackBotInfo != null
+                        ? widget.publishSlackBot
+                        : widget.validateSlackBot),
+            icon: widget.validatedSlackBotInfo != null
+                ? const Icon(Icons.send)
+                : const Icon(Icons.check_circle),
             label: widget.isValidatingSlackBot
                 ? const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -730,15 +739,101 @@ class _BotDetailsTabState extends State<BotDetailsTab> {
                       Text('Validating...'),
                     ],
                   )
-                : const Text('Validate Slack Configuration'),
+                : widget.isPublishingToSlack
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Publishing...'),
+                        ],
+                      )
+                    : widget.validatedSlackBotInfo != null
+                        ? const Text('Publish to Slack')
+                        : const Text('Validate Slack Configuration'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: widget.validatedSlackBotInfo != null
+                  ? Colors.green
+                  : Colors.purple,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
-              elevation: 2,
+              elevation: widget.validatedSlackBotInfo != null ? 3 : 2,
             ),
           ),
         ),
+
+        // Display Slack bot URL if available
+        if (widget.slackBotUrl != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.purple),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 16),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Slack Bot Published Successfully',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Slack Authorization URL:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(
+                  widget.slackBotUrl!,
+                  style: const TextStyle(
+                    color: Colors.purple,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        // Copy to clipboard
+                        Clipboard.setData(
+                            ClipboardData(text: widget.slackBotUrl!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('URL copied to clipboard'),
+                            duration: Duration(seconds: 1),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text('Copy URL'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

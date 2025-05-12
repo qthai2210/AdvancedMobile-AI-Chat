@@ -256,3 +256,30 @@ class SlackBotValidationFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when a Slack bot is being published
+class PublishingSlackBot extends BotState {}
+
+/// State when a Slack bot has been successfully published
+class SlackBotPublished extends BotState {
+  final String assistantId;
+  final String slackBotUrl;
+
+  const SlackBotPublished({
+    required this.assistantId,
+    required this.slackBotUrl,
+  });
+
+  @override
+  List<Object?> get props => [assistantId, slackBotUrl];
+}
+
+/// State when there was an error publishing a Slack bot
+class SlackBotPublishFailed extends BotState {
+  final String message;
+
+  const SlackBotPublishFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

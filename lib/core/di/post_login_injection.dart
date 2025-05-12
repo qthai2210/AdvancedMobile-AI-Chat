@@ -26,6 +26,7 @@ import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assist
 import 'package:aichatbot/domain/usecases/assistant/publish_telegram_bot_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/validate_slack_bot_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/validate_telegram_bot_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/publish_slack_bot_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversation_history_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/get_conversations_usecase.dart';
 import 'package:aichatbot/domain/usecases/chat/send_custom_bot_message_usecase.dart';
@@ -190,6 +191,8 @@ Future<void> initPostLoginServices() async {
   if (!sl.isRegistered<ValidateSlackBotUseCase>())
     sl.registerLazySingleton(() => ValidateSlackBotUseCase(sl()));
 
+  if (!sl.isRegistered<PublishSlackBotUseCase>())
+    sl.registerLazySingleton(() => PublishSlackBotUseCase(sl()));
   // Knowledge use cases
   if (!sl.isRegistered<GetKnowledgesUseCase>())
     sl.registerLazySingleton(() => GetKnowledgesUseCase(sl()));
@@ -315,6 +318,7 @@ Future<void> initPostLoginServices() async {
           publishTelegramBotUseCase: sl(),
           validateTelegramBotUseCase: sl(),
           validateSlackBotUseCase: sl(),
+          publishSlackBotUseCase: sl(),
         ));
   }
   if (!sl.isRegistered<KnowledgeBloc>()) {
