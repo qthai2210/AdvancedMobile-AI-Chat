@@ -217,4 +217,31 @@ class AssistantRepositoryImpl implements AssistantRepository {
       throw ServerFailure(e.toString());
     }
   }
+
+  @override
+  Future<Map<String, dynamic>> validateSlackBot({
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      return await assistantApiService.validateSlackBot(
+        botToken: botToken,
+        clientId: clientId,
+        clientSecret: clientSecret,
+        signingSecret: signingSecret,
+        accessToken: accessToken,
+        xJarvisGuid: xJarvisGuid,
+      );
+    } on DioException catch (e) {
+      throw ServerFailure(
+        e.response?.statusMessage ?? 'Server error: ${e.response?.statusCode}',
+      );
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
 }

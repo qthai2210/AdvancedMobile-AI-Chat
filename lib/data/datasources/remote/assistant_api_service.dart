@@ -522,4 +522,87 @@ class AssistantApiService {
       throw Exception('Unexpected error validating Telegram bot token: $e');
     }
   }
+
+  /// Validates a Slack bot configuration before publishing
+  ///
+  /// Makes a POST request to the Slack bot validation endpoint
+  ///
+  /// [botToken] is required Slack bot token
+  /// [clientId] is required Slack client ID
+  /// [clientSecret] is required Slack client secret
+  /// [signingSecret] is required Slack signing secret
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is optional for tracking
+  ///
+  /// Returns a map with bot information on successful validation
+  Future<Map<String, dynamic>> validateSlackBot({
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+    String? accessToken,
+    String? xJarvisGuid,
+  }) async {
+    try {
+      // Prepare headers with optional values
+      final headers = <String, dynamic>{};
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      if (xJarvisGuid != null && xJarvisGuid.isNotEmpty) {
+        headers['x-jarvis-guid'] = xJarvisGuid;
+      }
+
+      // Prepare request body with all required parameters
+      final body = {
+        'botToken': botToken,
+        'clientId': clientId,
+        'clientSecret': clientSecret,
+        'signingSecret': signingSecret,
+      };
+
+      AppLogger.i('Validating Slack bot configuration');
+
+      // Make the API call
+      final response = await _dio.post(
+        '/kb-core/v1/bot-integration/slack/validation',
+        data: body,
+        options: Options(headers: headers),
+      ); // Log the response for debugging
+      AppLogger.i('Slack validation response received: handle this case');
+
+      // Handle the case where the response is successful but empty (content-length: 0)
+      // Check for HTTP status code 200 as indicator of success
+      if (response.statusCode == 200) {
+        return {
+          'isValid': true,
+          'botInfo': {'name': 'Slack Bot', 'validated': true},
+        };
+      }
+      // Also handle the original expected format for backward compatibility
+      else if (response.data is Map &&
+          response.data.containsKey('ok') &&
+          response.data['ok']) {
+        return {
+          'isValid': true,
+          'botInfo': response.data['result'],
+        };
+      } else {
+        return {
+          'isValid': false,
+          'error': 'Invalid Slack configuration or API response',
+        };
+      }
+    } on DioException catch (e) {
+      AppLogger.e('Error validating Slack bot configuration: $e');
+      throw Exception(
+          'Failed to validate Slack bot configuration: ${e.message}');
+    } catch (e) {
+      AppLogger.e('Unexpected error validating Slack bot configuration: $e');
+      throw Exception(
+          'Unexpected error validating Slack bot configuration: $e');
+    }
+  }
 }

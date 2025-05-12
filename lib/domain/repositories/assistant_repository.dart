@@ -122,4 +122,23 @@ abstract class AssistantRepository {
     String? accessToken,
     String? xJarvisGuid,
   });
+
+  /// Validates Slack bot configuration before publishing
+  ///
+  /// [botToken] is required Slack bot token
+  /// [clientId] is required Slack client ID
+  /// [clientSecret] is required Slack client secret
+  /// [signingSecret] is required Slack signing secret
+  /// [accessToken] is optional for authorization
+  /// [xJarvisGuid] is optional for tracking
+  ///
+  /// Returns a map with bot information on successful validation
+  Future<Map<String, dynamic>> validateSlackBot({
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+    String? accessToken,
+    String? xJarvisGuid,
+  });
 }

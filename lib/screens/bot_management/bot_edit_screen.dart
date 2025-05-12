@@ -14,14 +14,13 @@ import 'package:aichatbot/models/ai_bot_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_state.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
-import 'package:aichatbot/utils/secure_storage_util.dart';
 import 'package:aichatbot/widgets/knowledge/knowledge_base_selector_dialog.dart';
+import 'bot_details_tab.dart';
 
 /// A screen for editing bot details with a tabbed interface.
 /// This screen allows users to:
@@ -45,30 +44,34 @@ class BotEditScreen extends StatefulWidget {
 class _BotEditScreenState extends State<BotEditScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late TextEditingController _nameController;
-  late TextEditingController _descriptionController;
-  late TextEditingController _instructionsController;
-  late TextEditingController _telegramBotTokenController;
+  TextEditingController _nameController = TextEditingController();
+  TextEditingController _descriptionController = TextEditingController();
+  TextEditingController _instructionsController = TextEditingController();
+  TextEditingController _telegramBotTokenController = TextEditingController();
+  TextEditingController _slackBotTokenController = TextEditingController();
+  TextEditingController _slackClientIdController = TextEditingController();
+  TextEditingController _slackClientSecretController = TextEditingController();
+  TextEditingController _slackSigningSecretController = TextEditingController();
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _isPublishingToTelegram = false;
   bool _isValidatingTelegramBot = false;
+  bool _isValidatingSlackBot = false;
   String? _telegramBotUrl;
   Map<String, dynamic>? _validatedBotInfo;
+  Map<String, dynamic>? _validatedSlackBotInfo;
+
   @override
   void initState() {
     super.initState();
 
     // Initialize tab controller
-    _tabController = TabController(
-        length: 3, vsync: this); // Initialize text controllers with bot data
-    _nameController =
-        TextEditingController(text: widget.assistantModel.assistantName);
-    _descriptionController =
-        TextEditingController(text: widget.assistantModel.description ?? '');
-    _instructionsController =
-        TextEditingController(text: widget.assistantModel.instructions ?? '');
-    _telegramBotTokenController = TextEditingController();
+    _tabController = TabController(length: 3, vsync: this);
+
+    // Set initial values for text controllers
+    _nameController.text = widget.assistantModel.assistantName;
+    _descriptionController.text = widget.assistantModel.description ?? '';
+    _instructionsController.text = widget.assistantModel.instructions ?? '';
 
     // Listen for changes to track if form is dirty
     _nameController.addListener(_onFieldChanged);
@@ -95,6 +98,10 @@ class _BotEditScreenState extends State<BotEditScreen>
     _descriptionController.dispose();
     _instructionsController.dispose();
     _telegramBotTokenController.dispose();
+    _slackBotTokenController.dispose();
+    _slackClientIdController.dispose();
+    _slackClientSecretController.dispose();
+    _slackSigningSecretController.dispose();
     super.dispose();
   }
 
@@ -303,6 +310,42 @@ class _BotEditScreenState extends State<BotEditScreen>
         );
   }
 
+  // Method to validate Slack bot configuration
+  void _validateSlackBot() {
+    final botToken = _slackBotTokenController.text.trim();
+    final clientId = _slackClientIdController.text.trim();
+    final clientSecret = _slackClientSecretController.text.trim();
+    final signingSecret = _slackSigningSecretController.text.trim();
+
+    // Validate input fields
+    if (botToken.isEmpty ||
+        clientId.isEmpty ||
+        clientSecret.isEmpty ||
+        signingSecret.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all Slack configuration fields'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isValidatingSlackBot = true;
+    });
+
+    // Dispatch the validation event to the BotBloc
+    context.read<BotBloc>().add(
+          ValidateSlackBotEvent(
+            botToken: botToken,
+            clientId: clientId,
+            clientSecret: clientSecret,
+            signingSecret: signingSecret,
+          ),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -434,6 +477,31 @@ class _BotEditScreenState extends State<BotEditScreen>
                     backgroundColor: Colors.red,
                   ),
                 );
+              } else if (state is ValidatingSlackBot) {
+                // Keep validating indicator
+              } else if (state is SlackBotValidated) {
+                setState(() {
+                  _isValidatingSlackBot = false;
+                  _validatedSlackBotInfo = state.botInfo;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content:
+                        Text('Slack bot configuration validated successfully'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              } else if (state is SlackBotValidationFailed) {
+                setState(() => _isValidatingSlackBot = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Slack validation failed: ${state.message}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
           ),
@@ -486,319 +554,26 @@ class _BotEditScreenState extends State<BotEditScreen>
   }
 
   Widget _buildDetailsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Bot header with icon and color
-          Center(
-            child: Column(
-              children: [
-                Hero(
-                  tag: 'bot-avatar-${widget.bot.id}',
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: widget.bot.color.withOpacity(0.2),
-                    child: Icon(
-                      widget.bot.iconData,
-                      color: widget.bot.color,
-                      size: 50,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Bot ID: ${widget.bot.id.substring(0, 8)}...',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Name field
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              labelText: 'Assistant Name',
-              hintText: 'Enter assistant name',
-              prefixIcon: const Icon(Icons.smart_toy),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Description field
-          TextField(
-            controller: _descriptionController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Description (Optional)',
-              hintText: 'Enter assistant description',
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(bottom: 64),
-                child: Icon(Icons.description),
-              ),
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Instructions field
-          TextField(
-            controller: _instructionsController,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: 'Instructions (Optional)',
-              hintText: 'Enter specific instructions for the assistant',
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(bottom: 120),
-                child: Icon(Icons.psychology),
-              ),
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 24), // Telegram Bot Token field
-          TextField(
-            controller: _telegramBotTokenController,
-            decoration: InputDecoration(
-              labelText: 'Telegram Bot Token',
-              hintText: 'Enter your Telegram bot token',
-              prefixIcon: const Icon(Icons.telegram),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 16), // Show validation status if available
-          if (_validatedBotInfo != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: Colors.green, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Bot Successfully Validated',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // const Divider(height: 16),
-                  // _buildBotInfoRow(
-                  //     'Bot ID:', '${_validatedBotInfo!['id'] ?? 'Unknown'}'),
-                  // _buildBotInfoRow('Username:',
-                  //     '@${_validatedBotInfo!['username'] ?? 'Unknown'}'),
-                  // _buildBotInfoRow('Display Name:',
-                  //     '${_validatedBotInfo!['first_name'] ?? 'Unknown'}'),
-                  // _buildBotInfoRow('Is Bot:',
-                  //     _formatBoolValue(_validatedBotInfo!['is_bot'] as bool?)),
-                  // _buildBotInfoRow(
-                  //     'Can Join Groups:',
-                  //     _formatBoolValue(
-                  //         _validatedBotInfo!['can_join_groups'] as bool?)),
-                  // _buildBotInfoRow(
-                  //     'Read Group Messages:',
-                  //     _formatBoolValue(
-                  //         _validatedBotInfo!['can_read_all_group_messages']
-                  //             as bool?)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Validate and Publish to Telegram button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: (_isValidatingTelegramBot || _isPublishingToTelegram)
-                  ? null
-                  : (_validatedBotInfo != null
-                      ? _publishTelegramBot
-                      : _validateTelegramBot),
-              icon: const Icon(Icons.send),
-              label: _isValidatingTelegramBot
-                  ? const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 8),
-                        Text('Validating...'),
-                      ],
-                    )
-                  : _isPublishingToTelegram
-                      ? const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            SizedBox(width: 8),
-                            Text('Publishing...'),
-                          ],
-                        )
-                      : _validatedBotInfo != null
-                          ? const Text('Publish to Telegram')
-                          : const Text('Validate & Publish'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _validatedBotInfo != null ? Colors.green : Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                elevation: _validatedBotInfo != null ? 3 : 2,
-              ),
-            ),
-          ), // Display Telegram bot URL if available
-          if (_telegramBotUrl != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: Colors.green, size: 16),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Telegram Bot Published Successfully',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Telegram Bot URL:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SelectableText(
-                    _telegramBotUrl!,
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          // Copy to clipboard
-                          Clipboard.setData(
-                              ClipboardData(text: _telegramBotUrl!));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('URL copied to clipboard'),
-                              duration: Duration(seconds: 1),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('Copy URL'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 24),
-
-          // Created date info
-          Text(
-            'Created on: ${_formatDate(widget.bot.createdAt)}',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
+    return BotDetailsTab(
+      bot: widget.bot,
+      assistantModel: widget.assistantModel,
+      nameController: _nameController,
+      descriptionController: _descriptionController,
+      instructionsController: _instructionsController,
+      telegramBotTokenController: _telegramBotTokenController,
+      slackBotTokenController: _slackBotTokenController,
+      slackClientIdController: _slackClientIdController,
+      slackClientSecretController: _slackClientSecretController,
+      slackSigningSecretController: _slackSigningSecretController,
+      isValidatingTelegramBot: _isValidatingTelegramBot,
+      isPublishingToTelegram: _isPublishingToTelegram,
+      isValidatingSlackBot: _isValidatingSlackBot,
+      validatedBotInfo: _validatedBotInfo,
+      validatedSlackBotInfo: _validatedSlackBotInfo,
+      telegramBotUrl: _telegramBotUrl,
+      validateTelegramBot: _validateTelegramBot,
+      publishTelegramBot: _publishTelegramBot,
+      validateSlackBot: _validateSlackBot,
     );
   }
 
@@ -1087,63 +862,184 @@ class _BotEditScreenState extends State<BotEditScreen>
               // In a real app, you would save this value
             },
           ),
-        ],
-      ),
-    );
-  }
 
-  /// Helper method to build a row for displaying bot information
-  Widget _buildBotInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 24),
+
+          // Slack Integration Section
+          Text(
+            'Slack Integration',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Connect this assistant to Slack by validating your bot configuration.',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+
+          // Slack Bot Token Field
+          TextField(
+            controller: _slackBotTokenController,
+            decoration: InputDecoration(
+              labelText: 'Slack Bot Token',
+              hintText: 'Enter your Slack bot token',
+              prefixIcon: const Icon(Icons.key),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Slack Client ID Field
+          TextField(
+            controller: _slackClientIdController,
+            decoration: InputDecoration(
+              labelText: 'Client ID',
+              hintText: 'Enter your Slack client ID',
+              prefixIcon: const Icon(Icons.person),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Slack Client Secret Field
+          TextField(
+            controller: _slackClientSecretController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Client Secret',
+              hintText: 'Enter your Slack client secret',
+              prefixIcon: const Icon(Icons.lock),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Slack Signing Secret Field
+          TextField(
+            controller: _slackSigningSecretController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Signing Secret',
+              hintText: 'Enter your Slack signing secret',
+              prefixIcon: const Icon(Icons.security),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Show validation status if available
+          if (_validatedSlackBotInfo != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Slack Bot Configuration Successfully Validated',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Validate Slack Bot Button
           SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w400,
-                color: Colors.black,
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isValidatingSlackBot ? null : _validateSlackBot,
+              icon: const Icon(Icons.check_circle),
+              label: _isValidatingSlackBot
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Validating...'),
+                      ],
+                    )
+                  : const Text('Validate Slack Configuration'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: 2,
               ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  /// Helper method to format boolean values for display
-  String _formatBoolValue(bool? value) {
-    if (value == null) return 'N/A';
-    return value ? 'Yes' : 'No';
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

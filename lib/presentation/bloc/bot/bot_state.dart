@@ -231,3 +231,28 @@ class TelegramBotValidationFailed extends BotState {
   @override
   List<Object?> get props => [message];
 }
+
+/// State when a Slack bot configuration is being validated
+class ValidatingSlackBot extends BotState {}
+
+/// State when a Slack bot configuration has been successfully validated
+class SlackBotValidated extends BotState {
+  final Map<String, dynamic> botInfo;
+
+  const SlackBotValidated({
+    required this.botInfo,
+  });
+
+  @override
+  List<Object?> get props => [botInfo];
+}
+
+/// State when there was an error validating a Slack bot configuration
+class SlackBotValidationFailed extends BotState {
+  final String message;
+
+  const SlackBotValidationFailed({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

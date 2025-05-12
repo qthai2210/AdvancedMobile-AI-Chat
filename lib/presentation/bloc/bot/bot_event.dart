@@ -182,3 +182,32 @@ class PublishTelegramBotEvent extends BotEvent {
   @override
   List<Object?> get props => [assistantId, botToken, accessToken, xJarvisGuid];
 }
+
+/// Event to validate a Slack bot configuration
+class ValidateSlackBotEvent extends BotEvent {
+  final String botToken;
+  final String clientId;
+  final String clientSecret;
+  final String signingSecret;
+  final String? accessToken;
+  final String? xJarvisGuid;
+
+  const ValidateSlackBotEvent({
+    required this.botToken,
+    required this.clientId,
+    required this.clientSecret,
+    required this.signingSecret,
+    this.accessToken,
+    this.xJarvisGuid,
+  });
+
+  @override
+  List<Object?> get props => [
+        botToken,
+        clientId,
+        clientSecret,
+        signingSecret,
+        accessToken,
+        xJarvisGuid,
+      ];
+}

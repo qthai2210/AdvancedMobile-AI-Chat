@@ -8,6 +8,7 @@ import 'package:aichatbot/domain/usecases/assistant/link_knowledge_to_assistant_
 import 'package:aichatbot/domain/usecases/assistant/remove_knowledge_from_assistant_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/publish_telegram_bot_usecase.dart';
 import 'package:aichatbot/domain/usecases/assistant/validate_telegram_bot_usecase.dart';
+import 'package:aichatbot/domain/usecases/assistant/validate_slack_bot_usecase.dart';
 import 'package:aichatbot/data/models/assistant/get_assistants_params.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
@@ -23,6 +24,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       _removeKnowledgeFromAssistantUseCase;
   final PublishTelegramBotUseCase _publishTelegramBotUseCase;
   final ValidateTelegramBotUseCase _validateTelegramBotUseCase;
+  final ValidateSlackBotUseCase _validateSlackBotUseCase;
 
   BotBloc({
     required GetAssistantsUseCase getAssistantsUseCase,
@@ -34,6 +36,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
         removeKnowledgeFromAssistantUseCase,
     required PublishTelegramBotUseCase publishTelegramBotUseCase,
     required ValidateTelegramBotUseCase validateTelegramBotUseCase,
+    required ValidateSlackBotUseCase validateSlackBotUseCase,
   })  : _getAssistantsUseCase = getAssistantsUseCase,
         _createAssistantUseCase = createAssistantUseCase,
         _updateAssistantUseCase = updateAssistantUseCase,
@@ -43,6 +46,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
             removeKnowledgeFromAssistantUseCase,
         _publishTelegramBotUseCase = publishTelegramBotUseCase,
         _validateTelegramBotUseCase = validateTelegramBotUseCase,
+        _validateSlackBotUseCase = validateSlackBotUseCase,
         super(BotInitial()) {
     on<FetchBotsEvent>(_onFetchBots);
     on<FetchMoreBotsEvent>(_onFetchMoreBots);
@@ -54,6 +58,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     on<RemoveKnowledgeFromAssistantEvent>(_onRemoveKnowledgeFromAssistant);
     on<ValidateTelegramBotEvent>(_onValidateTelegramBot);
     on<PublishTelegramBotEvent>(_onPublishTelegramBot);
+    on<ValidateSlackBotEvent>(_onValidateSlackBot);
   }
 
   /// Handler for FetchBotsEvent
@@ -332,6 +337,29 @@ class BotBloc extends Bloc<BotEvent, BotState> {
       ));
     } catch (e) {
       emit(TelegramBotPublishFailed(message: e.toString()));
+    }
+  }
+
+  /// Handler for ValidateSlackBotEvent
+  Future<void> _onValidateSlackBot(
+    ValidateSlackBotEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(ValidatingSlackBot());
+
+    try {
+      final botInfo = await _validateSlackBotUseCase.call(
+        botToken: event.botToken,
+        clientId: event.clientId,
+        clientSecret: event.clientSecret,
+        signingSecret: event.signingSecret,
+        accessToken: event.accessToken,
+        xJarvisGuid: event.xJarvisGuid,
+      );
+
+      emit(SlackBotValidated(botInfo: botInfo));
+    } catch (e) {
+      emit(SlackBotValidationFailed(message: e.toString()));
     }
   }
 }
