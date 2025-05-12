@@ -30,6 +30,7 @@ import 'package:aichatbot/screens/prompts/private_prompts_screen.dart';
 import 'package:aichatbot/screens/prompts/prompts_screen.dart';
 import 'package:aichatbot/screens/register_screen.dart';
 import 'package:aichatbot/screens/splash_screen.dart';
+import 'package:aichatbot/screens/welcome_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_analytics/observer.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,16 @@ class AppRouter {
         path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/welcome',
+        name: 'welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/new_user_home',
+        name: 'newUserHome',
+        builder: (context, state) => const NewUserHomeScreen(),
       ),
       GoRoute(
         path: '/login',

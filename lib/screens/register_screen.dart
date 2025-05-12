@@ -50,14 +50,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             actionLabel: 'Thử lại',
           );
         } else if (state.status == AuthStatus.success) {
-          context.showSuccessNotification('Đăng ký thành công');
-
-          // Tự động chuyển hướng đến trang login sau khi đăng ký thành công
+          context.showSuccessNotification(
+              'Đăng ký thành công'); // After successful registration, navigate to login screen
           Future.delayed(const Duration(milliseconds: 500), () {
             try {
+              // Direct users to the login screen after registration
               context.go('/login');
             } catch (_) {
-              // Fallback cho Navigation 1.0 nếu GoRouter gặp lỗi
+              // Fallback for Navigation 1.0 if GoRouter fails
               context.push('/login');
             }
           });

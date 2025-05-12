@@ -32,7 +32,10 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateToHome() async {
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
-      context.go('/login'); // Using GoRouter for navigation
+      // For new users, navigate to the welcome screen
+      // In a real app, you'd check if this is the first launch using shared preferences
+      // For demo purposes, we'll just go to the welcome screen
+      context.go('/welcome'); // Show onboarding for new users
     }
   }
 

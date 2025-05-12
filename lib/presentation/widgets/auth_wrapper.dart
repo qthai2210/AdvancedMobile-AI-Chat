@@ -73,6 +73,7 @@ class AuthWrapper extends StatelessWidget {
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
         routerConfig: AppRouter.router,
+        debugShowCheckedModeBanner: false,
         // loại bỏ tham số không hợp lệ
       );
     }
