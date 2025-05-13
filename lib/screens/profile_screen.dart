@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
 import 'package:aichatbot/presentation/bloc/subscription/subscription_exports.dart';
+import 'package:aichatbot/presentation/bloc/user_profile/user_profile_bloc.dart';
 import 'package:aichatbot/widgets/main_app_drawer.dart';
 import 'package:aichatbot/utils/navigation_utils.dart' as navigation_utils;
 import 'package:go_router/go_router.dart';
@@ -17,26 +18,32 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   late SubscriptionBloc _subscriptionBloc;
+  late UserProfileBloc _userProfileBloc;
 
-  // Mock user data
+  // User data (initially mock data until API data loads)
   final _userData = {
     'name': 'John Doe',
     'email': 'john.doe@example.com',
     'avatar': 'assets/images/login_head.png',
     'plan': 'Premium',
     'joinDate': 'January 15, 2023',
+    'username': '',
+    'roles': <String>[],
   };
 
   @override
   void initState() {
     super.initState();
     _subscriptionBloc = sl<SubscriptionBloc>();
+    _userProfileBloc = sl<UserProfileBloc>();
     _fetchSubscriptionData();
+    _fetchUserProfileData();
   }
 
   @override
   void dispose() {
     //_subscriptionBloc.close();
+    _userProfileBloc.close();
     super.dispose();
   }
 
@@ -44,10 +51,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _subscriptionBloc.add(const FetchSubscriptionEvent());
   }
 
+  void _fetchUserProfileData() {
+    _userProfileBloc.add(const FetchUserProfileEvent());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-        create: (context) => _subscriptionBloc,
+    return MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => _subscriptionBloc),
+          BlocProvider(create: (context) => _userProfileBloc),
+        ],
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Profile'),
@@ -59,9 +73,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Refresh Subscription',
-                onPressed: () =>
-                    _subscriptionBloc.add(const RefreshSubscriptionEvent()),
+                tooltip: 'Refresh Data',
+                onPressed: () {
+                  // Refresh both subscription and user profile data
+                  _subscriptionBloc.add(const RefreshSubscriptionEvent());
+                  _userProfileBloc.add(const FetchUserProfileEvent());
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Refreshing profile data...')),
+                  );
+                },
               ),
             ],
           ),
@@ -103,59 +124,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.92,
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).primaryColor,
-            Theme.of(context).primaryColor.withOpacity(0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: AssetImage(_userData['avatar']!),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _userData['name']!,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+    return BlocBuilder<UserProfileBloc, UserProfileState>(
+      builder: (context, state) {
+        String displayName = _userData['name'] as String;
+        String email = _userData['email'] as String;
+
+        if (state is UserProfileLoaded) {
+          // Use username if available, otherwise use email prefix
+          displayName = state.userProfile.username.isNotEmpty
+              ? state.userProfile.username
+              : state.userProfile.email.split('@').first;
+          email = state.userProfile.email;
+
+          // Update userData with the fetched data
+          _userData['name'] = displayName;
+          _userData['email'] = email;
+          _userData['username'] = state.userProfile.username;
+          _userData['roles'] = state.userProfile.roles;
+        } else if (state is UserProfileLoading) {
+          // Optional loading indicator in the header
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _userData['email']!,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
+          );
+        } else if (state is UserProfileError) {
+          // Show error toast when profile fails to load
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load profile: ${state.message}'),
+                backgroundColor: Colors.red,
+                action: SnackBarAction(
+                  label: 'Retry',
+                  textColor: Colors.white,
+                  onPressed: () => _fetchUserProfileData(),
+                ),
+              ),
+            );
+          });
+          // Continue with cached/mock data
+        }
+
+        return Container(
+          width: MediaQuery.of(context).size.width * 0.92,
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).primaryColor,
+                Theme.of(context).primaryColor.withOpacity(0.7),
+              ],
             ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 16),
-          Chip(
-            label: Text(
-              '${_userData['plan']} Plan',
-              style: const TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.black26,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 50,
+                backgroundImage: AssetImage(_userData['avatar'] as String),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                displayName,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                email,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+
+              // Show user roles if available
+              if (((_userData['roles'] as List<String>?) ?? []).isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Wrap(
+                    spacing: 8,
+                    children: (_userData['roles'] as List<String>)
+                        .map((role) => Chip(
+                              label: Text(
+                                role,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.white),
+                              ),
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .secondary
+                                  .withOpacity(0.7),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ))
+                        .toList(),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+              Chip(
+                label: Text(
+                  '${_userData['plan']} Plan',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.black26,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+
+              // Show refresh button and error message if profile failed to load
+              if (state is UserProfileError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    label: const Text('Refresh Profile',
+                        style: TextStyle(color: Colors.white)),
+                    onPressed: () => _fetchUserProfileData(),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildAccountDetails(SubscriptionState state) {
-    String planName = _userData['plan']!;
     bool showUpgradeButton = true;
     bool isLoading = false;
     bool hasError = false;
@@ -165,7 +268,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (state is SubscriptionLoading) {
       isLoading = true;
     } else if (state is SubscriptionLoaded) {
-      planName = state.subscription.displayName;
+      // Update the userData plan
+      _userData['plan'] = state.subscription.displayName;
+
       // Hide upgrade button for premium plans
       showUpgradeButton = state.subscription.name.toLowerCase() == 'basic';
     } else if (state is SubscriptionError) {
@@ -183,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildSectionHeader('Account Details'),
             const SizedBox(height: 16),
-            _buildDetailRow('Member Since', _userData['joinDate']!),
+            _buildDetailRow('Member Since', _userData['joinDate'] as String),
             const Divider(),
             if (isLoading)
               const Center(
@@ -209,10 +314,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               )
             else ...[
-              _buildDetailRow('Plan', planName),
+              _buildDetailRow('Plan', _userData['plan'] as String),
               const Divider(),
             ],
-            _buildDetailRow('Email', _userData['email']!),
+            _buildDetailRow('Email', _userData['email'] as String),
             const SizedBox(height: 16),
             if (showUpgradeButton)
               SizedBox(
@@ -317,9 +422,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.grey.shade700,
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          Flexible(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -352,8 +461,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditProfileDialog() {
-    final nameController = TextEditingController(text: _userData['name']);
-    final emailController = TextEditingController(text: _userData['email']);
+    final nameController =
+        TextEditingController(text: _userData['name'] as String);
+    final emailController =
+        TextEditingController(text: _userData['email'] as String);
 
     showDialog(
       context: context,
@@ -377,6 +488,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
+                enabled:
+                    false, // Email cannot be edited as it comes from the API
               ),
             ],
           ),
@@ -390,7 +503,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               setState(() {
                 _userData['name'] = nameController.text;
-                _userData['email'] = emailController.text;
+                // Email is not updated as it should come from the API
               });
 
               context.pop();
