@@ -32,17 +32,5 @@ void handleDrawerNavigation(BuildContext context, int index,
     case 5:
       context.go('/knowledge_management');
       break;
-    case 6:
-      // Help & Support - chưa có route
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Help & Support coming soon')),
-      );
-      break;
-    case 7:
-      // Settings - chưa có route
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings screen coming soon')),
-      );
-      break;
   }
 }

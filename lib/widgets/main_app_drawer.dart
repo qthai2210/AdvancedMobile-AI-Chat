@@ -91,18 +91,6 @@ class MainAppDrawer extends StatelessWidget {
                     index: 5,
                     isSelected: currentIndex == 5,
                   ),
-                  _buildDrawerItem(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    index: 6,
-                    isSelected: currentIndex == 6,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.settings,
-                    title: 'Settings',
-                    index: 7,
-                    isSelected: currentIndex == 7,
-                  ),
                 ],
               ),
             ),
