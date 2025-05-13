@@ -10,16 +10,28 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aichatbot/data/models/assistant/assistant_model.dart';
 import 'package:aichatbot/data/models/knowledge/knowledge_model.dart';
+import 'package:aichatbot/models/ai_agent_model.dart';
 import 'package:aichatbot/models/ai_bot_model.dart';
+import 'package:aichatbot/models/message_model.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_bloc.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_event.dart';
 import 'package:aichatbot/presentation/bloc/bot/bot_state.dart';
+// import 'package:aichatbot/presentation/bloc/chat/chat_bloc.dart';  // Currently unused
+// import 'package:aichatbot/presentation/bloc/chat/chat_event.dart';  // Currently unused
+// import 'package:aichatbot/presentation/bloc/chat/chat_state.dart';  // Currently unused
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_bloc.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_event.dart';
 import 'package:aichatbot/presentation/bloc/knowledge/knowledge_state.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_bloc.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_event.dart';
+import 'package:aichatbot/presentation/bloc/prompt/prompt_state.dart';
 import 'package:aichatbot/core/services/bloc_manager.dart';
 import 'package:aichatbot/core/di/injection_container.dart';
+import 'package:aichatbot/widgets/chat/chat_message_list.dart';
+// import 'package:aichatbot/widgets/chat/chat_input_field.dart';  // Currently unused
 import 'package:aichatbot/widgets/knowledge/knowledge_base_selector_dialog.dart';
+// import 'package:aichatbot/data/models/chat/message_request_model.dart';  // Removed to fix conflict
+// import 'package:aichatbot/domain/entities/prompt.dart';  // Currently unused
 import 'bot_details_tab.dart';
 
 /// A screen for editing bot details with a tabbed interface.
@@ -62,7 +74,14 @@ class _BotEditScreenState extends State<BotEditScreen>
   String? _slackBotUrl;
   Map<String, dynamic>? _validatedBotInfo;
   Map<String, dynamic>? _validatedSlackBotInfo;
-
+  // Preview chat variables
+  final TextEditingController _chatInputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  List<Message> _chatMessages = [];
+  bool _isSendingMessage =
+      false; // Used in _sendMessage to track message sending state
+  bool _isPromptMenuOpen =
+      false; // Controls prompt suggestion dropdown visibility
   @override
   void initState() {
     super.initState();
@@ -89,6 +108,33 @@ class _BotEditScreenState extends State<BotEditScreen>
       }
     });
 
+    // Setup chat input listener for prompt detection
+    _chatInputController.addListener(
+        _onChatInputChanged); // Add welcome message to preview chat
+    _chatMessages.add(
+      Message(
+        text:
+            'Welcome to the chat preview! This is where you can test your assistant before deploying it.',
+        isUser: false,
+        timestamp: DateTime.now(),
+        agent: AIAgent(
+          id: widget.bot.id,
+          name: widget.bot.name,
+          description: widget.bot.description,
+          color: widget.bot.color,
+          isCustom: true,
+        ),
+      ),
+    );
+
+    // Fetch available prompts for the prompt menu
+    try {
+      context.read<PromptBloc>().add(const FetchPrompts(accessToken: ''));
+    } catch (e) {
+      // If we can't fetch prompts in the initState, we'll do it when the user opens the prompt menu
+      print('Failed to load prompts: $e');
+    }
+
     // Fetch the assistant's knowledge bases when the screen loads
     _fetchAssistantKnowledges();
   }
@@ -104,7 +150,28 @@ class _BotEditScreenState extends State<BotEditScreen>
     _slackClientIdController.dispose();
     _slackClientSecretController.dispose();
     _slackSigningSecretController.dispose();
+    _chatInputController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onChatInputChanged() {
+    final text = _chatInputController.text;
+    if (text.startsWith('/') && !_isPromptMenuOpen) {
+      setState(() {
+        _isPromptMenuOpen = true;
+      });
+      // Fetch prompts with the query string
+      final promptBloc = sl<PromptBloc>();
+      promptBloc.add(FetchPrompts(
+          accessToken:
+              '', // This will need to be adjusted based on your app's auth
+          query: text.substring(1)));
+    } else if (!text.startsWith('/') && _isPromptMenuOpen) {
+      setState(() {
+        _isPromptMenuOpen = false;
+      });
+    }
   }
 
   void _onFieldChanged() {
@@ -593,7 +660,7 @@ class _BotEditScreenState extends State<BotEditScreen>
               tabs: const [
                 Tab(icon: Icon(Icons.edit), text: 'Details'),
                 Tab(icon: Icon(Icons.auto_awesome), text: 'Knowledge'),
-                Tab(icon: Icon(Icons.chat_bubble), text: 'Chat Settings'),
+                Tab(icon: Icon(Icons.chat_bubble), text: 'Preview Chat'),
               ],
             ),
           ),
@@ -604,7 +671,7 @@ class _BotEditScreenState extends State<BotEditScreen>
                   children: [
                     _buildDetailsTab(),
                     _buildKnowledgeTab(),
-                    _buildChatSettingsTab(),
+                    _buildPreviewChatTab(),
                   ],
                 ),
         ),
@@ -799,309 +866,310 @@ class _BotEditScreenState extends State<BotEditScreen>
     );
   }
 
-  Widget _buildChatSettingsTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Chat Settings',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+  Widget _buildPreviewChatTab() {
+    return Column(
+      children: [
+        // Chat messages area
+        Expanded(
+          child: ChatMessageList(
+            messages: _chatMessages,
+            scrollController: _scrollController,
           ),
-          const SizedBox(height: 24),
+        ),
 
-          // Model selection
-          const Text(
-            'AI Model',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+        // Prompt suggestions area (shown when "/" is typed)
+        if (_isPromptMenuOpen)
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            margin: const EdgeInsets.symmetric(horizontal: 16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'GPT-4',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        'Most capable model',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+            child: BlocBuilder<PromptBloc, PromptState>(
+              builder: (context, state) {
+                if (state.status == PromptStatus.loading) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                } else if (state.status == PromptStatus.success &&
+                    state.prompts != null &&
+                    state.prompts!.isNotEmpty) {
+                  return SizedBox(
+                    height: 200,
+                    child: ListView.separated(
+                      itemCount: state.prompts!.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final prompt = state.prompts![index];
+                        return ListTile(
+                          title: Text(prompt.title),
+                          subtitle: Text(
+                            prompt.description,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _chatInputController.text = prompt.content;
+                              _chatInputController.selection =
+                                  TextSelection.fromPosition(
+                                TextPosition(
+                                    offset: _chatInputController.text.length),
+                              );
+                              _isPromptMenuOpen = false;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: Text('No prompts found')),
+                  );
+                }
+              },
+            ),
+          ), // Typing indicator when message is being sent
+        if (_isSendingMessage)
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "Bot is typing...",
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey[600],
                   ),
-                  const Spacer(),
-                  const Icon(Icons.check_circle, color: Colors.green),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
 
-          // Temperature setting
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Chat input
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
             children: [
-              const Text(
-                'Temperature',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              // New conversation button
+              IconButton(
+                icon: const Icon(Icons.add_comment),
+                tooltip: 'New Conversation',
+                onPressed: () {
+                  setState(() {
+                    _chatMessages.clear();
+                    _chatMessages.add(
+                      Message(
+                        text:
+                            'Welcome to a new conversation! How can I help you today?',
+                        isUser: false,
+                        timestamp: DateTime.now(),
+                        // Convert AIBot to AIAgent for the agent parameter
+                        agent: AIAgent(
+                          id: widget.bot.id,
+                          name: widget.bot.name,
+                          description: widget.bot.description,
+                          color: widget.bot.color,
+                          isCustom: true,
+                        ),
+                      ),
+                    );
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Started a new conversation')),
+                  );
+                },
+              ),
+
+              // Prompt button
+              IconButton(
+                icon: const Icon(Icons.psychology_outlined),
+                tooltip: 'Browse Prompts',
+                onPressed: () {
+                  _showPromptSelector(context);
+                },
+              ),
+
+              // Text field
+              Expanded(
+                child: TextField(
+                  controller: _chatInputController,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message or / for prompts...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  minLines: 1,
+                  maxLines: 4,
+                  onSubmitted: _sendMessage,
                 ),
               ),
-              Text(
-                '0.7',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+
+              // Send button
+              IconButton(
+                icon: Icon(
+                  Icons.send,
+                  color: Theme.of(context).primaryColor,
                 ),
+                onPressed: () => _sendMessage(_chatInputController.text),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Slider(
-            value: 0.7,
-            min: 0.0,
-            max: 1.0,
-            divisions: 10,
-            label: '0.7',
-            onChanged: (value) {
-              // In a real app, you would save this value
-            },
-          ),
-          const Text(
-            'Lower values make responses more focused and deterministic. Higher values make responses more creative and varied.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 24),
-
-          // Response settings
-          const Text(
-            'Response Settings',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            title: const Text('Use streaming responses'),
-            subtitle: const Text('Get responses as they are being generated'),
-            value: true,
-            onChanged: (bool value) {
-              // In a real app, you would save this value
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Include citations'),
-            subtitle:
-                const Text('Reference sources in responses when possible'),
-            value: true,
-            onChanged: (bool value) {
-              // In a real app, you would save this value
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          // Slack Integration Section
-          Text(
-            'Slack Integration',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Connect this assistant to Slack by validating your bot configuration.',
-            style: TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 16),
-
-          // Slack Bot Token Field
-          TextField(
-            controller: _slackBotTokenController,
-            decoration: InputDecoration(
-              labelText: 'Slack Bot Token',
-              hintText: 'Enter your Slack bot token',
-              prefixIcon: const Icon(Icons.key),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
+  // Shows the prompt selector dialog
+  void _showPromptSelector(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return BlocProvider<PromptBloc>.value(
+          value: sl<PromptBloc>(),
+          child: BlocBuilder<PromptBloc, PromptState>(
+            builder: (context, state) {
+              return AlertDialog(
+                title: const Text('Select Prompt'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: state.status == PromptStatus.loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : state.status == PromptStatus.success &&
+                              state.prompts != null &&
+                              state.prompts!.isNotEmpty
+                          ? ListView.builder(
+                              itemCount: state.prompts!.length,
+                              itemBuilder: (context, index) {
+                                final prompt = state.prompts![index];
+                                return ListTile(
+                                  title: Text(prompt.title),
+                                  subtitle: Text(
+                                    prompt.description,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onTap: () {
+                                    Navigator.of(context).pop();
+                                    setState(() {
+                                      _chatInputController.text =
+                                          prompt.content;
+                                      _chatInputController.selection =
+                                          TextSelection.fromPosition(
+                                        TextPosition(
+                                            offset: _chatInputController
+                                                .text.length),
+                                      );
+                                    });
+                                  },
+                                );
+                              },
+                            )
+                          : const Center(child: Text('No prompts available')),
                 ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Slack Client ID Field
-          TextField(
-            controller: _slackClientIdController,
-            decoration: InputDecoration(
-              labelText: 'Client ID',
-              hintText: 'Enter your Slack client ID',
-              prefixIcon: const Icon(Icons.person),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Slack Client Secret Field
-          TextField(
-            controller: _slackClientSecretController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'Client Secret',
-              hintText: 'Enter your Slack client secret',
-              prefixIcon: const Icon(Icons.lock),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Slack Signing Secret Field
-          TextField(
-            controller: _slackSigningSecretController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'Signing Secret',
-              hintText: 'Enter your Slack signing secret',
-              prefixIcon: const Icon(Icons.security),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Show validation status if available
-          if (_validatedSlackBotInfo != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: Colors.green, size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Slack Bot Configuration Successfully Validated',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Validate Slack Bot Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isValidatingSlackBot ? null : _validateSlackBot,
-              icon: const Icon(Icons.check_circle),
-              label: _isValidatingSlackBot
-                  ? const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 8),
-                        Text('Validating...'),
-                      ],
-                    )
-                  : const Text('Validate Slack Configuration'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                elevation: 2,
-              ),
-            ),
+              );
+            },
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  // Handle sending a message
+  void _sendMessage(String message) {
+    if (message.trim().isEmpty) return;
+
+    setState(() {
+      // Add user message
+      _chatMessages.add(
+        Message(
+          text: message,
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
+
+      // Clear input
+      _chatInputController.clear();
+
+      // Show typing indicator
+      _isSendingMessage = true;
+    });
+
+    // Simulate bot response after a short delay
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          // Add bot response with AIBot converted to AIAgent
+          _chatMessages.add(
+            Message(
+              text:
+                  "This is a preview of how the bot will respond. In the actual chat, responses will be generated by the AI based on your assistant's knowledge and instructions.",
+              isUser: false,
+              timestamp: DateTime.now(),
+              agent: AIAgent(
+                id: widget.bot.id,
+                name: widget.bot.name,
+                description: widget.bot.description,
+                color: widget.bot.color,
+                isCustom: true,
+              ),
+            ),
+          );
+
+          _isSendingMessage = false;
+        });
+
+        // Scroll to bottom to show new messages
+        _scrollToBottom();
+      }
+    });
+  }
+
+  // Scroll to the bottom of the chat
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 }
