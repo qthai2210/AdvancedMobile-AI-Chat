@@ -1051,19 +1051,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     } else if (state is SubscriptionLoaded) {
       setState(() {
         _isLoadingSubscription = false;
-        // Calculate remaining tokens from subscription data
+        // Get remaining tokens from subscription data
         _remainingTokens = state.subscription.availableCredits;
-        AppLogger.d(
-            'Subscription loaded: ${state.subscription.name}, Remaining credits: $_remainingTokens');
-      });
 
-      // Show warning if token count is low
+        // Enhanced logging including token usage data
+        final tokenUsage = state.subscription.tokenUsage;
+        if (tokenUsage != null) {
+          AppLogger.d(
+              'Token usage loaded: Available: ${tokenUsage.availableTokens}/${tokenUsage.totalTokens}, ' +
+                  'Unlimited: ${tokenUsage.unlimited}, Date: ${tokenUsage.date}');
+        } else {
+          AppLogger.d(
+              'Subscription loaded: ${state.subscription.name}, Remaining tokens: $_remainingTokens}');
+        }
+      }); // Show warning if token count is low
       if (_remainingTokens < 1000) {
+        // If token usage data has total tokens info, include it in the message
+        final tokenUsage = state.subscription.tokenUsage;
+        final String tokenMessage = tokenUsage != null
+            ? '${_remainingTokens}/${tokenUsage.totalTokens} tokens remaining'
+            : '$_remainingTokens tokens remaining';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_remainingTokens <= 0
                 ? 'You have no tokens left. Please upgrade your plan to continue using the app.'
-                : 'Warning: Your token balance is low ($_remainingTokens tokens remaining)'),
+                : 'Warning: Your token balance is low ($tokenMessage)'),
             backgroundColor: _remainingTokens <= 0 ? Colors.red : Colors.orange,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
@@ -1351,7 +1364,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  /// Builds the token info chip to display remaining tokens
+  /// Builds the token info chip to display remaining tokens  Widget _buildTokenInfoChip() {
   Widget _buildTokenInfoChip() {
     // Show loading indicator if subscription is loading
     if (_isLoadingSubscription) {
@@ -1371,6 +1384,63 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       tokenColor = Colors.red;
     } else if (_remainingTokens < 5000) {
       tokenColor = Colors.orange;
+    }
+
+    // Get token usage from subscription if available
+    String tokenText = _formatTokenCount(_remainingTokens);
+    String tooltipText = 'Remaining tokens in your subscription';
+
+    // Check if we have token usage data
+    if (_subscriptionBloc.state is SubscriptionLoaded) {
+      final subscription =
+          (_subscriptionBloc.state as SubscriptionLoaded).subscription;
+      if (subscription.tokenUsage != null) {
+        final usage = subscription.tokenUsage!;
+
+        if (usage.unlimited) {
+          tokenText = '∞';
+          tooltipText = 'Unlimited tokens available';
+        } else if (usage.totalTokens > 0) {
+          tokenText =
+              '${_formatTokenCount(usage.availableTokens)}/${_formatTokenCount(usage.totalTokens)}';
+          tooltipText =
+              'Using ${usage.availableTokens} of ${usage.totalTokens} tokens';
+        }
+      }
+    }
+
+    // Check if we have complete token usage data from subscription
+    final String tooltipMessage;
+    final String displayText;
+
+    if (_subscriptionBloc.state is SubscriptionLoaded) {
+      final subscription =
+          (_subscriptionBloc.state as SubscriptionLoaded).subscription;
+      final tokenUsage = subscription.tokenUsage;
+
+      if (tokenUsage != null) {
+        // If we have unlimited tokens
+        if (tokenUsage.unlimited) {
+          tooltipMessage = 'Unlimited tokens available';
+          displayText = '∞';
+        }
+        // If we have token usage data with limits
+        else {
+          tooltipMessage =
+              'Using ${tokenUsage.availableTokens} of ${tokenUsage.totalTokens} tokens';
+          // Display as "available/total" if we have both values
+          displayText =
+              '${_formatTokenCount(_remainingTokens)}/${_formatTokenCount(tokenUsage.totalTokens)}';
+        }
+      } else {
+        // Fallback to just remaining tokens if no token usage data
+        tooltipMessage = 'Remaining tokens in your subscription';
+        displayText = _formatTokenCount(_remainingTokens);
+      }
+    } else {
+      // Default if state isn't loaded yet
+      tooltipMessage = 'Remaining tokens in your subscription';
+      displayText = _formatTokenCount(_remainingTokens);
     }
 
     return Tooltip(

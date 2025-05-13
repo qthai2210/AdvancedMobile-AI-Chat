@@ -15,7 +15,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     try {
       AppLogger.d('Fetching user subscription from API service');
       return await _subscriptionApiService.getUserSubscription(
-        customGuid: xJarvisGuid,
+        xJarvisGuid: xJarvisGuid,
       );
     } catch (e) {
       AppLogger.e('Error fetching user subscription: $e');

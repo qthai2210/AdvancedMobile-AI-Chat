@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:aichatbot/domain/models/token_usage_model.dart';
 
 /// Model representing the user's subscription data
 class SubscriptionModel extends Equatable {
@@ -12,6 +13,10 @@ class SubscriptionModel extends Equatable {
   final List<String> modelAccess;
   final int? creditsAllotment;
   final int? dailyModelAccesses;
+  final int? dailyTokens; // New field for daily tokens
+  final int? monthlyTokens; // New field for monthly tokens
+  final int? annuallyTokens; // New field for annual tokens
+  final TokenUsageModel? tokenUsage; // New field for token usage data
 
   /// Creates a new instance of [SubscriptionModel]
   const SubscriptionModel({
@@ -25,6 +30,10 @@ class SubscriptionModel extends Equatable {
     required this.modelAccess,
     this.creditsAllotment,
     this.dailyModelAccesses,
+    this.dailyTokens, // Added parameter
+    this.monthlyTokens, // Added parameter
+    this.annuallyTokens, // Added parameter
+    this.tokenUsage, // Added parameter for token usage
   });
 
   /// Creates a [SubscriptionModel] from a JSON map
@@ -42,6 +51,12 @@ class SubscriptionModel extends Equatable {
       modelAccess: List<String>.from(json['modelAccess'] ?? []),
       creditsAllotment: json['creditsAllotment'],
       dailyModelAccesses: json['dailyModelAccesses'],
+      dailyTokens: json['dailyTokens'], // Parse dailyTokens
+      monthlyTokens: json['monthlyTokens'], // Parse monthlyTokens
+      annuallyTokens: json['annuallyTokens'], // Parse annuallyTokens
+      tokenUsage: json['tokenUsage'] != null
+          ? TokenUsageModel.fromJson(json['tokenUsage'])
+          : null,
     );
   }
 
@@ -58,6 +73,10 @@ class SubscriptionModel extends Equatable {
       'modelAccess': modelAccess,
       'creditsAllotment': creditsAllotment,
       'dailyModelAccesses': dailyModelAccesses,
+      'dailyTokens': dailyTokens, // Add dailyTokens to JSON
+      'monthlyTokens': monthlyTokens, // Add monthlyTokens to JSON
+      'annuallyTokens': annuallyTokens, // Add annuallyTokens to JSON
+      'tokenUsage': tokenUsage?.toJson(), // Add tokenUsage to JSON
     };
   }
 
@@ -79,7 +98,34 @@ class SubscriptionModel extends Equatable {
 
   /// Get credits available (or 0 if none)
   int get availableCredits {
+    // First check if we have token usage data
+    if (tokenUsage != null) {
+      return tokenUsage!.availableTokens;
+    }
+    // Next, check dailyTokens
+    if (dailyTokens != null) {
+      return dailyTokens!;
+    }
+    // Fall back to creditsAllotment
     return creditsAllotment ?? 0;
+  }
+
+  /// Get total tokens available in the subscription
+  int get totalTokens {
+    // First check if we have token usage data
+    if (tokenUsage != null) {
+      return tokenUsage!.totalTokens;
+    }
+    // Otherwise use other available fields
+    if (dailyTokens != null) {
+      return dailyTokens!;
+    }
+    return creditsAllotment ?? 0;
+  }
+
+  /// Whether the subscription has unlimited tokens
+  bool get hasUnlimitedTokens {
+    return tokenUsage?.unlimited ?? false;
   }
 
   @override
@@ -94,6 +140,10 @@ class SubscriptionModel extends Equatable {
         modelAccess,
         creditsAllotment,
         dailyModelAccesses,
+        dailyTokens,
+        monthlyTokens,
+        annuallyTokens,
+        tokenUsage,
       ];
 
   /// Factory to create a free plan subscription
@@ -115,6 +165,12 @@ class SubscriptionModel extends Equatable {
       ],
       modelAccess: ['GPT-4o mini', 'Claude 3.5 Haiku', 'DeepSeek V3 & R1'],
       dailyModelAccesses: 40,
+      tokenUsage: TokenUsageModel(
+        availableTokens: 30,
+        totalTokens: 30,
+        unlimited: false,
+        date: DateTime.now(),
+      ),
     );
   }
 
@@ -150,6 +206,12 @@ class SubscriptionModel extends Equatable {
         'Llama 3.1 405B'
       ],
       creditsAllotment: 1500,
+      tokenUsage: TokenUsageModel(
+        availableTokens: 1500,
+        totalTokens: 1500,
+        unlimited: false,
+        date: DateTime.now(),
+      ),
     );
   }
 }
