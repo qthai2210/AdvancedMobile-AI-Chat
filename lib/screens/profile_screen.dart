@@ -106,8 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 return _buildAccountDetails(state);
                               },
                             ),
-                            // Usage statistics section removed
-                            _buildSettingsSection(),
+                            // Usage statistics and settings sections removed
                           ],
                         ),
                       ),
@@ -327,76 +326,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: const Text('Upgrade Plan'),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Usage statistics related methods removed
-
-  Widget _buildSettingsSection() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('Settings'),
             const SizedBox(height: 16),
-            _buildSettingTile(
-              'Change Password',
-              'Update your password',
-              Icons.lock_outline,
-              () => _showChangePasswordDialog(),
-            ),
-            _buildSettingTile(
-              'Notification Preferences',
-              'Manage notification settings',
-              Icons.notifications_none,
-              () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Notification settings coming soon')),
-                );
-              },
-            ),
-            _buildSettingTile(
-              'Privacy Settings',
-              'Control your data and privacy',
-              Icons.privacy_tip_outlined,
-              () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Privacy settings coming soon')),
-                );
-              },
-            ),
-            _buildSettingTile(
-              'AI Model Preferences',
-              'Choose default AI models',
-              Icons.psychology_outlined,
-              () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('AI model settings coming soon')),
-                );
-              },
-            ),
-            const Divider(height: 32),
-            _buildSettingTile(
-              'Logout',
-              'Sign out of your account',
-              Icons.logout,
-              () => context.go('/login'),
-              isDestructive: true,
+            const Divider(),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () => context.go('/login'),
+                icon: const Icon(Icons.logout, color: Colors.red),
+                label:
+                    const Text('Logout', style: TextStyle(color: Colors.red)),
+                style: TextButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
+  // Usage statistics and settings related methods removed
 
   Widget _buildSectionHeader(String title) {
     return Text(
@@ -434,31 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  Widget _buildSettingTile(
-    String title,
-    String subtitle,
-    IconData icon,
-    VoidCallback onTap, {
-    bool isDestructive = false,
-  }) {
-    final color = isDestructive ? Colors.red : null;
-
-    return ListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          color: color,
-          fontWeight: isDestructive ? FontWeight.w500 : null,
-        ),
-      ),
-      subtitle: Text(subtitle),
-      leading: Icon(icon, color: color),
-      trailing: const Icon(Icons.chevron_right),
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-    );
-  }
+  // Settings related methods removed
 
   void _showEditProfileDialog() {
     final nameController =
@@ -517,68 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  void _showChangePasswordDialog() {
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Current Password',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'New Password',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm New Password',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Password validation logic would go here
-              context.pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Password changed successfully')),
-              );
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
+  // Password related methods removed
 }
 
 class ClipRounded extends StatelessWidget {
