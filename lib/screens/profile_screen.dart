@@ -55,6 +55,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userProfileBloc.add(const FetchUserProfileEvent());
   }
 
+  /// Mock in-app purchase and update subscription
+  void _mockPurchaseSubscription(
+      {required String planName, required bool isYearly}) {
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Processing purchase...'),
+          ],
+        ),
+      ),
+    );
+
+    // Simulate network delay for purchase
+    Future.delayed(const Duration(seconds: 2), () {
+      // Dismiss the loading dialog
+      Navigator.of(context).pop();
+
+      // Update the subscription via bloc
+      _subscriptionBloc.add(UpdateSubscriptionEvent(
+        planName: planName,
+        isYearly: isYearly,
+      ));
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully upgraded to $planName plan!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -227,16 +267,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         .toList(),
                   ),
                 ),
-
               const SizedBox(height: 16),
-              Chip(
-                label: Text(
-                  '${_userData['plan']} Plan',
-                  style: const TextStyle(color: Colors.white),
-                ),
-                backgroundColor: Colors.black26,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              BlocBuilder<SubscriptionBloc, SubscriptionState>(
+                builder: (context, state) {
+                  String planName = _userData['plan'] as String;
+                  String? pricingDisplay;
+
+                  if (state is SubscriptionLoaded) {
+                    planName = state.subscription.displayName;
+                    pricingDisplay = state.subscription.pricingDisplay;
+                  }
+
+                  return Column(
+                    children: [
+                      Chip(
+                        label: Text(
+                          '$planName Plan',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.black26,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                      ),
+                      if (pricingDisplay != null && pricingDisplay.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            pricingDisplay,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
 
               // Show refresh button and error message if profile failed to load
@@ -275,7 +343,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (state is SubscriptionError) {
       hasError = true;
       errorMessage = state.message;
-    }
+    } // Check if the subscription is loaded and get the subscription model
+    var subscription = state is SubscriptionLoaded ? state.subscription : null;
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -314,17 +383,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
               )
             else ...[
               _buildDetailRow('Plan', _userData['plan'] as String),
+              if (subscription != null &&
+                  subscription.pricingDisplay.isNotEmpty)
+                _buildDetailRow('Pricing', subscription.pricingDisplay),
+              if (subscription != null && subscription.expiryDate != null)
+                _buildDetailRow(
+                  'Expires On',
+                  '${subscription.expiryDate!.day}/${subscription.expiryDate!.month}/${subscription.expiryDate!.year}',
+                ),
+
+              // Display subscription features if available
+              if (subscription != null && subscription.features.isNotEmpty) ...[
+                const Divider(),
+                _buildSectionHeader('Plan Features'),
+                const SizedBox(height: 8),
+                ...subscription.features
+                    .map((feature) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  size: 16, color: Colors.green),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(feature)),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ],
+
               const Divider(),
             ],
             _buildDetailRow('Email', _userData['email'] as String),
             const SizedBox(height: 16),
-            if (showUpgradeButton)
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => context.push('/purchase'),
-                  child: const Text('Upgrade Plan'),
-                ),
+            if (showUpgradeButton ||
+                (subscription != null &&
+                    subscription.name.toLowerCase() == 'free'))
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => context.push('/purchase'),
+                      child: const Text('Upgrade Plan'),
+                    ),
+                  ),
+
+                  // DEBUG: Mock purchase buttons for testing
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _mockPurchaseSubscription(
+                          planName: 'starter',
+                          isYearly: false,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                        ),
+                        child: const Text(
+                          'Mock Starter',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _mockPurchaseSubscription(
+                          planName: 'starter',
+                          isYearly: true,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrange,
+                        ),
+                        child: const Text(
+                          'Mock Yearly',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             const SizedBox(height: 16),
             const Divider(),

@@ -7,4 +7,13 @@ abstract class SubscriptionRepository {
   /// Returns a [SubscriptionModel] containing subscription details
   /// Optional [xJarvisGuid] can be provided for specific user context
   Future<SubscriptionModel> getUserSubscription({String? xJarvisGuid});
+
+  /// Updates the user's subscription after a purchase
+  ///
+  /// [planName] - The name of the plan ('starter' or 'pro')
+  /// [isYearly] - Whether the subscription is yearly or monthly
+  Future<SubscriptionModel> updateUserSubscription({
+    required String planName,
+    required bool isYearly,
+  });
 }

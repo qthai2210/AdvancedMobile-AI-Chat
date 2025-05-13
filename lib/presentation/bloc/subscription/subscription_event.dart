@@ -27,3 +27,17 @@ class RefreshSubscriptionEvent extends SubscriptionEvent {
   @override
   List<Object?> get props => [xJarvisGuid];
 }
+
+/// Event to update user subscription after purchase
+class UpdateSubscriptionEvent extends SubscriptionEvent {
+  final String planName;
+  final bool isYearly;
+
+  const UpdateSubscriptionEvent({
+    required this.planName,
+    required this.isYearly,
+  });
+
+  @override
+  List<Object?> get props => [planName, isYearly];
+}

@@ -22,4 +22,22 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<SubscriptionModel> updateUserSubscription({
+    required String planName,
+    required bool isYearly,
+  }) async {
+    try {
+      AppLogger.d(
+          'Updating user subscription to $planName (yearly: $isYearly)');
+      return await _subscriptionApiService.updateUserSubscription(
+        planName: planName,
+        isYearly: isYearly,
+      );
+    } catch (e) {
+      AppLogger.e('Error updating user subscription: $e');
+      rethrow;
+    }
+  }
 }

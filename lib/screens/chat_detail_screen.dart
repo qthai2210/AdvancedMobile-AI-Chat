@@ -1052,9 +1052,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() {
         _isLoadingSubscription = false;
         // Calculate remaining tokens from subscription data
-        _remainingTokens = state.subscription.totalTokens;
+        _remainingTokens = state.subscription.availableCredits;
         AppLogger.d(
-            'Subscription loaded: ${state.subscription.name}, Remaining tokens: $_remainingTokens');
+            'Subscription loaded: ${state.subscription.name}, Remaining credits: $_remainingTokens');
       });
 
       // Show warning if token count is low
